@@ -74,7 +74,7 @@ func main() {
 	rgsv1.RegisterSystemServiceServer(grpcServer, systemSvc)
 	ledgerSvc := server.NewLedgerService(clk, db)
 	rgsv1.RegisterLedgerServiceServer(grpcServer, ledgerSvc)
-	registrySvc := server.NewRegistryService(clk)
+	registrySvc := server.NewRegistryService(clk, db)
 	rgsv1.RegisterRegistryServiceServer(grpcServer, registrySvc)
 	eventsSvc := server.NewEventsService(clk, db)
 	rgsv1.RegisterEventsServiceServer(grpcServer, eventsSvc)

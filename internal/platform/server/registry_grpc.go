@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"sort"
 	"strconv"
@@ -23,13 +24,19 @@ type RegistryService struct {
 	mu          sync.Mutex
 	equipment   map[string]*rgsv1.Equipment
 	nextAuditID int64
+	db          *sql.DB
 }
 
-func NewRegistryService(clk clock.Clock) *RegistryService {
+func NewRegistryService(clk clock.Clock, db ...*sql.DB) *RegistryService {
+	var handle *sql.DB
+	if len(db) > 0 {
+		handle = db[0]
+	}
 	return &RegistryService{
 		Clock:      clk,
 		AuditStore: audit.NewInMemoryStore(),
 		equipment:  make(map[string]*rgsv1.Equipment),
+		db:         handle,
 	}
 }
 
@@ -114,7 +121,7 @@ func cloneEquipment(eq *rgsv1.Equipment) *rgsv1.Equipment {
 	return cp
 }
 
-func (s *RegistryService) UpsertEquipment(_ context.Context, req *rgsv1.UpsertEquipmentRequest) (*rgsv1.UpsertEquipmentResponse, error) {
+func (s *RegistryService) UpsertEquipment(ctx context.Context, req *rgsv1.UpsertEquipmentRequest) (*rgsv1.UpsertEquipmentResponse, error) {
 	if req == nil || req.Equipment == nil || req.Equipment.EquipmentId == "" {
 		return &rgsv1.UpsertEquipmentResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "equipment.equipment_id is required")}, nil
 	}
@@ -127,6 +134,13 @@ func (s *RegistryService) UpsertEquipment(_ context.Context, req *rgsv1.UpsertEq
 	defer s.mu.Unlock()
 
 	existing := cloneEquipment(s.equipment[req.Equipment.EquipmentId])
+	if s.db != nil {
+		var err error
+		existing, err = s.getEquipmentFromDB(ctx, req.Equipment.EquipmentId)
+		if err != nil {
+			return &rgsv1.UpsertEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+	}
 	before := equipmentSnapshot(existing)
 
 	now := s.now().Format(time.RFC3339Nano)
@@ -139,16 +153,18 @@ func (s *RegistryService) UpsertEquipment(_ context.Context, req *rgsv1.UpsertEq
 		}
 	}
 	upsert.UpdatedAt = now
-	s.equipment[upsert.EquipmentId] = upsert
 
 	after := equipmentSnapshot(upsert)
 	if err := s.appendAudit(req.Meta, upsert.EquipmentId, "upsert_equipment", before, after, audit.ResultSuccess, req.Reason); err != nil {
-		if existing == nil {
-			delete(s.equipment, upsert.EquipmentId)
-		} else {
-			s.equipment[upsert.EquipmentId] = existing
-		}
 		return &rgsv1.UpsertEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+
+	if s.db != nil {
+		if err := s.upsertEquipmentInDB(ctx, upsert); err != nil {
+			return &rgsv1.UpsertEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+	} else {
+		s.equipment[upsert.EquipmentId] = upsert
 	}
 
 	return &rgsv1.UpsertEquipmentResponse{
@@ -157,13 +173,25 @@ func (s *RegistryService) UpsertEquipment(_ context.Context, req *rgsv1.UpsertEq
 	}, nil
 }
 
-func (s *RegistryService) GetEquipment(_ context.Context, req *rgsv1.GetEquipmentRequest) (*rgsv1.GetEquipmentResponse, error) {
+func (s *RegistryService) GetEquipment(ctx context.Context, req *rgsv1.GetEquipmentRequest) (*rgsv1.GetEquipmentResponse, error) {
 	if req == nil || req.EquipmentId == "" {
 		return &rgsv1.GetEquipmentResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "equipment_id is required")}, nil
 	}
 	if ok, reason := s.authorize(req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, req.EquipmentId, "get_equipment", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.GetEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+
+	if s.db != nil {
+		eq, err := s.getEquipmentFromDB(ctx, req.EquipmentId)
+		if err != nil {
+			return &rgsv1.GetEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if eq == nil {
+			return &rgsv1.GetEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "equipment not found")}, nil
+		} else {
+			return &rgsv1.GetEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Equipment: eq}, nil
+		}
 	}
 
 	s.mu.Lock()
@@ -176,13 +204,39 @@ func (s *RegistryService) GetEquipment(_ context.Context, req *rgsv1.GetEquipmen
 	return &rgsv1.GetEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Equipment: eq}, nil
 }
 
-func (s *RegistryService) ListEquipment(_ context.Context, req *rgsv1.ListEquipmentRequest) (*rgsv1.ListEquipmentResponse, error) {
+func (s *RegistryService) ListEquipment(ctx context.Context, req *rgsv1.ListEquipmentRequest) (*rgsv1.ListEquipmentResponse, error) {
 	if req == nil {
 		req = &rgsv1.ListEquipmentRequest{}
 	}
 	if ok, reason := s.authorize(req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "", "list_equipment", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ListEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+
+	start := 0
+	if req.PageToken != "" {
+		if parsed, err := strconv.Atoi(req.PageToken); err == nil && parsed >= 0 {
+			start = parsed
+		}
+	}
+	pageSize := int(req.PageSize)
+	if pageSize <= 0 {
+		pageSize = 50
+	}
+	if s.db != nil {
+		items, err := s.listEquipmentFromDB(ctx, req.StatusFilter, pageSize, start)
+		if err != nil {
+			return &rgsv1.ListEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		next := ""
+		if len(items) == pageSize {
+			next = strconv.Itoa(start + len(items))
+		}
+		return &rgsv1.ListEquipmentResponse{
+			Meta:          s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
+			Equipment:     items,
+			NextPageToken: next,
+		}, nil
 	}
 
 	s.mu.Lock()
@@ -203,18 +257,8 @@ func (s *RegistryService) ListEquipment(_ context.Context, req *rgsv1.ListEquipm
 		filtered = append(filtered, cloneEquipment(eq))
 	}
 
-	start := 0
-	if req.PageToken != "" {
-		if parsed, err := strconv.Atoi(req.PageToken); err == nil && parsed >= 0 {
-			start = parsed
-		}
-	}
 	if start > len(filtered) {
 		start = len(filtered)
-	}
-	pageSize := int(req.PageSize)
-	if pageSize <= 0 {
-		pageSize = 50
 	}
 	end := start + pageSize
 	if end > len(filtered) {
