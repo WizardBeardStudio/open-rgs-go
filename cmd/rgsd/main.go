@@ -36,6 +36,8 @@ func main() {
 	healthv1.RegisterHealthServer(grpcServer, hs)
 	systemSvc := server.SystemService{StartedAt: startedAt, Clock: clk, Version: version}
 	rgsv1.RegisterSystemServiceServer(grpcServer, systemSvc)
+	ledgerSvc := server.NewLedgerService(clk)
+	rgsv1.RegisterLedgerServiceServer(grpcServer, ledgerSvc)
 
 	grpcListener, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
@@ -48,6 +50,9 @@ func main() {
 	gwMux := runtime.NewServeMux()
 	if err := rgsv1.RegisterSystemServiceHandlerServer(ctx, gwMux, systemSvc); err != nil {
 		log.Fatalf("register gateway handlers: %v", err)
+	}
+	if err := rgsv1.RegisterLedgerServiceHandlerServer(ctx, gwMux, ledgerSvc); err != nil {
+		log.Fatalf("register ledger gateway handlers: %v", err)
 	}
 	mux.Handle("/", gwMux)
 	httpServer := &http.Server{Addr: httpAddr, Handler: mux}
