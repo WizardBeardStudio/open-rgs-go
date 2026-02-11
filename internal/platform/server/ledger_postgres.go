@@ -276,12 +276,76 @@ func (s *LedgerService) persistIdempotencyResponse(ctx context.Context, scope, i
 INSERT INTO ledger_idempotency_keys (
   scope, idempotency_key, request_hash, response_payload, result_code, expires_at
 ) VALUES (
-  $1, $2, $3, $4::jsonb, $5, NOW() + INTERVAL '24 hours'
+  $1, $2, $3, $4::jsonb, $5, $6::timestamptz
 )
 ON CONFLICT (scope, idempotency_key) DO NOTHING
 `
-	_, err = s.db.ExecContext(ctx, q, scope, idemKey, requestHash, string(payload), resultCode.String())
+	expiresAt := time.Now().UTC().Add(s.getIdempotencyTTL())
+	_, err = s.db.ExecContext(ctx, q, scope, idemKey, requestHash, string(payload), resultCode.String(), expiresAt.Format(time.RFC3339Nano))
 	return err
+}
+
+func (s *LedgerService) CleanupExpiredIdempotencyKeys(ctx context.Context, batchSize int) (int64, error) {
+	if !s.dbEnabled() {
+		return 0, nil
+	}
+	if batchSize <= 0 {
+		batchSize = 500
+	}
+	const q = `
+WITH doomed AS (
+  SELECT ctid
+  FROM ledger_idempotency_keys
+  WHERE expires_at <= NOW()
+  ORDER BY expires_at ASC
+  LIMIT $1
+)
+DELETE FROM ledger_idempotency_keys
+WHERE ctid IN (SELECT ctid FROM doomed)
+`
+	res, err := s.db.ExecContext(ctx, q, batchSize)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+func (s *LedgerService) StartIdempotencyCleanupWorker(ctx context.Context, interval time.Duration, batchSize int, logger func(string, ...any)) {
+	if !s.dbEnabled() || interval <= 0 {
+		return
+	}
+	if batchSize <= 0 {
+		batchSize = 500
+	}
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				for {
+					deleted, err := s.CleanupExpiredIdempotencyKeys(ctx, batchSize)
+					if err != nil {
+						if logger != nil {
+							logger("ledger idempotency cleanup failed: %v", err)
+						}
+						break
+					}
+					if deleted == 0 {
+						break
+					}
+					if logger != nil {
+						logger("ledger idempotency cleanup removed %d expired keys", deleted)
+					}
+					if deleted < int64(batchSize) {
+						break
+					}
+				}
+			}
+		}
+	}()
 }
 
 func ledgerTxTypeToDB(v rgsv1.LedgerTransactionType) string {

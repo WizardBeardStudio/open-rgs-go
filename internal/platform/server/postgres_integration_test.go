@@ -151,6 +151,37 @@ func TestPostgresLedgerIdempotencyRejectsMismatchedPayload(t *testing.T) {
 	}
 }
 
+func TestPostgresLedgerIdempotencyCleanupExpiredKeys(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	if _, err := db.Exec(`
+INSERT INTO ledger_idempotency_keys (scope, idempotency_key, request_hash, response_payload, result_code, expires_at)
+VALUES
+  ('acct-cleanup|deposit', 'k-expired', '\x01', '{}'::jsonb, 'RESULT_CODE_OK', NOW() - INTERVAL '1 hour'),
+  ('acct-cleanup|deposit', 'k-active', '\x02', '{}'::jsonb, 'RESULT_CODE_OK', NOW() + INTERVAL '1 hour')
+`); err != nil {
+		t.Fatalf("seed idempotency keys: %v", err)
+	}
+
+	svc := NewLedgerService(ledgerFixedClock{now: time.Date(2026, 2, 13, 10, 45, 0, 0, time.UTC)}, db)
+	deleted, err := svc.CleanupExpiredIdempotencyKeys(context.Background(), 100)
+	if err != nil {
+		t.Fatalf("cleanup expired keys err: %v", err)
+	}
+	if deleted != 1 {
+		t.Fatalf("expected deleted=1, got=%d", deleted)
+	}
+
+	var count int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM ledger_idempotency_keys`).Scan(&count); err != nil {
+		t.Fatalf("count idempotency keys: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 remaining idempotency key, got=%d", count)
+	}
+}
+
 func TestPostgresConfigApproveApplyAcrossRestart(t *testing.T) {
 	db := openPostgresIntegrationDB(t)
 	resetPostgresIntegrationState(t, db)

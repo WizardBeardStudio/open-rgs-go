@@ -48,6 +48,7 @@ type LedgerService struct {
 	nextTransferID         int64
 	nextAuditID            int64
 	db                     *sql.DB
+	idempotencyTTL         time.Duration
 }
 
 func NewLedgerService(clk clock.Clock, db ...*sql.DB) *LedgerService {
@@ -66,7 +67,29 @@ func NewLedgerService(clk clock.Clock, db ...*sql.DB) *LedgerService {
 		toDeviceByIdempotency:  make(map[string]*rgsv1.TransferToDeviceResponse),
 		toAccountByIdempotency: make(map[string]*rgsv1.TransferToAccountResponse),
 		db:                     handle,
+		idempotencyTTL:         24 * time.Hour,
 	}
+}
+
+func (s *LedgerService) SetIdempotencyTTL(ttl time.Duration) {
+	if s == nil {
+		return
+	}
+	if ttl <= 0 {
+		ttl = 24 * time.Hour
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.idempotencyTTL = ttl
+}
+
+func (s *LedgerService) getIdempotencyTTL() time.Duration {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.idempotencyTTL <= 0 {
+		return 24 * time.Hour
+	}
+	return s.idempotencyTTL
 }
 
 func (s *LedgerService) now() time.Time {

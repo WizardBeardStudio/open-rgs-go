@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -36,6 +37,9 @@ func main() {
 	httpAddr := envOr("RGS_HTTP_ADDR", ":8080")
 	trustedCIDRs := strings.Split(envOr("RGS_TRUSTED_CIDRS", "127.0.0.1/32,::1/128"), ",")
 	databaseURL := envOr("RGS_DATABASE_URL", "")
+	idempotencyTTL := mustParseDurationEnv("RGS_LEDGER_IDEMPOTENCY_TTL", "24h")
+	idempotencyCleanupInterval := mustParseDurationEnv("RGS_LEDGER_IDEMPOTENCY_CLEANUP_INTERVAL", "15m")
+	idempotencyCleanupBatch := mustParseIntEnv("RGS_LEDGER_IDEMPOTENCY_CLEANUP_BATCH", 500)
 	tlsEnabled := envOr("RGS_TLS_ENABLED", "false") == "true"
 	tlsRequireClientCert := envOr("RGS_TLS_REQUIRE_CLIENT_CERT", "false") == "true"
 	tlsCfg, err := server.BuildTLSConfig(server.TLSConfig{
@@ -73,6 +77,8 @@ func main() {
 	systemSvc := server.SystemService{StartedAt: startedAt, Clock: clk, Version: version}
 	rgsv1.RegisterSystemServiceServer(grpcServer, systemSvc)
 	ledgerSvc := server.NewLedgerService(clk, db)
+	ledgerSvc.SetIdempotencyTTL(idempotencyTTL)
+	ledgerSvc.StartIdempotencyCleanupWorker(ctx, idempotencyCleanupInterval, idempotencyCleanupBatch, log.Printf)
 	rgsv1.RegisterLedgerServiceServer(grpcServer, ledgerSvc)
 	registrySvc := server.NewRegistryService(clk, db)
 	rgsv1.RegisterRegistryServiceServer(grpcServer, registrySvc)
@@ -165,6 +171,27 @@ func envOr(key, def string) string {
 	v := os.Getenv(key)
 	if v == "" {
 		return def
+	}
+	return v
+}
+
+func mustParseDurationEnv(key, def string) time.Duration {
+	raw := envOr(key, def)
+	d, err := time.ParseDuration(raw)
+	if err != nil {
+		log.Fatalf("invalid duration for %s=%q: %v", key, raw, err)
+	}
+	return d
+}
+
+func mustParseIntEnv(key string, def int) int {
+	raw := envOr(key, "")
+	if raw == "" {
+		return def
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil {
+		log.Fatalf("invalid integer for %s=%q: %v", key, raw, err)
 	}
 	return v
 }

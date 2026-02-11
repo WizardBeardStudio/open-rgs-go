@@ -103,6 +103,9 @@ Environment variables:
 - `RGS_TRUSTED_CIDRS` (default: `127.0.0.1/32,::1/128`)
 - `RGS_DATABASE_URL` (optional PostgreSQL DSN for config/download persistence)
 - `RGS_TEST_DATABASE_URL` (optional PostgreSQL DSN for env-gated integration tests)
+- `RGS_LEDGER_IDEMPOTENCY_TTL` (default: `24h`; retention window for idempotency envelopes)
+- `RGS_LEDGER_IDEMPOTENCY_CLEANUP_INTERVAL` (default: `15m`; cleanup worker cadence)
+- `RGS_LEDGER_IDEMPOTENCY_CLEANUP_BATCH` (default: `500`; max expired keys deleted per cleanup batch)
 - `RGS_TLS_ENABLED` (`true|false`, default: `false`)
 - `RGS_TLS_CERT_FILE` (required when TLS enabled)
 - `RGS_TLS_KEY_FILE` (required when TLS enabled)
@@ -211,6 +214,6 @@ Current limitations:
 - Remote access activity retrieval is implemented, but activity history is in-memory unless backed by persistent sinks.
 
 Recommended next steps:
-- Expand durable idempotency coverage to all financial operations and persist replay response envelopes in `ledger_idempotency_keys`.
+- Add metrics/alerts for idempotency cleanup lag (`expired rows`, `rows deleted per run`, `oldest unexpired key age`).
 - Add full identity/authN service with JWT issuance, refresh, and key rotation policy.
 - Persist remote access activity streams to durable storage and expose retention-managed query/report endpoints.
