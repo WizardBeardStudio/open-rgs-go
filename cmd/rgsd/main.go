@@ -38,6 +38,10 @@ func main() {
 	rgsv1.RegisterSystemServiceServer(grpcServer, systemSvc)
 	ledgerSvc := server.NewLedgerService(clk)
 	rgsv1.RegisterLedgerServiceServer(grpcServer, ledgerSvc)
+	registrySvc := server.NewRegistryService(clk)
+	rgsv1.RegisterRegistryServiceServer(grpcServer, registrySvc)
+	eventsSvc := server.NewEventsService(clk)
+	rgsv1.RegisterEventsServiceServer(grpcServer, eventsSvc)
 
 	grpcListener, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
@@ -53,6 +57,12 @@ func main() {
 	}
 	if err := rgsv1.RegisterLedgerServiceHandlerServer(ctx, gwMux, ledgerSvc); err != nil {
 		log.Fatalf("register ledger gateway handlers: %v", err)
+	}
+	if err := rgsv1.RegisterRegistryServiceHandlerServer(ctx, gwMux, registrySvc); err != nil {
+		log.Fatalf("register registry gateway handlers: %v", err)
+	}
+	if err := rgsv1.RegisterEventsServiceHandlerServer(ctx, gwMux, eventsSvc); err != nil {
+		log.Fatalf("register events gateway handlers: %v", err)
 	}
 	mux.Handle("/", gwMux)
 	httpServer := &http.Server{Addr: httpAddr, Handler: mux}
