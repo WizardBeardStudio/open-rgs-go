@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package rgs.v1;
+
+option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+
+import "google/api/annotations.proto";
+import "rgs/v1/common.proto";
+
+enum EquipmentStatus {
+  EQUIPMENT_STATUS_UNSPECIFIED = 0;
+  EQUIPMENT_STATUS_ACTIVE = 1;
+  EQUIPMENT_STATUS_INACTIVE = 2;
+  EQUIPMENT_STATUS_MAINTENANCE = 3;
+  EQUIPMENT_STATUS_DISABLED = 4;
+  EQUIPMENT_STATUS_RETIRED = 5;
+}
+
+message Equipment {
+  string equipment_id = 1;
+  string external_reference = 2;
+  string location = 3;
+  EquipmentStatus status = 4;
+  string theoretical_rtp_bps = 5;
+  string control_program_version = 6;
+  string config_version = 7;
+  string created_at = 8;
+  string updated_at = 9;
+  map<string, string> attributes = 10;
+}
+
+service RegistryService {
+  rpc UpsertEquipment(UpsertEquipmentRequest) returns (UpsertEquipmentResponse) {
+    option (google.api.http) = {
+      put: "/v1/registry/equipment/{equipment.equipment_id}"
+      body: "*"
+    };
+  }
+
+  rpc GetEquipment(GetEquipmentRequest) returns (GetEquipmentResponse) {
+    option (google.api.http) = {
+      get: "/v1/registry/equipment/{equipment_id}"
+    };
+  }
+
+  rpc ListEquipment(ListEquipmentRequest) returns (ListEquipmentResponse) {
+    option (google.api.http) = {
+      get: "/v1/registry/equipment"
+    };
+  }
+}
+
+message UpsertEquipmentRequest {
+  RequestMeta meta = 1;
+  Equipment equipment = 2;
+  string reason = 3;
+}
+
+message UpsertEquipmentResponse {
+  ResponseMeta meta = 1;
+  Equipment equipment = 2;
+}
+
+message GetEquipmentRequest {
+  RequestMeta meta = 1;
+  string equipment_id = 2;
+}
+
+message GetEquipmentResponse {
+  ResponseMeta meta = 1;
+  Equipment equipment = 2;
+}
+
+message ListEquipmentRequest {
+  RequestMeta meta = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  EquipmentStatus status_filter = 4;
+}
+
+message ListEquipmentResponse {
+  ResponseMeta meta = 1;
+  repeated Equipment equipment = 2;
+  string next_page_token = 3;
+}

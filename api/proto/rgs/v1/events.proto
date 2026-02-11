@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package rgs.v1;
+
+option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+
+import "google/api/annotations.proto";
+import "rgs/v1/common.proto";
+
+enum EventSeverity {
+  EVENT_SEVERITY_UNSPECIFIED = 0;
+  EVENT_SEVERITY_INFO = 1;
+  EVENT_SEVERITY_WARN = 2;
+  EVENT_SEVERITY_CRITICAL = 3;
+}
+
+enum MeterRecordType {
+  METER_RECORD_TYPE_UNSPECIFIED = 0;
+  METER_RECORD_TYPE_SNAPSHOT = 1;
+  METER_RECORD_TYPE_DELTA = 2;
+}
+
+message SignificantEvent {
+  string event_id = 1;
+  string equipment_id = 2;
+  string event_code = 3;
+  string localized_description = 4;
+  EventSeverity severity = 5;
+  string occurred_at = 6;
+  string received_at = 7;
+  string recorded_at = 8;
+  map<string, string> tags = 9;
+}
+
+message MeterRecord {
+  string meter_id = 1;
+  string equipment_id = 2;
+  string meter_label = 3;
+  string monetary_unit = 4;
+  MeterRecordType record_type = 5;
+  int64 value_minor = 6;
+  int64 delta_minor = 7;
+  string occurred_at = 8;
+  string received_at = 9;
+  string recorded_at = 10;
+  map<string, string> tags = 11;
+}
+
+service EventsService {
+  rpc SubmitSignificantEvent(SubmitSignificantEventRequest) returns (SubmitSignificantEventResponse) {
+    option (google.api.http) = {
+      post: "/v1/events/significant"
+      body: "*"
+    };
+  }
+
+  rpc SubmitMeterSnapshot(SubmitMeterSnapshotRequest) returns (SubmitMeterSnapshotResponse) {
+    option (google.api.http) = {
+      post: "/v1/events/meters/snapshot"
+      body: "*"
+    };
+  }
+
+  rpc SubmitMeterDelta(SubmitMeterDeltaRequest) returns (SubmitMeterDeltaResponse) {
+    option (google.api.http) = {
+      post: "/v1/events/meters/delta"
+      body: "*"
+    };
+  }
+
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse) {
+    option (google.api.http) = {
+      get: "/v1/events/significant"
+    };
+  }
+
+  rpc ListMeters(ListMetersRequest) returns (ListMetersResponse) {
+    option (google.api.http) = {
+      get: "/v1/events/meters"
+    };
+  }
+}
+
+message SubmitSignificantEventRequest {
+  RequestMeta meta = 1;
+  SignificantEvent event = 2;
+}
+
+message SubmitSignificantEventResponse {
+  ResponseMeta meta = 1;
+  SignificantEvent event = 2;
+}
+
+message SubmitMeterSnapshotRequest {
+  RequestMeta meta = 1;
+  MeterRecord meter = 2;
+}
+
+message SubmitMeterSnapshotResponse {
+  ResponseMeta meta = 1;
+  MeterRecord meter = 2;
+}
+
+message SubmitMeterDeltaRequest {
+  RequestMeta meta = 1;
+  MeterRecord meter = 2;
+}
+
+message SubmitMeterDeltaResponse {
+  ResponseMeta meta = 1;
+  MeterRecord meter = 2;
+}
+
+message ListEventsRequest {
+  RequestMeta meta = 1;
+  string equipment_id = 2;
+  string from_time = 3;
+  string to_time = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+message ListEventsResponse {
+  ResponseMeta meta = 1;
+  repeated SignificantEvent events = 2;
+  string next_page_token = 3;
+}
+
+message ListMetersRequest {
+  RequestMeta meta = 1;
+  string equipment_id = 2;
+  string meter_label = 3;
+  string from_time = 4;
+  string to_time = 5;
+  int32 page_size = 6;
+  string page_token = 7;
+}
+
+message ListMetersResponse {
+  ResponseMeta meta = 1;
+  repeated MeterRecord meters = 2;
+  string next_page_token = 3;
+}
