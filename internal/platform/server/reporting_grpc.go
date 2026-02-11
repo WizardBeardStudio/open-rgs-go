@@ -3,6 +3,7 @@ package server
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/csv"
 	"encoding/json"
 	"sort"
@@ -30,15 +31,21 @@ type ReportingService struct {
 	runOrder    []string
 	nextRunID   int64
 	nextAuditID int64
+	db          *sql.DB
 }
 
-func NewReportingService(clk clock.Clock, ledger *LedgerService, events *EventsService) *ReportingService {
+func NewReportingService(clk clock.Clock, ledger *LedgerService, events *EventsService, db ...*sql.DB) *ReportingService {
+	var handle *sql.DB
+	if len(db) > 0 {
+		handle = db[0]
+	}
 	return &ReportingService{
 		Clock:      clk,
 		AuditStore: audit.NewInMemoryStore(),
 		Ledger:     ledger,
 		Events:     events,
 		runs:       make(map[string]*rgsv1.ReportRun),
+		db:         handle,
 	}
 }
 
@@ -322,7 +329,7 @@ func toString(v any) string {
 	}
 }
 
-func (s *ReportingService) GenerateReport(_ context.Context, req *rgsv1.GenerateReportRequest) (*rgsv1.GenerateReportResponse, error) {
+func (s *ReportingService) GenerateReport(ctx context.Context, req *rgsv1.GenerateReportRequest) (*rgsv1.GenerateReportResponse, error) {
 	if req == nil {
 		return &rgsv1.GenerateReportResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "request is required")}, nil
 	}
@@ -386,25 +393,49 @@ func (s *ReportingService) GenerateReport(_ context.Context, req *rgsv1.Generate
 
 	after, _ := json.Marshal(run)
 	if err := s.appendAudit(req.Meta, runID, "generate_report", []byte(`{}`), after, audit.ResultSuccess, ""); err != nil {
-		s.mu.Lock()
-		delete(s.runs, runID)
-		if len(s.runOrder) > 0 && s.runOrder[len(s.runOrder)-1] == runID {
-			s.runOrder = s.runOrder[:len(s.runOrder)-1]
-		}
-		s.mu.Unlock()
 		return &rgsv1.GenerateReportResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
+	if err := s.persistReportRun(ctx, req.Meta, run); err != nil {
+		return &rgsv1.GenerateReportResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+
+	s.mu.Lock()
+	s.runs[runID] = run
+	s.runOrder = append(s.runOrder, runID)
+	s.mu.Unlock()
 
 	return &rgsv1.GenerateReportResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), ReportRun: cloneRun(run)}, nil
 }
 
-func (s *ReportingService) ListReportRuns(_ context.Context, req *rgsv1.ListReportRunsRequest) (*rgsv1.ListReportRunsResponse, error) {
+func (s *ReportingService) ListReportRuns(ctx context.Context, req *rgsv1.ListReportRunsRequest) (*rgsv1.ListReportRunsResponse, error) {
 	if req == nil {
 		req = &rgsv1.ListReportRunsRequest{}
 	}
 	if ok, reason := s.authorize(req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "", "list_report_runs", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ListReportRunsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+
+	start := 0
+	if req.PageToken != "" {
+		if parsed, err := strconv.Atoi(req.PageToken); err == nil && parsed >= 0 {
+			start = parsed
+		}
+	}
+	size := int(req.PageSize)
+	if size <= 0 {
+		size = 50
+	}
+	if s.db != nil {
+		items, err := s.listReportRunsFromDB(ctx, req.ReportTypeFilter, size, start)
+		if err != nil {
+			return &rgsv1.ListReportRunsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		next := ""
+		if len(items) == size {
+			next = strconv.Itoa(start + len(items))
+		}
+		return &rgsv1.ListReportRunsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), ReportRuns: items, NextPageToken: next}, nil
 	}
 
 	s.mu.Lock()
@@ -422,18 +453,8 @@ func (s *ReportingService) ListReportRuns(_ context.Context, req *rgsv1.ListRepo
 		items = append(items, cloneRun(r))
 	}
 
-	start := 0
-	if req.PageToken != "" {
-		if parsed, err := strconv.Atoi(req.PageToken); err == nil && parsed >= 0 {
-			start = parsed
-		}
-	}
 	if start > len(items) {
 		start = len(items)
-	}
-	size := int(req.PageSize)
-	if size <= 0 {
-		size = 50
 	}
 	end := start + size
 	if end > len(items) {
@@ -447,13 +468,24 @@ func (s *ReportingService) ListReportRuns(_ context.Context, req *rgsv1.ListRepo
 	return &rgsv1.ListReportRunsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), ReportRuns: items[start:end], NextPageToken: next}, nil
 }
 
-func (s *ReportingService) GetReportRun(_ context.Context, req *rgsv1.GetReportRunRequest) (*rgsv1.GetReportRunResponse, error) {
+func (s *ReportingService) GetReportRun(ctx context.Context, req *rgsv1.GetReportRunRequest) (*rgsv1.GetReportRunResponse, error) {
 	if req == nil || req.ReportRunId == "" {
 		return &rgsv1.GetReportRunResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "report_run_id is required")}, nil
 	}
 	if ok, reason := s.authorize(req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, req.ReportRunId, "get_report_run", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.GetReportRunResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+
+	if s.db != nil {
+		run, err := s.getReportRunFromDB(ctx, req.ReportRunId)
+		if err != nil {
+			return &rgsv1.GetReportRunResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if run == nil {
+			return &rgsv1.GetReportRunResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "report run not found")}, nil
+		}
+		return &rgsv1.GetReportRunResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), ReportRun: run}, nil
 	}
 
 	s.mu.Lock()
