@@ -161,6 +161,13 @@ func (s *ConfigService) ProposeConfigChange(ctx context.Context, req *rgsv1.Prop
 	now := s.now().Format(time.RFC3339Nano)
 	id := s.nextChangeIDLocked()
 	curr := s.currentValues[keyFor(req.ConfigNamespace, req.ConfigKey)]
+	if s.db != nil {
+		dbCurr, err := s.getCurrentValue(ctx, req.ConfigNamespace, req.ConfigKey)
+		if err != nil {
+			return &rgsv1.ProposeConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		curr = dbCurr
+	}
 	change := &rgsv1.ConfigChange{
 		ChangeId:        id,
 		ConfigNamespace: req.ConfigNamespace,
@@ -198,6 +205,16 @@ func (s *ConfigService) ApproveConfigChange(ctx context.Context, req *rgsv1.Appr
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	change := s.changes[req.ChangeId]
+	if change == nil && s.db != nil {
+		var err error
+		change, err = s.getConfigChange(ctx, req.ChangeId)
+		if err != nil {
+			return &rgsv1.ApproveConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if change != nil {
+			s.changes[req.ChangeId] = change
+		}
+	}
 	if change == nil {
 		return &rgsv1.ApproveConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "change not found")}, nil
 	}
@@ -232,6 +249,16 @@ func (s *ConfigService) ApplyConfigChange(ctx context.Context, req *rgsv1.ApplyC
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	change := s.changes[req.ChangeId]
+	if change == nil && s.db != nil {
+		var err error
+		change, err = s.getConfigChange(ctx, req.ChangeId)
+		if err != nil {
+			return &rgsv1.ApplyConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if change != nil {
+			s.changes[req.ChangeId] = change
+		}
+	}
 	if change == nil {
 		return &rgsv1.ApplyConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "change not found")}, nil
 	}
@@ -258,13 +285,34 @@ func (s *ConfigService) ApplyConfigChange(ctx context.Context, req *rgsv1.ApplyC
 	return &rgsv1.ApplyConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Change: cloneChange(change)}, nil
 }
 
-func (s *ConfigService) ListConfigHistory(_ context.Context, req *rgsv1.ListConfigHistoryRequest) (*rgsv1.ListConfigHistoryResponse, error) {
+func (s *ConfigService) ListConfigHistory(ctx context.Context, req *rgsv1.ListConfigHistoryRequest) (*rgsv1.ListConfigHistoryResponse, error) {
 	if req == nil {
 		req = &rgsv1.ListConfigHistoryRequest{}
 	}
 	if ok, reason := s.authorize(req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "config_change", "", "list_config_history", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ListConfigHistoryResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	start := 0
+	if req.PageToken != "" {
+		if p, err := strconv.Atoi(req.PageToken); err == nil && p >= 0 {
+			start = p
+		}
+	}
+	size := int(req.PageSize)
+	if size <= 0 {
+		size = 50
+	}
+	if s.db != nil {
+		changes, err := s.listConfigHistoryFromDB(ctx, req.ConfigNamespaceFilter, size, start)
+		if err != nil {
+			return &rgsv1.ListConfigHistoryResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		next := ""
+		if len(changes) == size {
+			next = strconv.Itoa(start + len(changes))
+		}
+		return &rgsv1.ListConfigHistoryResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Changes: changes, NextPageToken: next}, nil
 	}
 
 	s.mu.Lock()
@@ -282,18 +330,8 @@ func (s *ConfigService) ListConfigHistory(_ context.Context, req *rgsv1.ListConf
 		changes = append(changes, cloneChange(c))
 	}
 
-	start := 0
-	if req.PageToken != "" {
-		if p, err := strconv.Atoi(req.PageToken); err == nil && p >= 0 {
-			start = p
-		}
-	}
 	if start > len(changes) {
 		start = len(changes)
-	}
-	size := int(req.PageSize)
-	if size <= 0 {
-		size = 50
 	}
 	end := start + size
 	if end > len(changes) {
@@ -344,13 +382,34 @@ func (s *ConfigService) RecordDownloadLibraryChange(ctx context.Context, req *rg
 	return &rgsv1.RecordDownloadLibraryChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Entry: cloneDownload(entry)}, nil
 }
 
-func (s *ConfigService) ListDownloadLibraryChanges(_ context.Context, req *rgsv1.ListDownloadLibraryChangesRequest) (*rgsv1.ListDownloadLibraryChangesResponse, error) {
+func (s *ConfigService) ListDownloadLibraryChanges(ctx context.Context, req *rgsv1.ListDownloadLibraryChangesRequest) (*rgsv1.ListDownloadLibraryChangesResponse, error) {
 	if req == nil {
 		req = &rgsv1.ListDownloadLibraryChangesRequest{}
 	}
 	if ok, reason := s.authorize(req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "download_library_entry", "", "list_download_library_changes", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ListDownloadLibraryChangesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	start := 0
+	if req.PageToken != "" {
+		if p, err := strconv.Atoi(req.PageToken); err == nil && p >= 0 {
+			start = p
+		}
+	}
+	size := int(req.PageSize)
+	if size <= 0 {
+		size = 50
+	}
+	if s.db != nil {
+		entries, err := s.listDownloadEntriesFromDB(ctx, size, start)
+		if err != nil {
+			return &rgsv1.ListDownloadLibraryChangesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		next := ""
+		if len(entries) == size {
+			next = strconv.Itoa(start + len(entries))
+		}
+		return &rgsv1.ListDownloadLibraryChangesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Entries: entries, NextPageToken: next}, nil
 	}
 
 	s.mu.Lock()
@@ -367,18 +426,8 @@ func (s *ConfigService) ListDownloadLibraryChanges(_ context.Context, req *rgsv1
 		return entries[i].OccurredAt > entries[j].OccurredAt
 	})
 
-	start := 0
-	if req.PageToken != "" {
-		if p, err := strconv.Atoi(req.PageToken); err == nil && p >= 0 {
-			start = p
-		}
-	}
 	if start > len(entries) {
 		start = len(entries)
-	}
-	size := int(req.PageSize)
-	if size <= 0 {
-		size = 50
 	}
 	end := start + size
 	if end > len(entries) {
