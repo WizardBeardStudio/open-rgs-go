@@ -54,20 +54,6 @@ func main() {
 	if tlsCfg != nil {
 		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsCfg)))
 	}
-	grpcServer := grpc.NewServer(grpcOpts...)
-	hs := health.NewServer()
-	hs.SetServingStatus("", healthv1.HealthCheckResponse_SERVING)
-	healthv1.RegisterHealthServer(grpcServer, hs)
-	systemSvc := server.SystemService{StartedAt: startedAt, Clock: clk, Version: version}
-	rgsv1.RegisterSystemServiceServer(grpcServer, systemSvc)
-	ledgerSvc := server.NewLedgerService(clk)
-	rgsv1.RegisterLedgerServiceServer(grpcServer, ledgerSvc)
-	registrySvc := server.NewRegistryService(clk)
-	rgsv1.RegisterRegistryServiceServer(grpcServer, registrySvc)
-	eventsSvc := server.NewEventsService(clk)
-	rgsv1.RegisterEventsServiceServer(grpcServer, eventsSvc)
-	reportingSvc := server.NewReportingService(clk, ledgerSvc, eventsSvc)
-	rgsv1.RegisterReportingServiceServer(grpcServer, reportingSvc)
 	var db *sql.DB
 	if databaseURL != "" {
 		var err error
@@ -80,6 +66,20 @@ func main() {
 		}
 		defer db.Close()
 	}
+	grpcServer := grpc.NewServer(grpcOpts...)
+	hs := health.NewServer()
+	hs.SetServingStatus("", healthv1.HealthCheckResponse_SERVING)
+	healthv1.RegisterHealthServer(grpcServer, hs)
+	systemSvc := server.SystemService{StartedAt: startedAt, Clock: clk, Version: version}
+	rgsv1.RegisterSystemServiceServer(grpcServer, systemSvc)
+	ledgerSvc := server.NewLedgerService(clk, db)
+	rgsv1.RegisterLedgerServiceServer(grpcServer, ledgerSvc)
+	registrySvc := server.NewRegistryService(clk)
+	rgsv1.RegisterRegistryServiceServer(grpcServer, registrySvc)
+	eventsSvc := server.NewEventsService(clk)
+	rgsv1.RegisterEventsServiceServer(grpcServer, eventsSvc)
+	reportingSvc := server.NewReportingService(clk, ledgerSvc, eventsSvc)
+	rgsv1.RegisterReportingServiceServer(grpcServer, reportingSvc)
 	configSvc := server.NewConfigService(clk, db)
 	rgsv1.RegisterConfigServiceServer(grpcServer, configSvc)
 

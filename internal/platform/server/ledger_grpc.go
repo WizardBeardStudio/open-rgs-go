@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"strconv"
 	"sync"
@@ -46,9 +47,14 @@ type LedgerService struct {
 	nextTransactionID      int64
 	nextTransferID         int64
 	nextAuditID            int64
+	db                     *sql.DB
 }
 
-func NewLedgerService(clk clock.Clock) *LedgerService {
+func NewLedgerService(clk clock.Clock, db ...*sql.DB) *LedgerService {
+	var handle *sql.DB
+	if len(db) > 0 {
+		handle = db[0]
+	}
 	return &LedgerService{
 		Clock:                  clk,
 		AuditStore:             audit.NewInMemoryStore(),
@@ -59,6 +65,7 @@ func NewLedgerService(clk clock.Clock) *LedgerService {
 		withdrawByIdempotency:  make(map[string]*rgsv1.WithdrawResponse),
 		toDeviceByIdempotency:  make(map[string]*rgsv1.TransferToDeviceResponse),
 		toAccountByIdempotency: make(map[string]*rgsv1.TransferToAccountResponse),
+		db:                     handle,
 	}
 }
 
@@ -256,7 +263,7 @@ func (s *LedgerService) AuditEvents() []audit.Event {
 	return s.AuditStore.Events()
 }
 
-func (s *LedgerService) GetBalance(_ context.Context, req *rgsv1.GetBalanceRequest) (*rgsv1.GetBalanceResponse, error) {
+func (s *LedgerService) GetBalance(ctx context.Context, req *rgsv1.GetBalanceRequest) (*rgsv1.GetBalanceResponse, error) {
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.GetBalanceResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
 	}
@@ -269,6 +276,15 @@ func (s *LedgerService) GetBalance(_ context.Context, req *rgsv1.GetBalanceReque
 	defer s.mu.Unlock()
 
 	available, pending, currency, ok := s.accountBalance(req.AccountId)
+	if s.dbEnabled() {
+		dbAvailable, dbPending, dbCurrency, dbOK, err := s.getBalanceFromDB(ctx, req.AccountId)
+		if err != nil {
+			return &rgsv1.GetBalanceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if dbOK {
+			available, pending, currency, ok = dbAvailable, dbPending, dbCurrency, true
+		}
+	}
 	if !ok {
 		currency = "USD"
 	}
@@ -281,7 +297,7 @@ func (s *LedgerService) GetBalance(_ context.Context, req *rgsv1.GetBalanceReque
 	}, nil
 }
 
-func (s *LedgerService) Deposit(_ context.Context, req *rgsv1.DepositRequest) (*rgsv1.DepositResponse, error) {
+func (s *LedgerService) Deposit(ctx context.Context, req *rgsv1.DepositRequest) (*rgsv1.DepositResponse, error) {
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.DepositResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
 	}
@@ -341,6 +357,12 @@ func (s *LedgerService) Deposit(_ context.Context, req *rgsv1.DepositRequest) (*
 		s.rollbackLastTransaction(req.AccountId)
 		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
+	if err := s.persistLedgerMutation(ctx, tx, postings, "accepted", idem); err != nil {
+		acct.available -= req.Amount.AmountMinor
+		delete(s.postingsByTx, txID)
+		s.rollbackLastTransaction(req.AccountId)
+		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 
 	resp := &rgsv1.DepositResponse{
 		Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
@@ -351,7 +373,7 @@ func (s *LedgerService) Deposit(_ context.Context, req *rgsv1.DepositRequest) (*
 	return resp, nil
 }
 
-func (s *LedgerService) Withdraw(_ context.Context, req *rgsv1.WithdrawRequest) (*rgsv1.WithdrawResponse, error) {
+func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest) (*rgsv1.WithdrawResponse, error) {
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
 	}
@@ -417,6 +439,12 @@ func (s *LedgerService) Withdraw(_ context.Context, req *rgsv1.WithdrawRequest) 
 		s.rollbackLastTransaction(req.AccountId)
 		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
+	if err := s.persistLedgerMutation(ctx, tx, postings, "accepted", idem); err != nil {
+		acct.available += req.Amount.AmountMinor
+		delete(s.postingsByTx, txID)
+		s.rollbackLastTransaction(req.AccountId)
+		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 
 	resp := &rgsv1.WithdrawResponse{
 		Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
@@ -427,7 +455,7 @@ func (s *LedgerService) Withdraw(_ context.Context, req *rgsv1.WithdrawRequest) 
 	return resp, nil
 }
 
-func (s *LedgerService) TransferToDevice(_ context.Context, req *rgsv1.TransferToDeviceRequest) (*rgsv1.TransferToDeviceResponse, error) {
+func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.TransferToDeviceRequest) (*rgsv1.TransferToDeviceResponse, error) {
 	if req == nil || req.AccountId == "" || req.DeviceId == "" {
 		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id and device_id are required")}, nil
 	}
@@ -505,6 +533,12 @@ func (s *LedgerService) TransferToDevice(_ context.Context, req *rgsv1.TransferT
 		s.rollbackLastTransaction(req.AccountId)
 		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
+	if err := s.persistLedgerMutation(ctx, tx, postings, "accepted", idem); err != nil {
+		acct.available += transfer
+		delete(s.postingsByTx, txID)
+		s.rollbackLastTransaction(req.AccountId)
+		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 
 	resp := &rgsv1.TransferToDeviceResponse{
 		Meta:              s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
@@ -518,7 +552,7 @@ func (s *LedgerService) TransferToDevice(_ context.Context, req *rgsv1.TransferT
 	return resp, nil
 }
 
-func (s *LedgerService) TransferToAccount(_ context.Context, req *rgsv1.TransferToAccountRequest) (*rgsv1.TransferToAccountResponse, error) {
+func (s *LedgerService) TransferToAccount(ctx context.Context, req *rgsv1.TransferToAccountRequest) (*rgsv1.TransferToAccountResponse, error) {
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
 	}
@@ -577,6 +611,12 @@ func (s *LedgerService) TransferToAccount(_ context.Context, req *rgsv1.Transfer
 		s.rollbackLastTransaction(req.AccountId)
 		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
+	if err := s.persistLedgerMutation(ctx, tx, postings, "accepted", idem); err != nil {
+		acct.available -= req.Amount.AmountMinor
+		delete(s.postingsByTx, txID)
+		s.rollbackLastTransaction(req.AccountId)
+		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 
 	resp := &rgsv1.TransferToAccountResponse{
 		Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
@@ -587,7 +627,7 @@ func (s *LedgerService) TransferToAccount(_ context.Context, req *rgsv1.Transfer
 	return resp, nil
 }
 
-func (s *LedgerService) ListTransactions(_ context.Context, req *rgsv1.ListTransactionsRequest) (*rgsv1.ListTransactionsResponse, error) {
+func (s *LedgerService) ListTransactions(ctx context.Context, req *rgsv1.ListTransactionsRequest) (*rgsv1.ListTransactionsResponse, error) {
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.ListTransactionsResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
 	}
@@ -600,6 +640,33 @@ func (s *LedgerService) ListTransactions(_ context.Context, req *rgsv1.ListTrans
 	defer s.mu.Unlock()
 
 	txs := s.transactionsByAcct[req.AccountId]
+	if s.dbEnabled() {
+		start := 0
+		if req.PageToken != "" {
+			if parsed, err := strconv.Atoi(req.PageToken); err == nil && parsed >= 0 {
+				start = parsed
+			}
+		}
+		pageSize := int(req.PageSize)
+		if pageSize <= 0 {
+			pageSize = 50
+		}
+		dbTxs, err := s.listTransactionsFromDB(ctx, req.AccountId, pageSize, start)
+		if err != nil {
+			return &rgsv1.ListTransactionsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if dbTxs != nil {
+			nextToken := ""
+			if len(dbTxs) == pageSize {
+				nextToken = strconv.Itoa(start + len(dbTxs))
+			}
+			return &rgsv1.ListTransactionsResponse{
+				Meta:          s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
+				Transactions:  dbTxs,
+				NextPageToken: nextToken,
+			}, nil
+		}
+	}
 	start := 0
 	if req.PageToken != "" {
 		if parsed, err := strconv.Atoi(req.PageToken); err == nil && parsed >= 0 {
