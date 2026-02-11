@@ -172,6 +172,7 @@ Additional controls:
 
 Deployment guidance:
 - `docs/deployment/FIREWALL_LOGGING.md`
+- `docs/deployment/METRICS_ALERTING.md`
 
 ## 10. API Surface (Current)
 
@@ -221,6 +222,6 @@ Current limitations:
 - Remote access activity retrieval is implemented, but activity history is in-memory unless backed by persistent sinks.
 
 Recommended next steps:
-- Add metrics/alerts for idempotency cleanup lag (`expired rows`, `rows deleted per run`, `oldest unexpired key age`).
+- Add service-level SLO/error-budget alerting for gRPC/REST result-code failure rates and latency percentiles.
 - Add full identity/authN service with JWT issuance, refresh, and key rotation policy.
 - Persist remote access activity streams to durable storage and expose retention-managed query/report endpoints.
