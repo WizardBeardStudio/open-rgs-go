@@ -1,0 +1,163 @@
+syntax = "proto3";
+
+package rgs.v1;
+
+option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+
+import "google/api/annotations.proto";
+import "rgs/v1/common.proto";
+
+enum ConfigChangeStatus {
+  CONFIG_CHANGE_STATUS_UNSPECIFIED = 0;
+  CONFIG_CHANGE_STATUS_PROPOSED = 1;
+  CONFIG_CHANGE_STATUS_APPROVED = 2;
+  CONFIG_CHANGE_STATUS_APPLIED = 3;
+  CONFIG_CHANGE_STATUS_REJECTED = 4;
+}
+
+enum DownloadAction {
+  DOWNLOAD_ACTION_UNSPECIFIED = 0;
+  DOWNLOAD_ACTION_ADD = 1;
+  DOWNLOAD_ACTION_UPDATE = 2;
+  DOWNLOAD_ACTION_DELETE = 3;
+  DOWNLOAD_ACTION_ACTIVATE = 4;
+}
+
+message ConfigChange {
+  string change_id = 1;
+  string config_namespace = 2;
+  string config_key = 3;
+  string proposed_value = 4;
+  string previous_value = 5;
+  string reason = 6;
+  ConfigChangeStatus status = 7;
+  string proposer_id = 8;
+  string approver_id = 9;
+  string applied_by = 10;
+  string created_at = 11;
+  string approved_at = 12;
+  string applied_at = 13;
+}
+
+message DownloadLibraryEntry {
+  string entry_id = 1;
+  string library_path = 2;
+  string checksum = 3;
+  string version = 4;
+  DownloadAction action = 5;
+  string changed_by = 6;
+  string reason = 7;
+  string occurred_at = 8;
+}
+
+service ConfigService {
+  rpc ProposeConfigChange(ProposeConfigChangeRequest) returns (ProposeConfigChangeResponse) {
+    option (google.api.http) = {
+      post: "/v1/config/changes:propose"
+      body: "*"
+    };
+  }
+
+  rpc ApproveConfigChange(ApproveConfigChangeRequest) returns (ApproveConfigChangeResponse) {
+    option (google.api.http) = {
+      post: "/v1/config/changes/{change_id}:approve"
+      body: "*"
+    };
+  }
+
+  rpc ApplyConfigChange(ApplyConfigChangeRequest) returns (ApplyConfigChangeResponse) {
+    option (google.api.http) = {
+      post: "/v1/config/changes/{change_id}:apply"
+      body: "*"
+    };
+  }
+
+  rpc ListConfigHistory(ListConfigHistoryRequest) returns (ListConfigHistoryResponse) {
+    option (google.api.http) = {
+      get: "/v1/config/history"
+    };
+  }
+
+  rpc RecordDownloadLibraryChange(RecordDownloadLibraryChangeRequest) returns (RecordDownloadLibraryChangeResponse) {
+    option (google.api.http) = {
+      post: "/v1/config/download-library:record"
+      body: "*"
+    };
+  }
+
+  rpc ListDownloadLibraryChanges(ListDownloadLibraryChangesRequest) returns (ListDownloadLibraryChangesResponse) {
+    option (google.api.http) = {
+      get: "/v1/config/download-library"
+    };
+  }
+}
+
+message ProposeConfigChangeRequest {
+  RequestMeta meta = 1;
+  string config_namespace = 2;
+  string config_key = 3;
+  string proposed_value = 4;
+  string reason = 5;
+}
+
+message ProposeConfigChangeResponse {
+  ResponseMeta meta = 1;
+  ConfigChange change = 2;
+}
+
+message ApproveConfigChangeRequest {
+  RequestMeta meta = 1;
+  string change_id = 2;
+  string reason = 3;
+}
+
+message ApproveConfigChangeResponse {
+  ResponseMeta meta = 1;
+  ConfigChange change = 2;
+}
+
+message ApplyConfigChangeRequest {
+  RequestMeta meta = 1;
+  string change_id = 2;
+  string reason = 3;
+}
+
+message ApplyConfigChangeResponse {
+  ResponseMeta meta = 1;
+  ConfigChange change = 2;
+}
+
+message ListConfigHistoryRequest {
+  RequestMeta meta = 1;
+  string config_namespace_filter = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListConfigHistoryResponse {
+  ResponseMeta meta = 1;
+  repeated ConfigChange changes = 2;
+  string next_page_token = 3;
+}
+
+message RecordDownloadLibraryChangeRequest {
+  RequestMeta meta = 1;
+  DownloadLibraryEntry entry = 2;
+}
+
+message RecordDownloadLibraryChangeResponse {
+  ResponseMeta meta = 1;
+  DownloadLibraryEntry entry = 2;
+}
+
+message ListDownloadLibraryChangesRequest {
+  RequestMeta meta = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListDownloadLibraryChangesResponse {
+  ResponseMeta meta = 1;
+  repeated DownloadLibraryEntry entries = 2;
+  string next_page_token = 3;
+}
