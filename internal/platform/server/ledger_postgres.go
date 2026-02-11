@@ -310,7 +310,13 @@ WHERE ctid IN (SELECT ctid FROM doomed)
 	return res.RowsAffected()
 }
 
-func (s *LedgerService) StartIdempotencyCleanupWorker(ctx context.Context, interval time.Duration, batchSize int, logger func(string, ...any)) {
+func (s *LedgerService) StartIdempotencyCleanupWorker(
+	ctx context.Context,
+	interval time.Duration,
+	batchSize int,
+	logger func(string, ...any),
+	observer func(deleted int64, err error),
+) {
 	if !s.dbEnabled() || interval <= 0 {
 		return
 	}
@@ -328,10 +334,16 @@ func (s *LedgerService) StartIdempotencyCleanupWorker(ctx context.Context, inter
 				for {
 					deleted, err := s.CleanupExpiredIdempotencyKeys(ctx, batchSize)
 					if err != nil {
+						if observer != nil {
+							observer(0, err)
+						}
 						if logger != nil {
 							logger("ledger idempotency cleanup failed: %v", err)
 						}
 						break
+					}
+					if observer != nil {
+						observer(deleted, nil)
 					}
 					if deleted == 0 {
 						break

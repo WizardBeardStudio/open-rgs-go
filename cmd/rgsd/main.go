@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
@@ -40,6 +41,7 @@ func main() {
 	idempotencyTTL := mustParseDurationEnv("RGS_LEDGER_IDEMPOTENCY_TTL", "24h")
 	idempotencyCleanupInterval := mustParseDurationEnv("RGS_LEDGER_IDEMPOTENCY_CLEANUP_INTERVAL", "15m")
 	idempotencyCleanupBatch := mustParseIntEnv("RGS_LEDGER_IDEMPOTENCY_CLEANUP_BATCH", 500)
+	metricsRefreshInterval := mustParseDurationEnv("RGS_METRICS_REFRESH_INTERVAL", "1m")
 	tlsEnabled := envOr("RGS_TLS_ENABLED", "false") == "true"
 	tlsRequireClientCert := envOr("RGS_TLS_REQUIRE_CLIENT_CERT", "false") == "true"
 	tlsCfg, err := server.BuildTLSConfig(server.TLSConfig{
@@ -77,8 +79,31 @@ func main() {
 	systemSvc := server.SystemService{StartedAt: startedAt, Clock: clk, Version: version}
 	rgsv1.RegisterSystemServiceServer(grpcServer, systemSvc)
 	ledgerSvc := server.NewLedgerService(clk, db)
+	metrics := server.NewMetrics()
+	if db != nil {
+		metrics.RefreshLedgerIdempotencyCounts(ctx, db)
+		if metricsRefreshInterval > 0 {
+			go func() {
+				ticker := time.NewTicker(metricsRefreshInterval)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-ctx.Done():
+						return
+					case <-ticker.C:
+						metrics.RefreshLedgerIdempotencyCounts(ctx, db)
+					}
+				}
+			}()
+		}
+	}
 	ledgerSvc.SetIdempotencyTTL(idempotencyTTL)
-	ledgerSvc.StartIdempotencyCleanupWorker(ctx, idempotencyCleanupInterval, idempotencyCleanupBatch, log.Printf)
+	ledgerSvc.StartIdempotencyCleanupWorker(ctx, idempotencyCleanupInterval, idempotencyCleanupBatch, log.Printf, func(deleted int64, err error) {
+		metrics.ObserveLedgerIdempotencyCleanup(deleted, err)
+		if db != nil {
+			metrics.RefreshLedgerIdempotencyCounts(ctx, db)
+		}
+	})
 	rgsv1.RegisterLedgerServiceServer(grpcServer, ledgerSvc)
 	registrySvc := server.NewRegistryService(clk, db)
 	rgsv1.RegisterRegistryServiceServer(grpcServer, registrySvc)
@@ -97,6 +122,7 @@ func main() {
 	mux := http.NewServeMux()
 	h := server.SystemHandler{}
 	h.Register(mux)
+	mux.Handle("/metrics", promhttp.Handler())
 	gwMux := runtime.NewServeMux()
 	if err := rgsv1.RegisterSystemServiceHandlerServer(ctx, gwMux, systemSvc); err != nil {
 		log.Fatalf("register gateway handlers: %v", err)

@@ -106,6 +106,7 @@ Environment variables:
 - `RGS_LEDGER_IDEMPOTENCY_TTL` (default: `24h`; retention window for idempotency envelopes)
 - `RGS_LEDGER_IDEMPOTENCY_CLEANUP_INTERVAL` (default: `15m`; cleanup worker cadence)
 - `RGS_LEDGER_IDEMPOTENCY_CLEANUP_BATCH` (default: `500`; max expired keys deleted per cleanup batch)
+- `RGS_METRICS_REFRESH_INTERVAL` (default: `1m`; refresh cadence for DB-backed metrics gauges)
 - `RGS_TLS_ENABLED` (`true|false`, default: `false`)
 - `RGS_TLS_CERT_FILE` (required when TLS enabled)
 - `RGS_TLS_KEY_FILE` (required when TLS enabled)
@@ -140,6 +141,12 @@ Health check:
 
 ```bash
 curl -i http://127.0.0.1:8080/healthz
+```
+
+Prometheus metrics:
+
+```bash
+curl -s http://127.0.0.1:8080/metrics
 ```
 
 System status (REST via gateway):
