@@ -1,0 +1,164 @@
+syntax = "proto3";
+
+package rgs.v1;
+
+option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+
+import "google/api/annotations.proto";
+import "rgs/v1/common.proto";
+
+service LedgerService {
+  rpc GetBalance(GetBalanceRequest) returns (GetBalanceResponse) {
+    option (google.api.http) = {
+      get: "/v1/ledger/accounts/{account_id}/balance"
+    };
+  }
+
+  rpc Deposit(DepositRequest) returns (DepositResponse) {
+    option (google.api.http) = {
+      post: "/v1/ledger/deposits"
+      body: "*"
+    };
+  }
+
+  rpc Withdraw(WithdrawRequest) returns (WithdrawResponse) {
+    option (google.api.http) = {
+      post: "/v1/ledger/withdrawals"
+      body: "*"
+    };
+  }
+
+  rpc TransferToDevice(TransferToDeviceRequest) returns (TransferToDeviceResponse) {
+    option (google.api.http) = {
+      post: "/v1/ledger/transfers/device"
+      body: "*"
+    };
+  }
+
+  rpc TransferToAccount(TransferToAccountRequest) returns (TransferToAccountResponse) {
+    option (google.api.http) = {
+      post: "/v1/ledger/transfers/account"
+      body: "*"
+    };
+  }
+
+  rpc ListTransactions(ListTransactionsRequest) returns (ListTransactionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/ledger/accounts/{account_id}/transactions"
+    };
+  }
+}
+
+message Money {
+  int64 amount_minor = 1;
+  string currency = 2;
+}
+
+enum LedgerTransactionType {
+  LEDGER_TRANSACTION_TYPE_UNSPECIFIED = 0;
+  LEDGER_TRANSACTION_TYPE_DEPOSIT = 1;
+  LEDGER_TRANSACTION_TYPE_WITHDRAWAL = 2;
+  LEDGER_TRANSACTION_TYPE_TRANSFER_TO_DEVICE = 3;
+  LEDGER_TRANSACTION_TYPE_TRANSFER_TO_ACCOUNT = 4;
+  LEDGER_TRANSACTION_TYPE_GAMEPLAY_DEBIT = 5;
+  LEDGER_TRANSACTION_TYPE_GAMEPLAY_CREDIT = 6;
+  LEDGER_TRANSACTION_TYPE_MANUAL_ADJUSTMENT = 7;
+}
+
+enum TransferStatus {
+  TRANSFER_STATUS_UNSPECIFIED = 0;
+  TRANSFER_STATUS_ACCEPTED = 1;
+  TRANSFER_STATUS_PARTIAL = 2;
+  TRANSFER_STATUS_UNRESOLVED = 3;
+  TRANSFER_STATUS_DENIED = 4;
+}
+
+message LedgerTransaction {
+  string transaction_id = 1;
+  string account_id = 2;
+  LedgerTransactionType transaction_type = 3;
+  Money amount = 4;
+  string occurred_at = 5;
+  string authorization_id = 6;
+  string description = 7;
+}
+
+message GetBalanceRequest {
+  RequestMeta meta = 1;
+  string account_id = 2;
+}
+
+message GetBalanceResponse {
+  ResponseMeta meta = 1;
+  string account_id = 2;
+  Money available_balance = 3;
+  Money pending_balance = 4;
+}
+
+message DepositRequest {
+  RequestMeta meta = 1;
+  string account_id = 2;
+  Money amount = 3;
+  string authorization_id = 4;
+}
+
+message DepositResponse {
+  ResponseMeta meta = 1;
+  LedgerTransaction transaction = 2;
+  Money available_balance = 3;
+}
+
+message WithdrawRequest {
+  RequestMeta meta = 1;
+  string account_id = 2;
+  Money amount = 3;
+}
+
+message WithdrawResponse {
+  ResponseMeta meta = 1;
+  LedgerTransaction transaction = 2;
+  Money available_balance = 3;
+}
+
+message TransferToDeviceRequest {
+  RequestMeta meta = 1;
+  string account_id = 2;
+  string device_id = 3;
+  Money requested_amount = 4;
+}
+
+message TransferToDeviceResponse {
+  ResponseMeta meta = 1;
+  string transfer_id = 2;
+  TransferStatus transfer_status = 3;
+  Money transferred_amount = 4;
+  Money available_balance = 5;
+  string unresolved_reason = 6;
+}
+
+message TransferToAccountRequest {
+  RequestMeta meta = 1;
+  string account_id = 2;
+  Money amount = 3;
+}
+
+message TransferToAccountResponse {
+  ResponseMeta meta = 1;
+  LedgerTransaction transaction = 2;
+  Money available_balance = 3;
+}
+
+message ListTransactionsRequest {
+  RequestMeta meta = 1;
+  string account_id = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+  string from_time = 5;
+  string to_time = 6;
+}
+
+message ListTransactionsResponse {
+  ResponseMeta meta = 1;
+  repeated LedgerTransaction transactions = 2;
+  string next_page_token = 3;
+}
