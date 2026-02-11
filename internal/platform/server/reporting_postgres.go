@@ -151,6 +151,86 @@ WHERE report_run_id = $1
 	}, nil
 }
 
+func (s *ReportingService) fetchSignificantEventsRows(now time.Time, interval rgsv1.ReportInterval) ([]map[string]any, error) {
+	if s == nil || s.db == nil {
+		return nil, nil
+	}
+	start := intervalStart(now, interval)
+	const q = `
+SELECT event_id, equipment_id, event_code, localized_description, severity,
+       occurred_at, received_at, recorded_at
+FROM significant_events
+WHERE ($1::timestamptz IS NULL OR occurred_at >= $1::timestamptz)
+  AND ($2::timestamptz IS NULL OR occurred_at <= $2::timestamptz)
+ORDER BY occurred_at ASC, event_id ASC
+`
+	rows, err := s.db.QueryContext(context.Background(), q, nullTime(start), now.UTC())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]map[string]any, 0)
+	for rows.Next() {
+		var eventID, equipmentID, eventCode, desc, severity string
+		var occurredAt, receivedAt, recordedAt time.Time
+		if err := rows.Scan(&eventID, &equipmentID, &eventCode, &desc, &severity, &occurredAt, &receivedAt, &recordedAt); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{
+			"event_id":              eventID,
+			"equipment_id":          equipmentID,
+			"event_code":            eventCode,
+			"localized_description": desc,
+			"severity":              severity,
+			"occurred_at":           occurredAt.UTC().Format(time.RFC3339Nano),
+			"received_at":           receivedAt.UTC().Format(time.RFC3339Nano),
+			"recorded_at":           recordedAt.UTC().Format(time.RFC3339Nano),
+		})
+	}
+	return out, rows.Err()
+}
+
+func (s *ReportingService) fetchCashlessLiabilityRows() ([]map[string]any, int64, int64, error) {
+	if s == nil || s.db == nil {
+		return nil, 0, 0, nil
+	}
+	const q = `
+SELECT account_id, currency_code, available_balance_minor, pending_balance_minor
+FROM ledger_accounts
+ORDER BY account_id ASC
+`
+	rows, err := s.db.QueryContext(context.Background(), q)
+	if err != nil {
+		return nil, 0, 0, err
+	}
+	defer rows.Close()
+
+	out := make([]map[string]any, 0)
+	var totalAvailable int64
+	var totalPending int64
+	for rows.Next() {
+		var accountID, currency string
+		var available, pending int64
+		if err := rows.Scan(&accountID, &currency, &available, &pending); err != nil {
+			return nil, 0, 0, err
+		}
+		out = append(out, map[string]any{
+			"account_id": accountID,
+			"currency":   currency,
+			"available":  available,
+			"pending":    pending,
+			"total":      available + pending,
+		})
+		totalAvailable += available
+		totalPending += pending
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, 0, err
+	}
+	return out, totalAvailable, totalPending, nil
+}
+
 func reportTypeToDB(v rgsv1.ReportType) string {
 	switch v {
 	case rgsv1.ReportType_REPORT_TYPE_SIGNIFICANT_EVENTS_ALTERATIONS:
@@ -252,4 +332,11 @@ func nonEmptyTime(v string) string {
 		return time.Now().UTC().Format(time.RFC3339Nano)
 	}
 	return v
+}
+
+func nullTime(v time.Time) any {
+	if v.IsZero() {
+		return nil
+	}
+	return v.UTC()
 }

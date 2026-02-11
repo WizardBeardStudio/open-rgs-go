@@ -179,7 +179,13 @@ func reportTitle(t rgsv1.ReportType) string {
 func (s *ReportingService) buildSignificantEventsPayload(interval rgsv1.ReportInterval, operatorID string) (map[string]any, bool) {
 	now := s.now()
 	rows := make([]map[string]any, 0)
-	if s.Events != nil {
+	if s.db != nil {
+		dbRows, err := s.fetchSignificantEventsRows(now, interval)
+		if err == nil {
+			rows = dbRows
+		}
+	}
+	if len(rows) == 0 && s.Events != nil {
 		s.Events.mu.Lock()
 		ids := append([]string(nil), s.Events.eventOrder...)
 		for _, id := range ids {
@@ -229,7 +235,16 @@ func (s *ReportingService) buildCashlessLiabilityPayload(interval rgsv1.ReportIn
 	var totalAvailable int64
 	var totalPending int64
 
-	if s.Ledger != nil {
+	if s.db != nil {
+		dbRows, avail, pending, err := s.fetchCashlessLiabilityRows()
+		if err == nil {
+			rows = dbRows
+			totalAvailable = avail
+			totalPending = pending
+		}
+	}
+
+	if len(rows) == 0 && s.Ledger != nil {
 		s.Ledger.mu.Lock()
 		ids := make([]string, 0, len(s.Ledger.accounts))
 		for id := range s.Ledger.accounts {
