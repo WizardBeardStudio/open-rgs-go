@@ -151,3 +151,21 @@ This document maps implemented requirements to standards references, code locati
 - Code: `internal/platform/server/events_grpc.go`, `internal/platform/server/ledger_grpc.go`, `internal/platform/server/remote_access.go`
 - Tests: `internal/platform/server/chaos_test.go`
 - Status: implemented
+
+## RGS-0504 Explicit Audit API for Regulator/Operator Retrieval
+- Standard refs: GLI-13 significant event/alteration reporting and audit retrieval expectations
+- Code: `api/proto/rgs/v1/audit.proto`, `internal/platform/server/audit_grpc.go`, `cmd/rgsd/main.go`
+- Tests: `internal/platform/server/audit_grpc_test.go`
+- Status: implemented
+
+## RGS-0601 mTLS/TLS Runtime Enforcement Controls
+- Standard refs: GLI-13/GLI-21 secure communications and controlled remote access channels
+- Code: `internal/platform/server/tls.go`, `cmd/rgsd/main.go`
+- Tests: `internal/platform/server/remote_access_test.go`
+- Status: implemented
+
+## RGS-0602 PostgreSQL-backed Config/Download Persistence Path
+- Standard refs: GLI-13 change-control retention and download activity logging expectations
+- Code: `internal/platform/server/config_grpc.go`, `internal/platform/server/config_postgres.go`, `migrations/000005_config_change_control.up.sql`, `cmd/rgsd/main.go`
+- Tests: `internal/platform/server/config_grpc_test.go`, `internal/platform/server/config_gateway_test.go`
+- Status: implemented (optional runtime path via `RGS_DATABASE_URL`)

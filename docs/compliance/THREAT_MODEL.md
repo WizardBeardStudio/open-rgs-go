@@ -44,6 +44,15 @@
   - `internal/platform/server/remote_access.go`
   - `cmd/rgsd/main.go`
   - `docs/deployment/FIREWALL_LOGGING.md`
+- Explicit audit retrieval API (audit events + remote access activity)
+  - `api/proto/rgs/v1/audit.proto`
+  - `internal/platform/server/audit_grpc.go`
+- TLS/mTLS runtime enforcement controls
+  - `internal/platform/server/tls.go`
+  - `cmd/rgsd/main.go`
+- Optional PostgreSQL-backed persistence path for config/download controls
+  - `internal/platform/server/config_postgres.go`
+  - `cmd/rgsd/main.go`
 
 ## Residual Risks / Follow-up
 - Integrate persistent DB-backed service repositories (replace in-memory stores)

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"sort"
 	"strconv"
@@ -32,15 +33,21 @@ type ConfigService struct {
 	downloadOrder   []string
 	nextEntryID     int64
 	nextAuditID     int64
+	db              *sql.DB
 }
 
-func NewConfigService(clk clock.Clock) *ConfigService {
+func NewConfigService(clk clock.Clock, db ...*sql.DB) *ConfigService {
+	var handle *sql.DB
+	if len(db) > 0 {
+		handle = db[0]
+	}
 	return &ConfigService{
 		Clock:           clk,
 		AuditStore:      audit.NewInMemoryStore(),
 		changes:         make(map[string]*rgsv1.ConfigChange),
 		currentValues:   make(map[string]string),
 		downloadEntries: make(map[string]*rgsv1.DownloadLibraryEntry),
+		db:              handle,
 	}
 }
 
@@ -139,7 +146,7 @@ func keyFor(namespace, key string) string {
 	return namespace + "::" + key
 }
 
-func (s *ConfigService) ProposeConfigChange(_ context.Context, req *rgsv1.ProposeConfigChangeRequest) (*rgsv1.ProposeConfigChangeResponse, error) {
+func (s *ConfigService) ProposeConfigChange(ctx context.Context, req *rgsv1.ProposeConfigChangeRequest) (*rgsv1.ProposeConfigChangeResponse, error) {
 	if req == nil || req.ConfigNamespace == "" || req.ConfigKey == "" || req.ProposedValue == "" {
 		return &rgsv1.ProposeConfigChangeResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "config_namespace, config_key and proposed_value are required")}, nil
 	}
@@ -170,13 +177,16 @@ func (s *ConfigService) ProposeConfigChange(_ context.Context, req *rgsv1.Propos
 	if err := s.appendAudit(req.Meta, "config_change", id, "propose_config_change", []byte(`{}`), after, audit.ResultSuccess, req.Reason); err != nil {
 		return &rgsv1.ProposeConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
+	if err := s.persistConfigChange(ctx, change); err != nil {
+		return &rgsv1.ProposeConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 
 	s.changes[id] = change
 	s.changeOrder = append(s.changeOrder, id)
 	return &rgsv1.ProposeConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Change: cloneChange(change)}, nil
 }
 
-func (s *ConfigService) ApproveConfigChange(_ context.Context, req *rgsv1.ApproveConfigChangeRequest) (*rgsv1.ApproveConfigChangeResponse, error) {
+func (s *ConfigService) ApproveConfigChange(ctx context.Context, req *rgsv1.ApproveConfigChangeRequest) (*rgsv1.ApproveConfigChangeResponse, error) {
 	if req == nil || req.ChangeId == "" {
 		return &rgsv1.ApproveConfigChangeResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "change_id is required")}, nil
 	}
@@ -203,11 +213,14 @@ func (s *ConfigService) ApproveConfigChange(_ context.Context, req *rgsv1.Approv
 	if err := s.appendAudit(req.Meta, "config_change", change.ChangeId, "approve_config_change", before, after, audit.ResultSuccess, req.Reason); err != nil {
 		return &rgsv1.ApproveConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
+	if err := s.persistConfigChange(ctx, change); err != nil {
+		return &rgsv1.ApproveConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 
 	return &rgsv1.ApproveConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Change: cloneChange(change)}, nil
 }
 
-func (s *ConfigService) ApplyConfigChange(_ context.Context, req *rgsv1.ApplyConfigChangeRequest) (*rgsv1.ApplyConfigChangeResponse, error) {
+func (s *ConfigService) ApplyConfigChange(ctx context.Context, req *rgsv1.ApplyConfigChangeRequest) (*rgsv1.ApplyConfigChangeResponse, error) {
 	if req == nil || req.ChangeId == "" {
 		return &rgsv1.ApplyConfigChangeResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "change_id is required")}, nil
 	}
@@ -234,6 +247,12 @@ func (s *ConfigService) ApplyConfigChange(_ context.Context, req *rgsv1.ApplyCon
 	after, _ := json.Marshal(change)
 	if err := s.appendAudit(req.Meta, "config_change", change.ChangeId, "apply_config_change", before, after, audit.ResultSuccess, req.Reason); err != nil {
 		return &rgsv1.ApplyConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+	if err := s.persistConfigChange(ctx, change); err != nil {
+		return &rgsv1.ApplyConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if err := s.persistCurrentValue(ctx, change.ConfigNamespace, change.ConfigKey, change.ProposedValue, change.AppliedBy); err != nil {
+		return &rgsv1.ApplyConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
 
 	return &rgsv1.ApplyConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Change: cloneChange(change)}, nil
@@ -288,7 +307,7 @@ func (s *ConfigService) ListConfigHistory(_ context.Context, req *rgsv1.ListConf
 	return &rgsv1.ListConfigHistoryResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Changes: changes[start:end], NextPageToken: next}, nil
 }
 
-func (s *ConfigService) RecordDownloadLibraryChange(_ context.Context, req *rgsv1.RecordDownloadLibraryChangeRequest) (*rgsv1.RecordDownloadLibraryChangeResponse, error) {
+func (s *ConfigService) RecordDownloadLibraryChange(ctx context.Context, req *rgsv1.RecordDownloadLibraryChangeRequest) (*rgsv1.RecordDownloadLibraryChangeResponse, error) {
 	if req == nil || req.Entry == nil || req.Entry.LibraryPath == "" || req.Entry.Checksum == "" || req.Entry.Version == "" {
 		return &rgsv1.RecordDownloadLibraryChangeResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "entry library_path/checksum/version are required")}, nil
 	}
@@ -314,6 +333,9 @@ func (s *ConfigService) RecordDownloadLibraryChange(_ context.Context, req *rgsv
 	after, _ := json.Marshal(entry)
 	if err := s.appendAudit(req.Meta, "download_library_entry", entry.EntryId, "record_download_library_change", []byte(`{}`), after, audit.ResultSuccess, entry.Reason); err != nil {
 		return &rgsv1.RecordDownloadLibraryChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+	if err := s.persistDownloadEntry(ctx, entry); err != nil {
+		return &rgsv1.RecordDownloadLibraryChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
 
 	s.downloadEntries[entry.EntryId] = entry

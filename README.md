@@ -13,10 +13,12 @@ Implemented and wired:
 - `EventsService` (significant events/meters with buffering semantics)
 - `ReportingService` (DTD/MTD/YTD/LTD, JSON/CSV)
 - `ConfigService` (propose/approve/apply workflow + download-library logs)
+- `AuditService` (audit event retrieval + remote-access activity retrieval)
 
 Current persistence model:
-- Runtime services currently use in-memory repositories for behavior.
-- PostgreSQL migrations are provided for all core domains and are ready for DB-backed repositories.
+- Runtime services primarily use in-memory repositories for behavior.
+- `ConfigService` includes optional PostgreSQL-backed persistence (`RGS_DATABASE_URL`) for config/download change-control writes.
+- PostgreSQL migrations are provided for all core domains; additional services can be migrated to DB-backed repositories incrementally.
 
 ## 2. Repository Layout
 
@@ -90,6 +92,12 @@ Environment variables:
 - `RGS_GRPC_ADDR` (default: `:8081`)
 - `RGS_HTTP_ADDR` (default: `:8080`)
 - `RGS_TRUSTED_CIDRS` (default: `127.0.0.1/32,::1/128`)
+- `RGS_DATABASE_URL` (optional PostgreSQL DSN for config/download persistence)
+- `RGS_TLS_ENABLED` (`true|false`, default: `false`)
+- `RGS_TLS_CERT_FILE` (required when TLS enabled)
+- `RGS_TLS_KEY_FILE` (required when TLS enabled)
+- `RGS_TLS_REQUIRE_CLIENT_CERT` (`true|false`, default: `false`)
+- `RGS_TLS_CLIENT_CA_FILE` (required when client certs are required)
 
 Example:
 
@@ -98,6 +106,12 @@ RGS_VERSION=1.0.0 \
 RGS_GRPC_ADDR=:8081 \
 RGS_HTTP_ADDR=:8080 \
 RGS_TRUSTED_CIDRS="10.0.0.0/8,192.168.0.0/16,127.0.0.1/32,::1/128" \
+RGS_DATABASE_URL="postgres://user:pass@localhost:5432/open_rgs_go?sslmode=disable" \
+RGS_TLS_ENABLED=true \
+RGS_TLS_CERT_FILE=./certs/server.crt \
+RGS_TLS_KEY_FILE=./certs/server.key \
+RGS_TLS_REQUIRE_CLIENT_CERT=true \
+RGS_TLS_CLIENT_CA_FILE=./certs/clients_ca.pem \
 go run ./cmd/rgsd
 ```
 
@@ -148,6 +162,7 @@ Services and methods are defined in:
 - `api/proto/rgs/v1/events.proto`
 - `api/proto/rgs/v1/reporting.proto`
 - `api/proto/rgs/v1/config.proto`
+- `api/proto/rgs/v1/audit.proto`
 
 Cross-cutting request/response metadata is in `api/proto/rgs/v1/common.proto`.
 
@@ -181,10 +196,11 @@ Chaos tests:
 ## 13. Known Limitations and Next Work
 
 Current limitations:
-- Service repositories are in-memory; DB schemas are ready but not yet fully wired.
-- Remote access activity logs are in-memory unless connected to persistent sinks.
+- Most service repositories remain in-memory; only config/download write persistence has an optional PostgreSQL-backed path.
+- JWT issuance/refresh/rotation endpoints are not yet implemented (authorization relies on actor metadata + middleware scaffolding).
+- Remote access activity retrieval is implemented, but activity history is in-memory unless backed by persistent sinks.
 
 Recommended next steps:
-- Replace in-memory stores with PostgreSQL repositories for each domain.
-- Add production authN (JWT issuance/rotation + mTLS policy enforcement).
-- Add explicit admin/audit API for remote-access activity retrieval.
+- Extend PostgreSQL-backed repositories to ledger, events/meters, registry, and reporting runtime stores.
+- Add full identity/authN service with JWT issuance, refresh, and key rotation policy.
+- Persist remote access activity streams to durable storage and expose retention-managed query/report endpoints.

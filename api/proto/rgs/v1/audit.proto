@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+package rgs.v1;
+
+option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+
+import "google/api/annotations.proto";
+import "rgs/v1/common.proto";
+
+message AuditEventRecord {
+  string audit_id = 1;
+  string occurred_at = 2;
+  string recorded_at = 3;
+  string actor_id = 4;
+  string actor_type = 5;
+  string object_type = 6;
+  string object_id = 7;
+  string action = 8;
+  string result = 9;
+  string reason = 10;
+}
+
+message RemoteAccessActivityRecord {
+  string timestamp = 1;
+  string source_ip = 2;
+  string source_port = 3;
+  string destination = 4;
+  string destination_port = 5;
+  string path = 6;
+  string method = 7;
+  bool allowed = 8;
+  string reason = 9;
+}
+
+service AuditService {
+  rpc ListAuditEvents(ListAuditEventsRequest) returns (ListAuditEventsResponse) {
+    option (google.api.http) = {
+      get: "/v1/audit/events"
+    };
+  }
+
+  rpc ListRemoteAccessActivities(ListRemoteAccessActivitiesRequest) returns (ListRemoteAccessActivitiesResponse) {
+    option (google.api.http) = {
+      get: "/v1/audit/remote-access"
+    };
+  }
+}
+
+message ListAuditEventsRequest {
+  RequestMeta meta = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+  string object_type_filter = 4;
+}
+
+message ListAuditEventsResponse {
+  ResponseMeta meta = 1;
+  repeated AuditEventRecord events = 2;
+  string next_page_token = 3;
+}
+
+message ListRemoteAccessActivitiesRequest {
+  RequestMeta meta = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListRemoteAccessActivitiesResponse {
+  ResponseMeta meta = 1;
+  repeated RemoteAccessActivityRecord activities = 2;
+  string next_page_token = 3;
+}
