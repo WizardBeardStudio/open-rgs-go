@@ -44,6 +44,8 @@ func main() {
 	rgsv1.RegisterEventsServiceServer(grpcServer, eventsSvc)
 	reportingSvc := server.NewReportingService(clk, ledgerSvc, eventsSvc)
 	rgsv1.RegisterReportingServiceServer(grpcServer, reportingSvc)
+	configSvc := server.NewConfigService(clk)
+	rgsv1.RegisterConfigServiceServer(grpcServer, configSvc)
 
 	grpcListener, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
@@ -68,6 +70,9 @@ func main() {
 	}
 	if err := rgsv1.RegisterReportingServiceHandlerServer(ctx, gwMux, reportingSvc); err != nil {
 		log.Fatalf("register reporting gateway handlers: %v", err)
+	}
+	if err := rgsv1.RegisterConfigServiceHandlerServer(ctx, gwMux, configSvc); err != nil {
+		log.Fatalf("register config gateway handlers: %v", err)
 	}
 	mux.Handle("/", gwMux)
 	httpServer := &http.Server{Addr: httpAddr, Handler: mux}
