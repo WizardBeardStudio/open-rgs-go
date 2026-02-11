@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"sort"
 	"strconv"
@@ -49,15 +50,21 @@ type EventsService struct {
 	disabled    bool
 	nextAuditID int64
 	nextBuffer  int64
+	db          *sql.DB
 }
 
-func NewEventsService(clk clock.Clock) *EventsService {
+func NewEventsService(clk clock.Clock, db ...*sql.DB) *EventsService {
+	var handle *sql.DB
+	if len(db) > 0 {
+		handle = db[0]
+	}
 	return &EventsService{
 		Clock:      clk,
 		AuditStore: audit.NewInMemoryStore(),
 		events:     make(map[string]*rgsv1.SignificantEvent),
 		meters:     make(map[string]*rgsv1.MeterRecord),
 		bufferCap:  1024,
+		db:         handle,
 	}
 }
 
@@ -193,7 +200,7 @@ func (s *EventsService) acknowledgeBufferLocked(bufferID string) {
 	}
 }
 
-func (s *EventsService) SubmitSignificantEvent(_ context.Context, req *rgsv1.SubmitSignificantEventRequest) (*rgsv1.SubmitSignificantEventResponse, error) {
+func (s *EventsService) SubmitSignificantEvent(ctx context.Context, req *rgsv1.SubmitSignificantEventRequest) (*rgsv1.SubmitSignificantEventResponse, error) {
 	if req == nil || req.Event == nil || req.Event.EventId == "" || req.Event.EquipmentId == "" {
 		return &rgsv1.SubmitSignificantEventResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "event_id and equipment_id are required")}, nil
 	}
@@ -228,6 +235,9 @@ func (s *EventsService) SubmitSignificantEvent(_ context.Context, req *rgsv1.Sub
 	if err := s.appendAudit(req.Meta, "significant_event", e.EventId, "submit_significant_event", before, after, audit.ResultSuccess, ""); err != nil {
 		return &rgsv1.SubmitSignificantEventResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
+	if err := s.persistSignificantEvent(ctx, req.Meta, e, buffer); err != nil {
+		return &rgsv1.SubmitSignificantEventResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 
 	s.events[e.EventId] = e
 	s.eventOrder = append(s.eventOrder, e.EventId)
@@ -236,19 +246,19 @@ func (s *EventsService) SubmitSignificantEvent(_ context.Context, req *rgsv1.Sub
 	return &rgsv1.SubmitSignificantEventResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Event: cloneEvent(e)}, nil
 }
 
-func (s *EventsService) SubmitMeterSnapshot(_ context.Context, req *rgsv1.SubmitMeterSnapshotRequest) (*rgsv1.SubmitMeterSnapshotResponse, error) {
-	return s.submitMeter(req.Meta, req.Meter, rgsv1.MeterRecordType_METER_RECORD_TYPE_SNAPSHOT)
+func (s *EventsService) SubmitMeterSnapshot(ctx context.Context, req *rgsv1.SubmitMeterSnapshotRequest) (*rgsv1.SubmitMeterSnapshotResponse, error) {
+	return s.submitMeter(ctx, req.Meta, req.Meter, rgsv1.MeterRecordType_METER_RECORD_TYPE_SNAPSHOT)
 }
 
-func (s *EventsService) SubmitMeterDelta(_ context.Context, req *rgsv1.SubmitMeterDeltaRequest) (*rgsv1.SubmitMeterDeltaResponse, error) {
-	resp, err := s.submitMeter(req.Meta, req.Meter, rgsv1.MeterRecordType_METER_RECORD_TYPE_DELTA)
+func (s *EventsService) SubmitMeterDelta(ctx context.Context, req *rgsv1.SubmitMeterDeltaRequest) (*rgsv1.SubmitMeterDeltaResponse, error) {
+	resp, err := s.submitMeter(ctx, req.Meta, req.Meter, rgsv1.MeterRecordType_METER_RECORD_TYPE_DELTA)
 	if err != nil {
 		return nil, err
 	}
 	return &rgsv1.SubmitMeterDeltaResponse{Meta: resp.Meta, Meter: resp.Meter}, nil
 }
 
-func (s *EventsService) submitMeter(meta *rgsv1.RequestMeta, meter *rgsv1.MeterRecord, kind rgsv1.MeterRecordType) (*rgsv1.SubmitMeterSnapshotResponse, error) {
+func (s *EventsService) submitMeter(ctx context.Context, meta *rgsv1.RequestMeta, meter *rgsv1.MeterRecord, kind rgsv1.MeterRecordType) (*rgsv1.SubmitMeterSnapshotResponse, error) {
 	if meter == nil || meter.MeterId == "" || meter.EquipmentId == "" || meter.MeterLabel == "" {
 		return &rgsv1.SubmitMeterSnapshotResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "meter_id, equipment_id, and meter_label are required")}, nil
 	}
@@ -284,6 +294,9 @@ func (s *EventsService) submitMeter(meta *rgsv1.RequestMeta, meter *rgsv1.MeterR
 	if err := s.appendAudit(meta, "meter_record", m.MeterId, "submit_meter", before, after, audit.ResultSuccess, ""); err != nil {
 		return &rgsv1.SubmitMeterSnapshotResponse{Meta: s.responseMeta(meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
+	if err := s.persistMeterRecord(ctx, meta, m, buffer); err != nil {
+		return &rgsv1.SubmitMeterSnapshotResponse{Meta: s.responseMeta(meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 
 	s.meters[m.MeterId] = m
 	s.meterOrder = append(s.meterOrder, m.MeterId)
@@ -292,7 +305,7 @@ func (s *EventsService) submitMeter(meta *rgsv1.RequestMeta, meter *rgsv1.MeterR
 	return &rgsv1.SubmitMeterSnapshotResponse{Meta: s.responseMeta(meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Meter: cloneMeter(m)}, nil
 }
 
-func (s *EventsService) ListEvents(_ context.Context, req *rgsv1.ListEventsRequest) (*rgsv1.ListEventsResponse, error) {
+func (s *EventsService) ListEvents(ctx context.Context, req *rgsv1.ListEventsRequest) (*rgsv1.ListEventsResponse, error) {
 	if req == nil {
 		req = &rgsv1.ListEventsRequest{}
 	}
@@ -303,6 +316,28 @@ func (s *EventsService) ListEvents(_ context.Context, req *rgsv1.ListEventsReque
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.db != nil {
+		start := 0
+		if req.PageToken != "" {
+			if p, err := strconv.Atoi(req.PageToken); err == nil && p >= 0 {
+				start = p
+			}
+		}
+		size := int(req.PageSize)
+		if size <= 0 {
+			size = 100
+		}
+		dbItems, err := s.listEventsFromDB(ctx, req.EquipmentId, size, start)
+		if err != nil {
+			return &rgsv1.ListEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		next := ""
+		if len(dbItems) == size {
+			next = strconv.Itoa(start + len(dbItems))
+		}
+		return &rgsv1.ListEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Events: dbItems, NextPageToken: next}, nil
+	}
 
 	items := make([]*rgsv1.SignificantEvent, 0, len(s.eventOrder))
 	for _, id := range s.eventOrder {
@@ -345,7 +380,7 @@ func (s *EventsService) ListEvents(_ context.Context, req *rgsv1.ListEventsReque
 	return &rgsv1.ListEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Events: items[start:end], NextPageToken: next}, nil
 }
 
-func (s *EventsService) ListMeters(_ context.Context, req *rgsv1.ListMetersRequest) (*rgsv1.ListMetersResponse, error) {
+func (s *EventsService) ListMeters(ctx context.Context, req *rgsv1.ListMetersRequest) (*rgsv1.ListMetersResponse, error) {
 	if req == nil {
 		req = &rgsv1.ListMetersRequest{}
 	}
@@ -356,6 +391,28 @@ func (s *EventsService) ListMeters(_ context.Context, req *rgsv1.ListMetersReque
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.db != nil {
+		start := 0
+		if req.PageToken != "" {
+			if p, err := strconv.Atoi(req.PageToken); err == nil && p >= 0 {
+				start = p
+			}
+		}
+		size := int(req.PageSize)
+		if size <= 0 {
+			size = 100
+		}
+		dbItems, err := s.listMetersFromDB(ctx, req.EquipmentId, req.MeterLabel, size, start)
+		if err != nil {
+			return &rgsv1.ListMetersResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		next := ""
+		if len(dbItems) == size {
+			next = strconv.Itoa(start + len(dbItems))
+		}
+		return &rgsv1.ListMetersResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Meters: dbItems, NextPageToken: next}, nil
+	}
 
 	items := make([]*rgsv1.MeterRecord, 0, len(s.meterOrder))
 	for _, id := range s.meterOrder {
