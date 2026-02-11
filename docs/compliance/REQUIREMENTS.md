@@ -109,3 +109,27 @@ This document maps implemented requirements to standards references, code locati
 - Code: `api/proto/rgs/v1/reporting.proto`, `cmd/rgsd/main.go`
 - Tests: `internal/platform/server/reporting_gateway_test.go`
 - Status: implemented
+
+## RGS-0401 Configuration Change Proposal/Approval/Application Workflow
+- Standard refs: GLI-13 significant system alterations and change-control expectations
+- Code: `api/proto/rgs/v1/config.proto`, `internal/platform/server/config_grpc.go`, `migrations/000005_config_change_control.up.sql`
+- Tests: `internal/platform/server/config_grpc_test.go`
+- Status: implemented
+
+## RGS-0402 Immutable Configuration History and Current Value Tracking
+- Standard refs: GLI-13 alteration history/reportability requirements
+- Code: `internal/platform/server/config_grpc.go`, `migrations/000005_config_change_control.up.sql`
+- Tests: `internal/platform/server/config_grpc_test.go`
+- Status: implemented
+
+## RGS-0403 Download Library Activity Logging (Add/Update/Delete/Activate)
+- Standard refs: GLI-21/GLI-13 style download and activity logging expectations
+- Code: `api/proto/rgs/v1/config.proto`, `internal/platform/server/config_grpc.go`, `migrations/000005_config_change_control.up.sql`
+- Tests: `internal/platform/server/config_grpc_test.go`
+- Status: implemented
+
+## RGS-0404 gRPC and REST Parity (Config and Download-Control)
+- Standard refs: internal platform requirement (protobuf canonical API mirrored over REST)
+- Code: `api/proto/rgs/v1/config.proto`, `cmd/rgsd/main.go`
+- Tests: `internal/platform/server/config_gateway_test.go`
+- Status: implemented

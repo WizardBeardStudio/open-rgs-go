@@ -1,25 +1,47 @@
-# Threat Model (Phase 0 Scaffold)
+# Threat Model
 
 ## In Scope
 - External API boundary for gRPC and REST
-- Operator/player JWT authentication
+- Operator/service/player identity binding on every request
 - Optional mTLS between clients and RGS
 - Audit log integrity chain and append-only constraints
+- Financial operations and configuration/change-control workflows
+- Download library change and activation activity logging
 
-## Initial Threats
+## Key Threats
 - Unauthorized API access via forged/replayed credentials
-- Privilege escalation across actor types
-- Tampering with audit records
-- Plaintext transport for admin pathways
+- Privilege escalation across actor types (player -> operator actions)
+- Tampering with audit, configuration history, or download-library records
+- Silent configuration mutation outside approved workflow
+- Replay or duplicate execution of financial/config state changes
+- Loss of event/meter communication causing data loss
 
-## Initial Mitigations
+## Active Mitigations in Code
 - JWT verification middleware with strict claim requirements
-- Separate actor typing (`player`, `operator`, `service`) for policy enforcement
-- mTLS option at transport layer for registered clients
-- Hash chaining + append-only DB triggers for audit integrity
+  - `internal/platform/auth/jwt.go`
+- Actor-type authorization in stateful services
+  - `internal/platform/server/ledger_grpc.go`
+  - `internal/platform/server/registry_grpc.go`
+  - `internal/platform/server/events_grpc.go`
+  - `internal/platform/server/reporting_grpc.go`
+  - `internal/platform/server/config_grpc.go`
+- Append-only audit chain and immutability controls
+  - `internal/platform/audit/*.go`
+  - `migrations/000001_init_core.up.sql`
+- Idempotency enforcement on financial operations
+  - `internal/platform/server/ledger_grpc.go`
+- Buffer + fail-closed disable behavior for ingestion exhaustion
+  - `internal/platform/server/events_grpc.go`
+- Configuration proposal/approval/apply workflow with immutable history
+  - `internal/platform/server/config_grpc.go`
+  - `migrations/000005_config_change_control.up.sql`
+- Download-library change recording and recall log
+  - `internal/platform/server/config_grpc.go`
+  - `migrations/000005_config_change_control.up.sql`
 
-## Follow-up in Phase 1+
-- Key rotation strategy and HSM/KMS envelope support
-- Rate limiting / lockout behavior
-- Role-based authorization policy matrix
-- Remote access session recording semantics
+## Residual Risks / Follow-up
+- Integrate persistent DB-backed service repositories (replace in-memory stores)
+- Add key rotation and KMS-backed secret material for production
+- Add explicit rate-limiting, session lockout, and antifraud controls
+- Add signed package verification pipeline for download library entries
+- Add remote access session duration/activity report endpoints
