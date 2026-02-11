@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+package rgs.v1;
+
+option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+
+import "google/api/annotations.proto";
+import "rgs/v1/common.proto";
+
+enum ReportType {
+  REPORT_TYPE_UNSPECIFIED = 0;
+  REPORT_TYPE_SIGNIFICANT_EVENTS_ALTERATIONS = 1;
+  REPORT_TYPE_CASHLESS_LIABILITY_SUMMARY = 2;
+}
+
+enum ReportInterval {
+  REPORT_INTERVAL_UNSPECIFIED = 0;
+  REPORT_INTERVAL_DTD = 1;
+  REPORT_INTERVAL_MTD = 2;
+  REPORT_INTERVAL_YTD = 3;
+  REPORT_INTERVAL_LTD = 4;
+}
+
+enum ReportFormat {
+  REPORT_FORMAT_UNSPECIFIED = 0;
+  REPORT_FORMAT_JSON = 1;
+  REPORT_FORMAT_CSV = 2;
+}
+
+enum ReportRunStatus {
+  REPORT_RUN_STATUS_UNSPECIFIED = 0;
+  REPORT_RUN_STATUS_COMPLETED = 1;
+  REPORT_RUN_STATUS_FAILED = 2;
+}
+
+message ReportRun {
+  string report_run_id = 1;
+  ReportType report_type = 2;
+  ReportInterval interval = 3;
+  ReportFormat format = 4;
+  ReportRunStatus status = 5;
+  string operator_id = 6;
+  string report_title = 7;
+  string generated_at = 8;
+  bool no_activity = 9;
+  string content_type = 10;
+  bytes content = 11;
+}
+
+service ReportingService {
+  rpc GenerateReport(GenerateReportRequest) returns (GenerateReportResponse) {
+    option (google.api.http) = {
+      post: "/v1/reporting/runs"
+      body: "*"
+    };
+  }
+
+  rpc ListReportRuns(ListReportRunsRequest) returns (ListReportRunsResponse) {
+    option (google.api.http) = {
+      get: "/v1/reporting/runs"
+    };
+  }
+
+  rpc GetReportRun(GetReportRunRequest) returns (GetReportRunResponse) {
+    option (google.api.http) = {
+      get: "/v1/reporting/runs/{report_run_id}"
+    };
+  }
+}
+
+message GenerateReportRequest {
+  RequestMeta meta = 1;
+  ReportType report_type = 2;
+  ReportInterval interval = 3;
+  ReportFormat format = 4;
+  string operator_id = 5;
+}
+
+message GenerateReportResponse {
+  ResponseMeta meta = 1;
+  ReportRun report_run = 2;
+}
+
+message ListReportRunsRequest {
+  RequestMeta meta = 1;
+  ReportType report_type_filter = 2;
+  int32 page_size = 3;
+  string page_token = 4;
+}
+
+message ListReportRunsResponse {
+  ResponseMeta meta = 1;
+  repeated ReportRun report_runs = 2;
+  string next_page_token = 3;
+}
+
+message GetReportRunRequest {
+  RequestMeta meta = 1;
+  string report_run_id = 2;
+}
+
+message GetReportRunResponse {
+  ResponseMeta meta = 1;
+  ReportRun report_run = 2;
+}
