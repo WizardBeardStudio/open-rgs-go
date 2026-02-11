@@ -16,9 +16,9 @@ Implemented and wired:
 - `AuditService` (audit event retrieval + remote-access activity retrieval)
 
 Current persistence model:
-- Runtime services primarily use in-memory repositories for behavior.
-- `ConfigService` includes optional PostgreSQL-backed persistence (`RGS_DATABASE_URL`) for config/download change-control writes.
-- PostgreSQL migrations are provided for all core domains; additional services can be migrated to DB-backed repositories incrementally.
+- Runtime services support optional PostgreSQL-backed paths when `RGS_DATABASE_URL` is configured.
+- DB-backed paths currently include ledger reads/writes and idempotency replay, registry reads/writes, events/meters reads/writes, reporting run persistence and report payload sourcing, and config/download change-control reads/writes.
+- In-memory behavior remains available as a fallback for local/dev execution without PostgreSQL.
 
 ## 2. Repository Layout
 
@@ -47,6 +47,15 @@ From `src/`:
 
 ```bash
 go test ./...
+```
+
+PostgreSQL integration tests (restart/durability scenarios):
+
+```bash
+RGS_TEST_DATABASE_URL="postgres://user:pass@localhost:5432/open_rgs_go_test?sslmode=disable" \
+go test ./internal/platform/server -run '^TestPostgres'
+# or
+make test-integration-postgres
 ```
 
 Format + tests:
@@ -93,6 +102,7 @@ Environment variables:
 - `RGS_HTTP_ADDR` (default: `:8080`)
 - `RGS_TRUSTED_CIDRS` (default: `127.0.0.1/32,::1/128`)
 - `RGS_DATABASE_URL` (optional PostgreSQL DSN for config/download persistence)
+- `RGS_TEST_DATABASE_URL` (optional PostgreSQL DSN for env-gated integration tests)
 - `RGS_TLS_ENABLED` (`true|false`, default: `false`)
 - `RGS_TLS_CERT_FILE` (required when TLS enabled)
 - `RGS_TLS_KEY_FILE` (required when TLS enabled)
@@ -196,11 +206,11 @@ Chaos tests:
 ## 13. Known Limitations and Next Work
 
 Current limitations:
-- Most service repositories remain in-memory; only config/download write persistence has an optional PostgreSQL-backed path.
+- Some stateful behavior is still partially in-memory (for example local idempotency response caches), with PostgreSQL used as the durable source where wired.
 - JWT issuance/refresh/rotation endpoints are not yet implemented (authorization relies on actor metadata + middleware scaffolding).
 - Remote access activity retrieval is implemented, but activity history is in-memory unless backed by persistent sinks.
 
 Recommended next steps:
-- Extend PostgreSQL-backed repositories to ledger, events/meters, registry, and reporting runtime stores.
+- Expand durable idempotency coverage to all financial operations and persist replay response envelopes in `ledger_idempotency_keys`.
 - Add full identity/authN service with JWT issuance, refresh, and key rotation policy.
 - Persist remote access activity streams to durable storage and expose retention-managed query/report endpoints.

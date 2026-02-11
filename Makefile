@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: all fmt test lint proto generate-tools
+.PHONY: all fmt test test-integration-postgres lint proto generate-tools
 
 all: fmt test
 
@@ -9,6 +9,9 @@ fmt:
 
 test:
 	go test ./...
+
+test-integration-postgres:
+	RGS_TEST_DATABASE_URL=$${RGS_TEST_DATABASE_URL:?set RGS_TEST_DATABASE_URL} go test ./internal/platform/server -run '^TestPostgres'
 
 lint:
 	golangci-lint run
