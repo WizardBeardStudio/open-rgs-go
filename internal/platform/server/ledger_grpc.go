@@ -2,11 +2,13 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"sync"
 	"time"
 
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
 	"github.com/wizardbeard/open-rgs-go/internal/platform/clock"
 	"google.golang.org/protobuf/proto"
 )
@@ -29,7 +31,8 @@ type ledgerPosting struct {
 type LedgerService struct {
 	rgsv1.UnimplementedLedgerServiceServer
 
-	Clock clock.Clock
+	Clock      clock.Clock
+	AuditStore *audit.InMemoryStore
 
 	mu sync.Mutex
 
@@ -42,11 +45,13 @@ type LedgerService struct {
 	toAccountByIdempotency map[string]*rgsv1.TransferToAccountResponse
 	nextTransactionID      int64
 	nextTransferID         int64
+	nextAuditID            int64
 }
 
 func NewLedgerService(clk clock.Clock) *LedgerService {
 	return &LedgerService{
 		Clock:                  clk,
+		AuditStore:             audit.NewInMemoryStore(),
 		accounts:               make(map[string]*ledgerAccount),
 		transactionsByAcct:     make(map[string][]*rgsv1.LedgerTransaction),
 		postingsByTx:           make(map[string][]ledgerPosting),
@@ -130,6 +135,14 @@ func (s *LedgerService) appendTransaction(tx *rgsv1.LedgerTransaction) {
 	s.transactionsByAcct[tx.AccountId] = append(s.transactionsByAcct[tx.AccountId], transactionCopy(tx))
 }
 
+func (s *LedgerService) rollbackLastTransaction(accountID string) {
+	txs := s.transactionsByAcct[accountID]
+	if len(txs) == 0 {
+		return
+	}
+	s.transactionsByAcct[accountID] = txs[:len(txs)-1]
+}
+
 func (s *LedgerService) nextTxIDLocked() string {
 	s.nextTransactionID++
 	return "tx-" + strconv.FormatInt(s.nextTransactionID, 10)
@@ -138,6 +151,11 @@ func (s *LedgerService) nextTxIDLocked() string {
 func (s *LedgerService) nextTransferIDLocked() string {
 	s.nextTransferID++
 	return "tr-" + strconv.FormatInt(s.nextTransferID, 10)
+}
+
+func (s *LedgerService) nextAuditIDLocked() string {
+	s.nextAuditID++
+	return "audit-" + strconv.FormatInt(s.nextAuditID, 10)
 }
 
 func (s *LedgerService) addPostings(txID string, postings []ledgerPosting) bool {
@@ -163,9 +181,88 @@ func isBalanced(postings []ledgerPosting) bool {
 	return total == 0
 }
 
+func (s *LedgerService) authorize(meta *rgsv1.RequestMeta, accountID string) (bool, string) {
+	if meta == nil || meta.Actor == nil {
+		return false, "actor is required"
+	}
+	if meta.Actor.ActorId == "" || meta.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED {
+		return false, "actor binding is required"
+	}
+	switch meta.Actor.ActorType {
+	case rgsv1.ActorType_ACTOR_TYPE_OPERATOR, rgsv1.ActorType_ACTOR_TYPE_SERVICE:
+		return true, ""
+	case rgsv1.ActorType_ACTOR_TYPE_PLAYER:
+		if accountID != meta.Actor.ActorId {
+			return false, "player cannot access another account"
+		}
+		return true, ""
+	default:
+		return false, "unauthorized actor type"
+	}
+}
+
+func snapshotAccount(acct *ledgerAccount) []byte {
+	if acct == nil {
+		return []byte(`{}`)
+	}
+	payload := map[string]any{
+		"account_id": acct.id,
+		"currency":   acct.currency,
+		"available":  acct.available,
+		"pending":    acct.pending,
+	}
+	b, _ := json.Marshal(payload)
+	return b
+}
+
+func (s *LedgerService) appendAudit(meta *rgsv1.RequestMeta, objectType, objectID, action string, before, after []byte, result audit.Result, reason string) error {
+	if s.AuditStore == nil {
+		return audit.ErrCorruptChain
+	}
+	actorID := "system"
+	actorType := "service"
+	if meta != nil && meta.Actor != nil {
+		actorID = meta.Actor.ActorId
+		actorType = meta.Actor.ActorType.String()
+	}
+
+	now := s.now()
+	_, err := s.AuditStore.Append(audit.Event{
+		AuditID:      s.nextAuditIDLocked(),
+		OccurredAt:   now,
+		RecordedAt:   now,
+		ActorID:      actorID,
+		ActorType:    actorType,
+		ObjectType:   objectType,
+		ObjectID:     objectID,
+		Action:       action,
+		Before:       before,
+		After:        after,
+		Result:       result,
+		Reason:       reason,
+		PartitionDay: now.Format("2006-01-02"),
+	})
+	return err
+}
+
+func (s *LedgerService) auditDenied(meta *rgsv1.RequestMeta, objectType, objectID, action, reason string) {
+	_ = s.appendAudit(meta, objectType, objectID, action, []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
+}
+
+func (s *LedgerService) AuditEvents() []audit.Event {
+	if s.AuditStore == nil {
+		return nil
+	}
+	return s.AuditStore.Events()
+}
+
 func (s *LedgerService) GetBalance(_ context.Context, req *rgsv1.GetBalanceRequest) (*rgsv1.GetBalanceResponse, error) {
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.GetBalanceResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
+	}
+	if ok, reason := s.authorize(req.Meta, req.AccountId); !ok {
+		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "get_balance", reason)
+		return &rgsv1.GetBalanceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 
 	s.mu.Lock()
@@ -187,6 +284,10 @@ func (s *LedgerService) GetBalance(_ context.Context, req *rgsv1.GetBalanceReque
 func (s *LedgerService) Deposit(_ context.Context, req *rgsv1.DepositRequest) (*rgsv1.DepositResponse, error) {
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.DepositResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
+	}
+	if ok, reason := s.authorize(req.Meta, req.AccountId); !ok {
+		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "deposit", reason)
+		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	if invalidAmount(req.Amount) {
 		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "amount must be > 0 and currency provided")}, nil
@@ -210,6 +311,7 @@ func (s *LedgerService) Deposit(_ context.Context, req *rgsv1.DepositRequest) (*
 		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "currency mismatch for account")}, nil
 	}
 
+	before := snapshotAccount(acct)
 	now := s.now()
 	txID := s.nextTxIDLocked()
 	postings := []ledgerPosting{
@@ -232,6 +334,14 @@ func (s *LedgerService) Deposit(_ context.Context, req *rgsv1.DepositRequest) (*
 	}
 	s.appendTransaction(tx)
 
+	after := snapshotAccount(acct)
+	if err := s.appendAudit(req.Meta, "ledger_account", req.AccountId, "deposit", before, after, audit.ResultSuccess, ""); err != nil {
+		acct.available -= req.Amount.AmountMinor
+		delete(s.postingsByTx, txID)
+		s.rollbackLastTransaction(req.AccountId)
+		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+
 	resp := &rgsv1.DepositResponse{
 		Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
 		Transaction:      tx,
@@ -244,6 +354,10 @@ func (s *LedgerService) Deposit(_ context.Context, req *rgsv1.DepositRequest) (*
 func (s *LedgerService) Withdraw(_ context.Context, req *rgsv1.WithdrawRequest) (*rgsv1.WithdrawResponse, error) {
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
+	}
+	if ok, reason := s.authorize(req.Meta, req.AccountId); !ok {
+		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "withdraw", reason)
+		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	if invalidAmount(req.Amount) {
 		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "amount must be > 0 and currency provided")}, nil
@@ -267,12 +381,14 @@ func (s *LedgerService) Withdraw(_ context.Context, req *rgsv1.WithdrawRequest) 
 		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "currency mismatch for account")}, nil
 	}
 	if acct.available < req.Amount.AmountMinor {
+		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "withdraw", "insufficient balance")
 		return &rgsv1.WithdrawResponse{
 			Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "insufficient balance"),
 			AvailableBalance: money(acct.available, acct.currency),
 		}, nil
 	}
 
+	before := snapshotAccount(acct)
 	now := s.now()
 	txID := s.nextTxIDLocked()
 	postings := []ledgerPosting{
@@ -294,6 +410,14 @@ func (s *LedgerService) Withdraw(_ context.Context, req *rgsv1.WithdrawRequest) 
 	}
 	s.appendTransaction(tx)
 
+	after := snapshotAccount(acct)
+	if err := s.appendAudit(req.Meta, "ledger_account", req.AccountId, "withdraw", before, after, audit.ResultSuccess, ""); err != nil {
+		acct.available += req.Amount.AmountMinor
+		delete(s.postingsByTx, txID)
+		s.rollbackLastTransaction(req.AccountId)
+		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+
 	resp := &rgsv1.WithdrawResponse{
 		Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
 		Transaction:      tx,
@@ -306,6 +430,10 @@ func (s *LedgerService) Withdraw(_ context.Context, req *rgsv1.WithdrawRequest) 
 func (s *LedgerService) TransferToDevice(_ context.Context, req *rgsv1.TransferToDeviceRequest) (*rgsv1.TransferToDeviceResponse, error) {
 	if req == nil || req.AccountId == "" || req.DeviceId == "" {
 		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id and device_id are required")}, nil
+	}
+	if ok, reason := s.authorize(req.Meta, req.AccountId); !ok {
+		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "transfer_to_device", reason)
+		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	if invalidAmount(req.RequestedAmount) {
 		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "requested_amount must be > 0 and currency provided")}, nil
@@ -330,6 +458,7 @@ func (s *LedgerService) TransferToDevice(_ context.Context, req *rgsv1.TransferT
 	}
 
 	if acct.available <= 0 {
+		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "transfer_to_device", "insufficient balance")
 		return &rgsv1.TransferToDeviceResponse{
 			Meta:              s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "insufficient balance"),
 			TransferStatus:    rgsv1.TransferStatus_TRANSFER_STATUS_DENIED,
@@ -347,6 +476,7 @@ func (s *LedgerService) TransferToDevice(_ context.Context, req *rgsv1.TransferT
 		reason = "requested amount exceeds available balance"
 	}
 
+	before := snapshotAccount(acct)
 	now := s.now()
 	txID := s.nextTxIDLocked()
 	postings := []ledgerPosting{
@@ -368,6 +498,14 @@ func (s *LedgerService) TransferToDevice(_ context.Context, req *rgsv1.TransferT
 	}
 	s.appendTransaction(tx)
 
+	after := snapshotAccount(acct)
+	if err := s.appendAudit(req.Meta, "ledger_account", req.AccountId, "transfer_to_device", before, after, audit.ResultSuccess, reason); err != nil {
+		acct.available += transfer
+		delete(s.postingsByTx, txID)
+		s.rollbackLastTransaction(req.AccountId)
+		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+
 	resp := &rgsv1.TransferToDeviceResponse{
 		Meta:              s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
 		TransferId:        s.nextTransferIDLocked(),
@@ -383,6 +521,10 @@ func (s *LedgerService) TransferToDevice(_ context.Context, req *rgsv1.TransferT
 func (s *LedgerService) TransferToAccount(_ context.Context, req *rgsv1.TransferToAccountRequest) (*rgsv1.TransferToAccountResponse, error) {
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
+	}
+	if ok, reason := s.authorize(req.Meta, req.AccountId); !ok {
+		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "transfer_to_account", reason)
+		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	if invalidAmount(req.Amount) {
 		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "amount must be > 0 and currency provided")}, nil
@@ -406,6 +548,7 @@ func (s *LedgerService) TransferToAccount(_ context.Context, req *rgsv1.Transfer
 		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "currency mismatch for account")}, nil
 	}
 
+	before := snapshotAccount(acct)
 	now := s.now()
 	txID := s.nextTxIDLocked()
 	postings := []ledgerPosting{
@@ -427,6 +570,14 @@ func (s *LedgerService) TransferToAccount(_ context.Context, req *rgsv1.Transfer
 	}
 	s.appendTransaction(tx)
 
+	after := snapshotAccount(acct)
+	if err := s.appendAudit(req.Meta, "ledger_account", req.AccountId, "transfer_to_account", before, after, audit.ResultSuccess, ""); err != nil {
+		acct.available -= req.Amount.AmountMinor
+		delete(s.postingsByTx, txID)
+		s.rollbackLastTransaction(req.AccountId)
+		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+
 	resp := &rgsv1.TransferToAccountResponse{
 		Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
 		Transaction:      tx,
@@ -439,6 +590,10 @@ func (s *LedgerService) TransferToAccount(_ context.Context, req *rgsv1.Transfer
 func (s *LedgerService) ListTransactions(_ context.Context, req *rgsv1.ListTransactionsRequest) (*rgsv1.ListTransactionsResponse, error) {
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.ListTransactionsResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
+	}
+	if ok, reason := s.authorize(req.Meta, req.AccountId); !ok {
+		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "list_transactions", reason)
+		return &rgsv1.ListTransactionsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 
 	s.mu.Lock()
