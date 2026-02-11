@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package rgs.v1;
+
+option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+
+import "rgs/v1/common.proto";
+import "google/api/annotations.proto";
+
+service SystemService {
+  rpc GetSystemStatus(GetSystemStatusRequest) returns (GetSystemStatusResponse) {
+    option (google.api.http) = {
+      get: "/v1/system/status"
+    };
+  }
+}
+
+message GetSystemStatusRequest {
+  RequestMeta meta = 1;
+}
+
+message GetSystemStatusResponse {
+  ResponseMeta meta = 1;
+  string service_name = 2;
+  string version = 3;
+  string uptime = 4;
+}

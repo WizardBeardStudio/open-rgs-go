@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package rgs.v1;
+
+option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+
+message RequestMeta {
+  string request_id = 1;
+  string idempotency_key = 2;
+  Actor actor = 3;
+  Source source = 4;
+}
+
+message ResponseMeta {
+  string request_id = 1;
+  ResultCode result_code = 2;
+  string denial_reason = 3;
+  string server_time = 4;
+}
+
+message Actor {
+  string actor_id = 1;
+  ActorType actor_type = 2;
+}
+
+message Source {
+  string ip = 1;
+  string device_id = 2;
+  string user_agent = 3;
+  string geo = 4;
+}
+
+enum ActorType {
+  ACTOR_TYPE_UNSPECIFIED = 0;
+  ACTOR_TYPE_PLAYER = 1;
+  ACTOR_TYPE_OPERATOR = 2;
+  ACTOR_TYPE_SERVICE = 3;
+}
+
+enum ResultCode {
+  RESULT_CODE_UNSPECIFIED = 0;
+  RESULT_CODE_OK = 1;
+  RESULT_CODE_DENIED = 2;
+  RESULT_CODE_INVALID = 3;
+  RESULT_CODE_ERROR = 4;
+}

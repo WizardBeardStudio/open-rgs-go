@@ -1,0 +1,7 @@
+/bin/
+/dist/
+/tmp/
+*.log
+.coverage
+*.out
+/gen/
