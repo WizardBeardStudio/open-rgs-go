@@ -79,3 +79,33 @@ This document maps implemented requirements to standards references, code locati
 - Code: `internal/platform/server/events_grpc.go`
 - Tests: `internal/platform/server/events_replay_test.go`
 - Status: implemented
+
+## RGS-0301 On-Demand Reporting with DTD/MTD/YTD/LTD Intervals
+- Standard refs: GLI-13 report interval and generation metadata expectations
+- Code: `api/proto/rgs/v1/reporting.proto`, `internal/platform/server/reporting_grpc.go`, `migrations/000004_reporting_runs.up.sql`
+- Tests: `internal/platform/server/reporting_grpc_test.go`
+- Status: implemented
+
+## RGS-0302 Significant Events/Alterations Reporting Content
+- Standard refs: GLI-13 significant events and alterations reportability
+- Code: `internal/platform/server/reporting_grpc.go`, `internal/platform/server/events_grpc.go`, `api/proto/rgs/v1/reporting.proto`
+- Tests: `internal/platform/server/reporting_grpc_test.go`
+- Status: implemented
+
+## RGS-0303 Cashless Liability Summary Reporting
+- Standard refs: GLI-16 cashless account/transaction reporting expectations
+- Code: `internal/platform/server/reporting_grpc.go`, `internal/platform/server/ledger_grpc.go`, `api/proto/rgs/v1/reporting.proto`
+- Tests: `internal/platform/server/reporting_grpc_test.go`
+- Status: implemented
+
+## RGS-0304 Report Export Formats (JSON and CSV)
+- Standard refs: regulator-friendly reporting/export objective
+- Code: `internal/platform/server/reporting_grpc.go`, `api/proto/rgs/v1/reporting.proto`
+- Tests: `internal/platform/server/reporting_grpc_test.go`, `internal/platform/server/reporting_gateway_test.go`
+- Status: implemented
+
+## RGS-0305 gRPC and REST Parity (Reporting)
+- Standard refs: internal platform requirement (protobuf canonical API mirrored over REST)
+- Code: `api/proto/rgs/v1/reporting.proto`, `cmd/rgsd/main.go`
+- Tests: `internal/platform/server/reporting_gateway_test.go`
+- Status: implemented
