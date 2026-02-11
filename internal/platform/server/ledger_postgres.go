@@ -186,6 +186,41 @@ LIMIT $2 OFFSET $3
 	return out, rows.Err()
 }
 
+func (s *LedgerService) findTransactionByIdempotency(ctx context.Context, accountID string, txType rgsv1.LedgerTransactionType, idemKey string) (*rgsv1.LedgerTransaction, bool, error) {
+	if !s.dbEnabled() {
+		return nil, false, nil
+	}
+	const q = `
+SELECT transaction_id, account_id, transaction_type::text, amount_minor, currency_code, occurred_at, authorization_id
+FROM ledger_transactions
+WHERE account_id = $1
+  AND transaction_type = $2::ledger_transaction_type
+  AND idempotency_key = $3
+ORDER BY recorded_at DESC
+LIMIT 1
+`
+	var txID, acctID, typ, currency, authID string
+	var amount int64
+	var occurred time.Time
+	err := s.db.QueryRowContext(ctx, q, accountID, ledgerTxTypeToDB(txType), idemKey).Scan(
+		&txID, &acctID, &typ, &amount, &currency, &occurred, &authID,
+	)
+	if err == sql.ErrNoRows {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return &rgsv1.LedgerTransaction{
+		TransactionId:   txID,
+		AccountId:       acctID,
+		TransactionType: ledgerTxTypeFromDB(typ),
+		Amount:          money(amount, currency),
+		OccurredAt:      occurred.UTC().Format(time.RFC3339Nano),
+		AuthorizationId: authID,
+	}, true, nil
+}
+
 func ledgerTxTypeToDB(v rgsv1.LedgerTransactionType) string {
 	switch v {
 	case rgsv1.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_DEPOSIT:

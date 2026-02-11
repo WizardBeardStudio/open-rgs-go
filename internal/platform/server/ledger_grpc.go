@@ -321,6 +321,28 @@ func (s *LedgerService) Deposit(ctx context.Context, req *rgsv1.DepositRequest) 
 		cp, _ := proto.Clone(prev).(*rgsv1.DepositResponse)
 		return cp, nil
 	}
+	if s.dbEnabled() {
+		tx, found, err := s.findTransactionByIdempotency(ctx, req.AccountId, rgsv1.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_DEPOSIT, idem)
+		if err != nil {
+			return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if found {
+			available, _, currency, ok, balErr := s.getBalanceFromDB(ctx, req.AccountId)
+			if balErr != nil {
+				return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+			}
+			if !ok {
+				currency = req.Amount.Currency
+			}
+			resp := &rgsv1.DepositResponse{
+				Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
+				Transaction:      tx,
+				AvailableBalance: money(available, currency),
+			}
+			s.depositByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.DepositResponse)
+			return resp, nil
+		}
+	}
 
 	acct := s.getOrCreateAccount(req.AccountId, req.Amount.Currency)
 	if acct.currency != req.Amount.Currency {
@@ -396,6 +418,28 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 	if prev, ok := s.withdrawByIdempotency[key]; ok {
 		cp, _ := proto.Clone(prev).(*rgsv1.WithdrawResponse)
 		return cp, nil
+	}
+	if s.dbEnabled() {
+		tx, found, err := s.findTransactionByIdempotency(ctx, req.AccountId, rgsv1.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_WITHDRAWAL, idem)
+		if err != nil {
+			return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if found {
+			available, _, currency, ok, balErr := s.getBalanceFromDB(ctx, req.AccountId)
+			if balErr != nil {
+				return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+			}
+			if !ok {
+				currency = req.Amount.Currency
+			}
+			resp := &rgsv1.WithdrawResponse{
+				Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
+				Transaction:      tx,
+				AvailableBalance: money(available, currency),
+			}
+			s.withdrawByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.WithdrawResponse)
+			return resp, nil
+		}
 	}
 
 	acct := s.getOrCreateAccount(req.AccountId, req.Amount.Currency)
@@ -575,6 +619,28 @@ func (s *LedgerService) TransferToAccount(ctx context.Context, req *rgsv1.Transf
 	if prev, ok := s.toAccountByIdempotency[key]; ok {
 		cp, _ := proto.Clone(prev).(*rgsv1.TransferToAccountResponse)
 		return cp, nil
+	}
+	if s.dbEnabled() {
+		tx, found, err := s.findTransactionByIdempotency(ctx, req.AccountId, rgsv1.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_TRANSFER_TO_ACCOUNT, idem)
+		if err != nil {
+			return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if found {
+			available, _, currency, ok, balErr := s.getBalanceFromDB(ctx, req.AccountId)
+			if balErr != nil {
+				return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+			}
+			if !ok {
+				currency = req.Amount.Currency
+			}
+			resp := &rgsv1.TransferToAccountResponse{
+				Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
+				Transaction:      tx,
+				AvailableBalance: money(available, currency),
+			}
+			s.toAccountByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToAccountResponse)
+			return resp, nil
+		}
 	}
 
 	acct := s.getOrCreateAccount(req.AccountId, req.Amount.Currency)
