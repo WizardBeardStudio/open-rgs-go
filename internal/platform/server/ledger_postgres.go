@@ -1,14 +1,21 @@
 package server
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
 
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
+
+var errIdempotencyRequestMismatch = errors.New("idempotency request hash mismatch")
 
 func (s *LedgerService) dbEnabled() bool {
 	return s != nil && s.db != nil
@@ -219,6 +226,62 @@ LIMIT 1
 		OccurredAt:      occurred.UTC().Format(time.RFC3339Nano),
 		AuthorizationId: authID,
 	}, true, nil
+}
+
+func idemScope(accountID, op string) string {
+	return accountID + "|" + op
+}
+
+func hashRequest(parts ...string) []byte {
+	sum := sha256.Sum256([]byte(strings.Join(parts, "|")))
+	return sum[:]
+}
+
+func (s *LedgerService) loadIdempotencyResponse(ctx context.Context, scope, idemKey string, requestHash []byte, out proto.Message) (bool, error) {
+	if !s.dbEnabled() {
+		return false, nil
+	}
+	const q = `
+SELECT request_hash, response_payload
+FROM ledger_idempotency_keys
+WHERE scope = $1 AND idempotency_key = $2
+`
+	var storedHash []byte
+	var payload []byte
+	err := s.db.QueryRowContext(ctx, q, scope, idemKey).Scan(&storedHash, &payload)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !bytes.Equal(storedHash, requestHash) {
+		return false, errIdempotencyRequestMismatch
+	}
+	if err := protojson.Unmarshal(payload, out); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (s *LedgerService) persistIdempotencyResponse(ctx context.Context, scope, idemKey string, requestHash []byte, resultCode rgsv1.ResultCode, resp proto.Message) error {
+	if !s.dbEnabled() || resp == nil {
+		return nil
+	}
+	payload, err := protojson.Marshal(resp)
+	if err != nil {
+		return err
+	}
+	const q = `
+INSERT INTO ledger_idempotency_keys (
+  scope, idempotency_key, request_hash, response_payload, result_code, expires_at
+) VALUES (
+  $1, $2, $3, $4::jsonb, $5, NOW() + INTERVAL '24 hours'
+)
+ON CONFLICT (scope, idempotency_key) DO NOTHING
+`
+	_, err = s.db.ExecContext(ctx, q, scope, idemKey, requestHash, string(payload), resultCode.String())
+	return err
 }
 
 func ledgerTxTypeToDB(v rgsv1.LedgerTransactionType) string {

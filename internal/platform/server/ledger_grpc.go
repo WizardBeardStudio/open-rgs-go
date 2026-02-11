@@ -317,9 +317,25 @@ func (s *LedgerService) Deposit(ctx context.Context, req *rgsv1.DepositRequest) 
 	defer s.mu.Unlock()
 
 	key := req.AccountId + "|deposit|" + idem
+	scope := idemScope(req.AccountId, "deposit")
+	requestHash := hashRequest(scope, req.Amount.GetCurrency(), strconv.FormatInt(req.Amount.GetAmountMinor(), 10), req.AuthorizationId)
 	if prev, ok := s.depositByIdempotency[key]; ok {
 		cp, _ := proto.Clone(prev).(*rgsv1.DepositResponse)
 		return cp, nil
+	}
+	if s.dbEnabled() {
+		var replay rgsv1.DepositResponse
+		found, err := s.loadIdempotencyResponse(ctx, scope, idem, requestHash, &replay)
+		if err == errIdempotencyRequestMismatch {
+			return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "idempotency_key reused with different request")}, nil
+		}
+		if err != nil {
+			return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if found {
+			s.depositByIdempotency[key], _ = proto.Clone(&replay).(*rgsv1.DepositResponse)
+			return &replay, nil
+		}
 	}
 	if s.dbEnabled() {
 		tx, found, err := s.findTransactionByIdempotency(ctx, req.AccountId, rgsv1.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_DEPOSIT, idem)
@@ -391,6 +407,9 @@ func (s *LedgerService) Deposit(ctx context.Context, req *rgsv1.DepositRequest) 
 		Transaction:      tx,
 		AvailableBalance: money(acct.available, acct.currency),
 	}
+	if err := s.persistIdempotencyResponse(ctx, scope, idem, requestHash, resp.Meta.GetResultCode(), resp); err != nil {
+		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 	s.depositByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.DepositResponse)
 	return resp, nil
 }
@@ -415,9 +434,25 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 	defer s.mu.Unlock()
 
 	key := req.AccountId + "|withdraw|" + idem
+	scope := idemScope(req.AccountId, "withdraw")
+	requestHash := hashRequest(scope, req.Amount.GetCurrency(), strconv.FormatInt(req.Amount.GetAmountMinor(), 10))
 	if prev, ok := s.withdrawByIdempotency[key]; ok {
 		cp, _ := proto.Clone(prev).(*rgsv1.WithdrawResponse)
 		return cp, nil
+	}
+	if s.dbEnabled() {
+		var replay rgsv1.WithdrawResponse
+		found, err := s.loadIdempotencyResponse(ctx, scope, idem, requestHash, &replay)
+		if err == errIdempotencyRequestMismatch {
+			return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "idempotency_key reused with different request")}, nil
+		}
+		if err != nil {
+			return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if found {
+			s.withdrawByIdempotency[key], _ = proto.Clone(&replay).(*rgsv1.WithdrawResponse)
+			return &replay, nil
+		}
 	}
 	if s.dbEnabled() {
 		tx, found, err := s.findTransactionByIdempotency(ctx, req.AccountId, rgsv1.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_WITHDRAWAL, idem)
@@ -448,10 +483,15 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 	}
 	if acct.available < req.Amount.AmountMinor {
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "withdraw", "insufficient balance")
-		return &rgsv1.WithdrawResponse{
+		resp := &rgsv1.WithdrawResponse{
 			Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "insufficient balance"),
 			AvailableBalance: money(acct.available, acct.currency),
-		}, nil
+		}
+		if err := s.persistIdempotencyResponse(ctx, scope, idem, requestHash, resp.Meta.GetResultCode(), resp); err != nil {
+			return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		s.withdrawByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.WithdrawResponse)
+		return resp, nil
 	}
 
 	before := snapshotAccount(acct)
@@ -495,6 +535,9 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 		Transaction:      tx,
 		AvailableBalance: money(acct.available, acct.currency),
 	}
+	if err := s.persistIdempotencyResponse(ctx, scope, idem, requestHash, resp.Meta.GetResultCode(), resp); err != nil {
+		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 	s.withdrawByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.WithdrawResponse)
 	return resp, nil
 }
@@ -519,9 +562,25 @@ func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.Transfe
 	defer s.mu.Unlock()
 
 	key := req.AccountId + "|to_device|" + idem
+	scope := idemScope(req.AccountId, "transfer_to_device")
+	requestHash := hashRequest(scope, req.DeviceId, req.RequestedAmount.GetCurrency(), strconv.FormatInt(req.RequestedAmount.GetAmountMinor(), 10))
 	if prev, ok := s.toDeviceByIdempotency[key]; ok {
 		cp, _ := proto.Clone(prev).(*rgsv1.TransferToDeviceResponse)
 		return cp, nil
+	}
+	if s.dbEnabled() {
+		var replay rgsv1.TransferToDeviceResponse
+		found, err := s.loadIdempotencyResponse(ctx, scope, idem, requestHash, &replay)
+		if err == errIdempotencyRequestMismatch {
+			return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "idempotency_key reused with different request")}, nil
+		}
+		if err != nil {
+			return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if found {
+			s.toDeviceByIdempotency[key], _ = proto.Clone(&replay).(*rgsv1.TransferToDeviceResponse)
+			return &replay, nil
+		}
 	}
 
 	acct := s.getOrCreateAccount(req.AccountId, req.RequestedAmount.Currency)
@@ -531,12 +590,17 @@ func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.Transfe
 
 	if acct.available <= 0 {
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "transfer_to_device", "insufficient balance")
-		return &rgsv1.TransferToDeviceResponse{
+		resp := &rgsv1.TransferToDeviceResponse{
 			Meta:              s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "insufficient balance"),
 			TransferStatus:    rgsv1.TransferStatus_TRANSFER_STATUS_DENIED,
 			TransferredAmount: money(0, acct.currency),
 			AvailableBalance:  money(acct.available, acct.currency),
-		}, nil
+		}
+		if err := s.persistIdempotencyResponse(ctx, scope, idem, requestHash, resp.Meta.GetResultCode(), resp); err != nil {
+			return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		s.toDeviceByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToDeviceResponse)
+		return resp, nil
 	}
 
 	transfer := req.RequestedAmount.AmountMinor
@@ -592,6 +656,9 @@ func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.Transfe
 		AvailableBalance:  money(acct.available, acct.currency),
 		UnresolvedReason:  reason,
 	}
+	if err := s.persistIdempotencyResponse(ctx, scope, idem, requestHash, resp.Meta.GetResultCode(), resp); err != nil {
+		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 	s.toDeviceByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToDeviceResponse)
 	return resp, nil
 }
@@ -616,9 +683,25 @@ func (s *LedgerService) TransferToAccount(ctx context.Context, req *rgsv1.Transf
 	defer s.mu.Unlock()
 
 	key := req.AccountId + "|to_account|" + idem
+	scope := idemScope(req.AccountId, "transfer_to_account")
+	requestHash := hashRequest(scope, req.Amount.GetCurrency(), strconv.FormatInt(req.Amount.GetAmountMinor(), 10))
 	if prev, ok := s.toAccountByIdempotency[key]; ok {
 		cp, _ := proto.Clone(prev).(*rgsv1.TransferToAccountResponse)
 		return cp, nil
+	}
+	if s.dbEnabled() {
+		var replay rgsv1.TransferToAccountResponse
+		found, err := s.loadIdempotencyResponse(ctx, scope, idem, requestHash, &replay)
+		if err == errIdempotencyRequestMismatch {
+			return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "idempotency_key reused with different request")}, nil
+		}
+		if err != nil {
+			return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if found {
+			s.toAccountByIdempotency[key], _ = proto.Clone(&replay).(*rgsv1.TransferToAccountResponse)
+			return &replay, nil
+		}
 	}
 	if s.dbEnabled() {
 		tx, found, err := s.findTransactionByIdempotency(ctx, req.AccountId, rgsv1.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_TRANSFER_TO_ACCOUNT, idem)
@@ -688,6 +771,9 @@ func (s *LedgerService) TransferToAccount(ctx context.Context, req *rgsv1.Transf
 		Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
 		Transaction:      tx,
 		AvailableBalance: money(acct.available, acct.currency),
+	}
+	if err := s.persistIdempotencyResponse(ctx, scope, idem, requestHash, resp.Meta.GetResultCode(), resp); err != nil {
+		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
 	s.toAccountByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToAccountResponse)
 	return resp, nil

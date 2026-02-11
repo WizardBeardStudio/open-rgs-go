@@ -121,6 +121,36 @@ func TestPostgresLedgerIdempotencyReplayAcrossRestart(t *testing.T) {
 	}
 }
 
+func TestPostgresLedgerIdempotencyRejectsMismatchedPayload(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 10, 30, 0, 0, time.UTC)}
+	ctx := context.Background()
+
+	svc := NewLedgerService(clk, db)
+	_, err := svc.Deposit(ctx, &rgsv1.DepositRequest{
+		Meta:      meta("acct-pg-mismatch", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-pg-mismatch-1"),
+		AccountId: "acct-pg-mismatch",
+		Amount:    &rgsv1.Money{AmountMinor: 1000, Currency: "USD"},
+	})
+	if err != nil {
+		t.Fatalf("initial deposit err: %v", err)
+	}
+
+	resp, err := svc.Deposit(ctx, &rgsv1.DepositRequest{
+		Meta:      meta("acct-pg-mismatch", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-pg-mismatch-1"),
+		AccountId: "acct-pg-mismatch",
+		Amount:    &rgsv1.Money{AmountMinor: 1200, Currency: "USD"},
+	})
+	if err != nil {
+		t.Fatalf("mismatched replay deposit err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid for mismatched idempotency replay, got=%v", resp.Meta.GetResultCode())
+	}
+}
+
 func TestPostgresConfigApproveApplyAcrossRestart(t *testing.T) {
 	db := openPostgresIntegrationDB(t)
 	resetPostgresIntegrationState(t, db)
