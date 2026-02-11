@@ -7,6 +7,7 @@
 - Audit log integrity chain and append-only constraints
 - Financial operations and configuration/change-control workflows
 - Download library change and activation activity logging
+- Remote admin boundary enforcement using trusted CIDR controls
 
 ## Key Threats
 - Unauthorized API access via forged/replayed credentials
@@ -15,6 +16,7 @@
 - Silent configuration mutation outside approved workflow
 - Replay or duplicate execution of financial/config state changes
 - Loss of event/meter communication causing data loss
+- Unauthorized remote administrative access from untrusted networks
 
 ## Active Mitigations in Code
 - JWT verification middleware with strict claim requirements
@@ -38,6 +40,10 @@
 - Download-library change recording and recall log
   - `internal/platform/server/config_grpc.go`
   - `migrations/000005_config_change_control.up.sql`
+- Remote access guard + admin-path filtering and activity logging
+  - `internal/platform/server/remote_access.go`
+  - `cmd/rgsd/main.go`
+  - `docs/deployment/FIREWALL_LOGGING.md`
 
 ## Residual Risks / Follow-up
 - Integrate persistent DB-backed service repositories (replace in-memory stores)

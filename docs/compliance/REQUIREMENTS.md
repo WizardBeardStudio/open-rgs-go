@@ -133,3 +133,21 @@ This document maps implemented requirements to standards references, code locati
 - Code: `api/proto/rgs/v1/config.proto`, `cmd/rgsd/main.go`
 - Tests: `internal/platform/server/config_gateway_test.go`
 - Status: implemented
+
+## RGS-0501 Remote Access Boundary Enforcement for Admin Paths
+- Standard refs: GLI-21 remote access restrictions and controlled external access
+- Code: `internal/platform/server/remote_access.go`, `cmd/rgsd/main.go`, `docs/deployment/FIREWALL_LOGGING.md`
+- Tests: `internal/platform/server/remote_access_test.go`, `internal/platform/server/chaos_test.go`
+- Status: implemented
+
+## RGS-0502 Remote Access Activity Logging Semantics
+- Standard refs: GLI-21 firewall/connection attempt logging expectations
+- Code: `internal/platform/server/remote_access.go`, `docs/deployment/FIREWALL_LOGGING.md`
+- Tests: `internal/platform/server/remote_access_test.go`
+- Status: implemented
+
+## RGS-0503 Chaos Tests for Loss Handling and Fail-Closed Degradation
+- Standard refs: GLI-13 communication loss and fail-safe behavior expectations
+- Code: `internal/platform/server/events_grpc.go`, `internal/platform/server/ledger_grpc.go`, `internal/platform/server/remote_access.go`
+- Tests: `internal/platform/server/chaos_test.go`
+- Status: implemented

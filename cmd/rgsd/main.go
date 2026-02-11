@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -29,6 +30,7 @@ func main() {
 	version := envOr("RGS_VERSION", "dev")
 	grpcAddr := envOr("RGS_GRPC_ADDR", ":8081")
 	httpAddr := envOr("RGS_HTTP_ADDR", ":8080")
+	trustedCIDRs := strings.Split(envOr("RGS_TRUSTED_CIDRS", "127.0.0.1/32,::1/128"), ",")
 
 	grpcServer := grpc.NewServer()
 	hs := health.NewServer()
@@ -74,7 +76,11 @@ func main() {
 	if err := rgsv1.RegisterConfigServiceHandlerServer(ctx, gwMux, configSvc); err != nil {
 		log.Fatalf("register config gateway handlers: %v", err)
 	}
-	mux.Handle("/", gwMux)
+	guard, err := server.NewRemoteAccessGuard(clk, nil, trustedCIDRs)
+	if err != nil {
+		log.Fatalf("configure remote access guard: %v", err)
+	}
+	mux.Handle("/", guard.Wrap(gwMux))
 	httpServer := &http.Server{Addr: httpAddr, Handler: mux}
 
 	go func() {
