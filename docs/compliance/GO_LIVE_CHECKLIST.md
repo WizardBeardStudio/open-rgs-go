@@ -78,6 +78,9 @@ Release metadata:
   - `make soak-qual` artifacts:
     - `benchmark_output.txt`
     - `summary.json`
+  - `make soak-qual-matrix` artifacts:
+    - `matrix_summary.json`
+    - `<profile>/summary.json`
   - `docs/deployment/PERFORMANCE_QUALIFICATION.md`
   - `docs/deployment/LOAD_SOAK_QUALIFICATION.md`
 

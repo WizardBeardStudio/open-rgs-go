@@ -290,4 +290,4 @@ Current limitations:
 - Promotions/UI services are implemented at baseline CRUD/reportability level, but advanced campaign policy engines and full device-side interaction workflows are still pending.
 
 Recommended next steps:
-- Extend soak coverage to DB-backed distributed scenarios with target-concurrency profiles per jurisdiction/operator class.
+- Execute `make soak-qual-matrix` in each DB-backed deployment tier and record per-profile thresholds/baselines as release evidence.

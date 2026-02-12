@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: all fmt test test-integration-postgres lint proto generate-tools dr-drill perf-qual failover-evidence keyset-evidence soak-qual
+.PHONY: all fmt test test-integration-postgres lint proto generate-tools dr-drill perf-qual failover-evidence keyset-evidence soak-qual soak-qual-matrix
 
 all: fmt test
 
@@ -48,6 +48,12 @@ keyset-evidence:
 soak-qual:
 	RGS_SOAK_RUNS=$${RGS_SOAK_RUNS:-3} \
 	RGS_SOAK_BENCHTIME=$${RGS_SOAK_BENCHTIME:-30s} \
+	RGS_SOAK_CPU=$${RGS_SOAK_CPU:-} \
 	RGS_SOAK_LEDGER_DEPOSIT_NS_OP_MAX=$${RGS_SOAK_LEDGER_DEPOSIT_NS_OP_MAX:-} \
 	RGS_SOAK_WAGER_PLACE_NS_OP_MAX=$${RGS_SOAK_WAGER_PLACE_NS_OP_MAX:-} \
 	./scripts/load_soak_check.sh
+
+soak-qual-matrix:
+	RGS_SOAK_MATRIX_WORKDIR=$${RGS_SOAK_MATRIX_WORKDIR:-} \
+	RGS_SOAK_PROFILE_SET=$${RGS_SOAK_PROFILE_SET:-us-regulated-small,us-regulated-medium,us-regulated-large} \
+	./scripts/load_soak_matrix.sh
