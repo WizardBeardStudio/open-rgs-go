@@ -293,6 +293,9 @@ func main() {
 		sessionsSvc.AuditStore,
 		remoteAccessAuditStore,
 	)
+	if db != nil {
+		auditSvc.SetDB(db)
+	}
 	rgsv1.RegisterAuditServiceServer(grpcServer, auditSvc)
 	if err := rgsv1.RegisterAuditServiceHandlerServer(ctx, gwMux, auditSvc); err != nil {
 		log.Fatalf("register audit gateway handlers: %v", err)

@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"sort"
 	"strconv"
 	"time"
@@ -18,10 +19,18 @@ type AuditService struct {
 
 	stores      []*audit.InMemoryStore
 	remoteGuard *RemoteAccessGuard
+	db          *sql.DB
 }
 
 func NewAuditService(clk clock.Clock, remoteGuard *RemoteAccessGuard, stores ...*audit.InMemoryStore) *AuditService {
 	return &AuditService{Clock: clk, remoteGuard: remoteGuard, stores: stores}
+}
+
+func (s *AuditService) SetDB(db *sql.DB) {
+	if s == nil {
+		return
+	}
+	s.db = db
 }
 
 func (s *AuditService) now() time.Time {
@@ -84,6 +93,13 @@ func (s *AuditService) ListAuditEvents(ctx context.Context, req *rgsv1.ListAudit
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	if s.db != nil {
+		rows, next, err := listAuditEventsFromDB(ctx, s.db, req.ObjectTypeFilter, req.PageToken, req.PageSize)
+		if err != nil {
+			return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Events: rows, NextPageToken: next}, nil
 	}
 
 	events := make([]*rgsv1.AuditEventRecord, 0)

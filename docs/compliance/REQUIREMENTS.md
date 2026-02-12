@@ -313,3 +313,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `api/proto/rgs/v1/sessions.proto`, `internal/platform/server/sessions_grpc.go`, `internal/platform/server/sessions_postgres.go`, `migrations/000014_player_sessions.up.sql`, `cmd/rgsd/main.go`, `README.md`
 - Tests: `internal/platform/server/sessions_grpc_test.go`, `internal/platform/server/sessions_gateway_test.go`, `internal/platform/server/postgres_integration_test.go`
 - Status: implemented (start/get/end session APIs, timeout-driven expiration transition on retrieval, actor-bound authorization, audit records, and DB-backed persistence/restart retrieval in PostgreSQL mode)
+
+## RGS-0718 DB-backed Audit Event Persistence and Retrieval
+- Standard refs: GLI-13 significant event/alteration retention and regulator retrieval expectations
+- Code: `internal/platform/server/audit_postgres.go`, `internal/platform/server/audit_grpc.go`, `internal/platform/server/ledger_grpc.go`, `internal/platform/server/sessions_grpc.go`, `cmd/rgsd/main.go`
+- Tests: `internal/platform/server/audit_grpc_test.go`, `internal/platform/server/postgres_integration_test.go`
+- Status: implemented (DB-enabled ledger/sessions audit appends persist to `audit_events` with hash chaining semantics and `AuditService/ListAuditEvents` reads DB-backed records when configured)
