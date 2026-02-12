@@ -16,12 +16,13 @@ Implemented and wired:
 - `ReportingService` (DTD/MTD/YTD/LTD, JSON/CSV)
 - `ConfigService` (propose/approve/apply workflow + download-library logs)
 - `AuditService` (audit event retrieval + remote-access activity retrieval)
+- `SessionsService` (player sessions, timeout state transitions, device binding)
 - `PromotionsService` (bonus transactions + promotional award capture/listing)
 - `UISystemOverlayService` (system-window open/close recall event ingestion and listing)
 
 Current persistence model:
 - Runtime services support optional PostgreSQL-backed paths when `RGS_DATABASE_URL` is configured.
-- DB-backed paths currently include ledger reads/writes and idempotency replay, wagering state and idempotency replay, registry reads/writes, events/meters reads/writes, reporting run persistence and report payload sourcing, config/download change-control reads/writes, and remote access activity retention.
+- DB-backed paths currently include ledger reads/writes and idempotency replay, wagering state and idempotency replay, registry reads/writes, events/meters reads/writes, reporting run persistence and report payload sourcing, config/download change-control reads/writes, remote access activity retention, and player session persistence.
 - Identity credential verification and lockout state use PostgreSQL tables when configured (`identity_credentials`, `identity_lockouts`).
 - In-memory behavior remains available as a fallback for local/dev execution without PostgreSQL.
 
@@ -112,6 +113,7 @@ Schema files are ordered and additive:
 - `000011_download_signature_verification.*` signed download activation verification fields/indexes
 - `000012_identity_login_rate_limits.*` DB-backed login rate limiting state
 - `000013_ledger_eft_lockouts.*` DB-backed EFT fraud lockout state
+- `000014_player_sessions.*` player session lifecycle persistence
 
 Apply migrations with your preferred migration runner in numeric order.
 
@@ -234,6 +236,7 @@ Services and methods are defined in:
 - `api/proto/rgs/v1/reporting.proto`
 - `api/proto/rgs/v1/config.proto`
 - `api/proto/rgs/v1/audit.proto`
+- `api/proto/rgs/v1/sessions.proto`
 - `api/proto/rgs/v1/extensions.proto`
 
 Cross-cutting request/response metadata is in `api/proto/rgs/v1/common.proto`.

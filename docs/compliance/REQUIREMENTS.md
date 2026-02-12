@@ -307,3 +307,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `internal/platform/server/ledger_benchmark_test.go`, `internal/platform/server/wagering_benchmark_test.go`, `internal/platform/server/postgres_benchmark_test.go`, `scripts/load_soak_check.sh`, `scripts/load_soak_check_db.sh`, `scripts/load_soak_matrix.sh`, `docs/deployment/LOAD_SOAK_QUALIFICATION.md`, `Makefile`
 - Tests: `go test ./internal/platform/server -run '^$' -bench '^(BenchmarkLedgerDeposit|BenchmarkWageringPlaceWager|BenchmarkLedgerDepositPostgres|BenchmarkWageringPlaceWagerPostgres)$' -benchmem`
 - Status: implemented (multi-run soak benchmarks with optional threshold gating, DB-backed durability-path qualification, and operator-class profile matrix evidence artifacts)
+
+## RGS-0717 Player Session Management API and Durability
+- Standard refs: AGENTS core RGS capability requirement (player session management with timeout/device binding) and GLI-13 session/account control expectations
+- Code: `api/proto/rgs/v1/sessions.proto`, `internal/platform/server/sessions_grpc.go`, `internal/platform/server/sessions_postgres.go`, `migrations/000014_player_sessions.up.sql`, `cmd/rgsd/main.go`, `README.md`
+- Tests: `internal/platform/server/sessions_grpc_test.go`, `internal/platform/server/sessions_gateway_test.go`, `internal/platform/server/postgres_integration_test.go`
+- Status: implemented (start/get/end session APIs, timeout-driven expiration transition on retrieval, actor-bound authorization, audit records, and DB-backed persistence/restart retrieval in PostgreSQL mode)

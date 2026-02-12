@@ -60,6 +60,7 @@ TRUNCATE TABLE
   identity_login_rate_limits,
   identity_lockouts,
   identity_credentials,
+  player_sessions,
   remote_access_activity,
   system_window_events,
   promotional_awards,
@@ -228,6 +229,45 @@ VALUES
 	}
 	if count != 1 {
 		t.Fatalf("expected 1 remaining idempotency key, got=%d", count)
+	}
+}
+
+func TestPostgresSessionsPersistAcrossRestart(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 17, 12, 30, 0, 0, time.UTC)}
+	ctx := context.Background()
+
+	svcA := NewSessionsService(clk, db)
+	start, err := svcA.StartSession(ctx, &rgsv1.StartSessionRequest{
+		Meta:     meta("player-pg-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		PlayerId: "player-pg-1",
+		DeviceId: "device-pg-a",
+	})
+	if err != nil {
+		t.Fatalf("start session err: %v", err)
+	}
+	if start.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("start session code=%v reason=%q", start.Meta.GetResultCode(), start.Meta.GetDenialReason())
+	}
+
+	svcB := NewSessionsService(clk, db)
+	got, err := svcB.GetSession(ctx, &rgsv1.GetSessionRequest{
+		Meta:      meta("player-pg-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		SessionId: start.Session.GetSessionId(),
+	})
+	if err != nil {
+		t.Fatalf("get session err: %v", err)
+	}
+	if got.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("get session code=%v reason=%q", got.Meta.GetResultCode(), got.Meta.GetDenialReason())
+	}
+	if got.Session.GetSessionId() != start.Session.GetSessionId() {
+		t.Fatalf("session mismatch after restart: got=%s want=%s", got.Session.GetSessionId(), start.Session.GetSessionId())
+	}
+	if got.Session.GetState() != rgsv1.SessionState_SESSION_STATE_ACTIVE {
+		t.Fatalf("expected active session after restart, got=%v", got.Session.GetState())
 	}
 }
 

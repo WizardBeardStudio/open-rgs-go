@@ -223,6 +223,9 @@ func main() {
 	uiOverlaySvc := server.NewUISystemOverlayService(clk, db)
 	uiOverlaySvc.SetDisableInMemoryCache(strictProductionMode)
 	rgsv1.RegisterUISystemOverlayServiceServer(grpcServer, uiOverlaySvc)
+	sessionsSvc := server.NewSessionsService(clk, db)
+	sessionsSvc.SetDisableInMemoryCache(strictProductionMode)
+	rgsv1.RegisterSessionsServiceServer(grpcServer, sessionsSvc)
 
 	grpcListener, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
@@ -264,6 +267,9 @@ func main() {
 	if err := rgsv1.RegisterUISystemOverlayServiceHandlerServer(ctx, gwMux, uiOverlaySvc); err != nil {
 		log.Fatalf("register ui overlay gateway handlers: %v", err)
 	}
+	if err := rgsv1.RegisterSessionsServiceHandlerServer(ctx, gwMux, sessionsSvc); err != nil {
+		log.Fatalf("register sessions gateway handlers: %v", err)
+	}
 	remoteAccessAuditStore := audit.NewInMemoryStore()
 	guard, err := server.NewRemoteAccessGuard(clk, remoteAccessAuditStore, trustedCIDRs)
 	if err != nil {
@@ -284,6 +290,7 @@ func main() {
 		identitySvc.AuditStore,
 		promotionsSvc.AuditStore,
 		uiOverlaySvc.AuditStore,
+		sessionsSvc.AuditStore,
 		remoteAccessAuditStore,
 	)
 	rgsv1.RegisterAuditServiceServer(grpcServer, auditSvc)

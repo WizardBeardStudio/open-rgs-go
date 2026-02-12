@@ -44,6 +44,7 @@ TRUNCATE TABLE
   ledger_accounts,
   ledger_eft_lockouts,
   ledger_idempotency_keys,
+  player_sessions,
   audit_events
 RESTART IDENTITY CASCADE
 `

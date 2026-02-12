@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package rgs.v1;
+
+option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+
+import "google/api/annotations.proto";
+import "rgs/v1/common.proto";
+
+enum SessionState {
+  SESSION_STATE_UNSPECIFIED = 0;
+  SESSION_STATE_ACTIVE = 1;
+  SESSION_STATE_ENDED = 2;
+  SESSION_STATE_EXPIRED = 3;
+}
+
+message PlayerSession {
+  string session_id = 1;
+  string player_id = 2;
+  string device_id = 3;
+  SessionState state = 4;
+  string started_at = 5;
+  string last_seen_at = 6;
+  string ended_at = 7;
+  string expires_at = 8;
+  string end_reason = 9;
+}
+
+service SessionsService {
+  rpc StartSession(StartSessionRequest) returns (StartSessionResponse) {
+    option (google.api.http) = {
+      post: "/v1/sessions:start"
+      body: "*"
+    };
+  }
+
+  rpc EndSession(EndSessionRequest) returns (EndSessionResponse) {
+    option (google.api.http) = {
+      post: "/v1/sessions:end"
+      body: "*"
+    };
+  }
+
+  rpc GetSession(GetSessionRequest) returns (GetSessionResponse) {
+    option (google.api.http) = {
+      get: "/v1/sessions/{session_id}"
+    };
+  }
+}
+
+message StartSessionRequest {
+  RequestMeta meta = 1;
+  string player_id = 2;
+  string device_id = 3;
+  int32 session_timeout_seconds = 4;
+}
+
+message StartSessionResponse {
+  ResponseMeta meta = 1;
+  PlayerSession session = 2;
+}
+
+message EndSessionRequest {
+  RequestMeta meta = 1;
+  string session_id = 2;
+  string reason = 3;
+}
+
+message EndSessionResponse {
+  ResponseMeta meta = 1;
+  PlayerSession session = 2;
+}
+
+message GetSessionRequest {
+  RequestMeta meta = 1;
+  string session_id = 2;
+}
+
+message GetSessionResponse {
+  ResponseMeta meta = 1;
+  PlayerSession session = 2;
+}
