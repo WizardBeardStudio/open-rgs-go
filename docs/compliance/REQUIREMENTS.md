@@ -240,7 +240,7 @@ This document maps implemented requirements to standards references, code locati
 - Standard refs: GLI-13/GLI-28/GLI-16 scaffold requirements from AGENTS for bonus/promotional meters and system-window recall
 - Code: `api/proto/rgs/v1/extensions.proto`, `migrations/000009_bonus_ui_scaffolds.up.sql`, `docs/deployment/WIRELESS_ONBOARDING.md`, `README.md`
 - Tests: `internal/platform/server/postgres_integration_test.go` (schema reset includes scaffold tables)
-- Status: scaffolded (contracts and schema present; full runtime services pending)
+- Status: superseded by `RGS-0707` runtime implementation (contracts/scaffolds retained as underlying artifacts)
 
 ## RGS-0706 Production Evidence Packet Index
 - Standard refs: GLI-13/GLI-21 evidence and auditability expectations

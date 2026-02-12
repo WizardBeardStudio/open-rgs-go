@@ -276,12 +276,11 @@ Chaos tests:
 ## 13. Known Limitations and Next Work
 
 Current limitations:
-- Some stateful behavior is still partially in-memory (for example wagering state and local idempotency response caches), with PostgreSQL used as the durable source where wired.
+- Some non-authoritative caches remain in-memory for performance, with PostgreSQL as system-of-record where configured; strict production mode now disables in-memory idempotency replay caches for ledger/wagering.
 - JWT issuance/refresh/rotation is implemented, including live keyset-file reload hooks, but full KMS/HSM operational integration and key custody controls remain deployment responsibilities.
 - Promotions/UI services are implemented at baseline CRUD/reportability level, but advanced campaign policy engines and full device-side interaction workflows are still pending.
 
 Recommended next steps:
 - Add service-level SLO/error-budget alerting for gRPC/REST result-code failure rates and latency percentiles.
-- Add durable repository implementations for wagering and scaffolded promotions/UI services.
 - Implement KMS/HSM-backed signing key management and automated rotation runbooks.
 - Add antifraud/rate-limiting controls and signed package verification for download library activation.

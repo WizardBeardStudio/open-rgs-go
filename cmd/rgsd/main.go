@@ -165,6 +165,7 @@ func main() {
 	rgsv1.RegisterIdentityServiceServer(grpcServer, identitySvc)
 	ledgerSvc := server.NewLedgerService(clk, db)
 	ledgerSvc.SetEFTFraudPolicy(eftFraudMaxFailures, eftFraudLockoutTTL)
+	ledgerSvc.SetDisableInMemoryIdempotencyCache(strictProductionMode)
 	metrics := server.NewMetrics()
 	identitySvc.SetMetricsObservers(metrics.ObserveIdentityLogin, metrics.ObserveIdentityLockoutActivation)
 	if db != nil {
@@ -196,6 +197,7 @@ func main() {
 	})
 	rgsv1.RegisterLedgerServiceServer(grpcServer, ledgerSvc)
 	wageringSvc := server.NewWageringService(clk, db)
+	wageringSvc.SetDisableInMemoryIdempotencyCache(strictProductionMode)
 	rgsv1.RegisterWageringServiceServer(grpcServer, wageringSvc)
 	registrySvc := server.NewRegistryService(clk, db)
 	rgsv1.RegisterRegistryServiceServer(grpcServer, registrySvc)

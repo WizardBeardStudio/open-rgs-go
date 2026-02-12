@@ -53,6 +53,7 @@ type LedgerService struct {
 	eftFraudLockoutTTL     time.Duration
 	db                     *sql.DB
 	idempotencyTTL         time.Duration
+	disableInMemIdemCache  bool
 }
 
 func NewLedgerService(clk clock.Clock, db ...*sql.DB) *LedgerService {
@@ -114,6 +115,25 @@ func (s *LedgerService) SetEFTFraudPolicy(maxFailures int, ttl time.Duration) {
 	defer s.mu.Unlock()
 	s.eftFraudMaxFailures = maxFailures
 	s.eftFraudLockoutTTL = ttl
+}
+
+func (s *LedgerService) SetDisableInMemoryIdempotencyCache(disable bool) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.disableInMemIdemCache = disable
+}
+
+func (s *LedgerService) useInMemoryIdempotencyCache() bool {
+	if s == nil {
+		return false
+	}
+	if s.dbEnabled() && s.disableInMemIdemCache {
+		return false
+	}
+	return true
 }
 
 func (s *LedgerService) now() time.Time {
@@ -390,9 +410,11 @@ func (s *LedgerService) Deposit(ctx context.Context, req *rgsv1.DepositRequest) 
 	key := req.AccountId + "|deposit|" + idem
 	scope := idemScope(req.AccountId, "deposit")
 	requestHash := hashRequest(scope, req.Amount.GetCurrency(), strconv.FormatInt(req.Amount.GetAmountMinor(), 10), req.AuthorizationId)
-	if prev, ok := s.depositByIdempotency[key]; ok {
-		cp, _ := proto.Clone(prev).(*rgsv1.DepositResponse)
-		return cp, nil
+	if s.useInMemoryIdempotencyCache() {
+		if prev, ok := s.depositByIdempotency[key]; ok {
+			cp, _ := proto.Clone(prev).(*rgsv1.DepositResponse)
+			return cp, nil
+		}
 	}
 	if s.dbEnabled() {
 		var replay rgsv1.DepositResponse
@@ -404,7 +426,9 @@ func (s *LedgerService) Deposit(ctx context.Context, req *rgsv1.DepositRequest) 
 			return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
 		if found {
-			s.depositByIdempotency[key], _ = proto.Clone(&replay).(*rgsv1.DepositResponse)
+			if s.useInMemoryIdempotencyCache() {
+				s.depositByIdempotency[key], _ = proto.Clone(&replay).(*rgsv1.DepositResponse)
+			}
 			return &replay, nil
 		}
 	}
@@ -426,7 +450,9 @@ func (s *LedgerService) Deposit(ctx context.Context, req *rgsv1.DepositRequest) 
 				Transaction:      tx,
 				AvailableBalance: money(available, currency),
 			}
-			s.depositByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.DepositResponse)
+			if s.useInMemoryIdempotencyCache() {
+				s.depositByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.DepositResponse)
+			}
 			return resp, nil
 		}
 	}
@@ -481,7 +507,9 @@ func (s *LedgerService) Deposit(ctx context.Context, req *rgsv1.DepositRequest) 
 	if err := s.persistIdempotencyResponse(ctx, scope, idem, requestHash, resp.Meta.GetResultCode(), resp); err != nil {
 		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
-	s.depositByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.DepositResponse)
+	if s.useInMemoryIdempotencyCache() {
+		s.depositByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.DepositResponse)
+	}
 	s.resetEFTFailures(req.AccountId)
 	return resp, nil
 }
@@ -512,9 +540,11 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 	key := req.AccountId + "|withdraw|" + idem
 	scope := idemScope(req.AccountId, "withdraw")
 	requestHash := hashRequest(scope, req.Amount.GetCurrency(), strconv.FormatInt(req.Amount.GetAmountMinor(), 10))
-	if prev, ok := s.withdrawByIdempotency[key]; ok {
-		cp, _ := proto.Clone(prev).(*rgsv1.WithdrawResponse)
-		return cp, nil
+	if s.useInMemoryIdempotencyCache() {
+		if prev, ok := s.withdrawByIdempotency[key]; ok {
+			cp, _ := proto.Clone(prev).(*rgsv1.WithdrawResponse)
+			return cp, nil
+		}
 	}
 	if s.dbEnabled() {
 		var replay rgsv1.WithdrawResponse
@@ -526,7 +556,9 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 			return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
 		if found {
-			s.withdrawByIdempotency[key], _ = proto.Clone(&replay).(*rgsv1.WithdrawResponse)
+			if s.useInMemoryIdempotencyCache() {
+				s.withdrawByIdempotency[key], _ = proto.Clone(&replay).(*rgsv1.WithdrawResponse)
+			}
 			return &replay, nil
 		}
 	}
@@ -548,7 +580,9 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 				Transaction:      tx,
 				AvailableBalance: money(available, currency),
 			}
-			s.withdrawByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.WithdrawResponse)
+			if s.useInMemoryIdempotencyCache() {
+				s.withdrawByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.WithdrawResponse)
+			}
 			return resp, nil
 		}
 	}
@@ -567,7 +601,9 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 		if err := s.persistIdempotencyResponse(ctx, scope, idem, requestHash, resp.Meta.GetResultCode(), resp); err != nil {
 			return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
-		s.withdrawByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.WithdrawResponse)
+		if s.useInMemoryIdempotencyCache() {
+			s.withdrawByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.WithdrawResponse)
+		}
 		return resp, nil
 	}
 
@@ -615,7 +651,9 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 	if err := s.persistIdempotencyResponse(ctx, scope, idem, requestHash, resp.Meta.GetResultCode(), resp); err != nil {
 		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
-	s.withdrawByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.WithdrawResponse)
+	if s.useInMemoryIdempotencyCache() {
+		s.withdrawByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.WithdrawResponse)
+	}
 	s.resetEFTFailures(req.AccountId)
 	return resp, nil
 }
@@ -646,9 +684,11 @@ func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.Transfe
 	key := req.AccountId + "|to_device|" + idem
 	scope := idemScope(req.AccountId, "transfer_to_device")
 	requestHash := hashRequest(scope, req.DeviceId, req.RequestedAmount.GetCurrency(), strconv.FormatInt(req.RequestedAmount.GetAmountMinor(), 10))
-	if prev, ok := s.toDeviceByIdempotency[key]; ok {
-		cp, _ := proto.Clone(prev).(*rgsv1.TransferToDeviceResponse)
-		return cp, nil
+	if s.useInMemoryIdempotencyCache() {
+		if prev, ok := s.toDeviceByIdempotency[key]; ok {
+			cp, _ := proto.Clone(prev).(*rgsv1.TransferToDeviceResponse)
+			return cp, nil
+		}
 	}
 	if s.dbEnabled() {
 		var replay rgsv1.TransferToDeviceResponse
@@ -660,7 +700,9 @@ func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.Transfe
 			return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
 		if found {
-			s.toDeviceByIdempotency[key], _ = proto.Clone(&replay).(*rgsv1.TransferToDeviceResponse)
+			if s.useInMemoryIdempotencyCache() {
+				s.toDeviceByIdempotency[key], _ = proto.Clone(&replay).(*rgsv1.TransferToDeviceResponse)
+			}
 			return &replay, nil
 		}
 	}
@@ -682,7 +724,9 @@ func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.Transfe
 		if err := s.persistIdempotencyResponse(ctx, scope, idem, requestHash, resp.Meta.GetResultCode(), resp); err != nil {
 			return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
-		s.toDeviceByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToDeviceResponse)
+		if s.useInMemoryIdempotencyCache() {
+			s.toDeviceByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToDeviceResponse)
+		}
 		return resp, nil
 	}
 
@@ -742,7 +786,9 @@ func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.Transfe
 	if err := s.persistIdempotencyResponse(ctx, scope, idem, requestHash, resp.Meta.GetResultCode(), resp); err != nil {
 		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
-	s.toDeviceByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToDeviceResponse)
+	if s.useInMemoryIdempotencyCache() {
+		s.toDeviceByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToDeviceResponse)
+	}
 	s.resetEFTFailures(req.AccountId)
 	return resp, nil
 }
@@ -773,9 +819,11 @@ func (s *LedgerService) TransferToAccount(ctx context.Context, req *rgsv1.Transf
 	key := req.AccountId + "|to_account|" + idem
 	scope := idemScope(req.AccountId, "transfer_to_account")
 	requestHash := hashRequest(scope, req.Amount.GetCurrency(), strconv.FormatInt(req.Amount.GetAmountMinor(), 10))
-	if prev, ok := s.toAccountByIdempotency[key]; ok {
-		cp, _ := proto.Clone(prev).(*rgsv1.TransferToAccountResponse)
-		return cp, nil
+	if s.useInMemoryIdempotencyCache() {
+		if prev, ok := s.toAccountByIdempotency[key]; ok {
+			cp, _ := proto.Clone(prev).(*rgsv1.TransferToAccountResponse)
+			return cp, nil
+		}
 	}
 	if s.dbEnabled() {
 		var replay rgsv1.TransferToAccountResponse
@@ -787,7 +835,9 @@ func (s *LedgerService) TransferToAccount(ctx context.Context, req *rgsv1.Transf
 			return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
 		if found {
-			s.toAccountByIdempotency[key], _ = proto.Clone(&replay).(*rgsv1.TransferToAccountResponse)
+			if s.useInMemoryIdempotencyCache() {
+				s.toAccountByIdempotency[key], _ = proto.Clone(&replay).(*rgsv1.TransferToAccountResponse)
+			}
 			return &replay, nil
 		}
 	}
@@ -809,7 +859,9 @@ func (s *LedgerService) TransferToAccount(ctx context.Context, req *rgsv1.Transf
 				Transaction:      tx,
 				AvailableBalance: money(available, currency),
 			}
-			s.toAccountByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToAccountResponse)
+			if s.useInMemoryIdempotencyCache() {
+				s.toAccountByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToAccountResponse)
+			}
 			return resp, nil
 		}
 	}
@@ -863,7 +915,9 @@ func (s *LedgerService) TransferToAccount(ctx context.Context, req *rgsv1.Transf
 	if err := s.persistIdempotencyResponse(ctx, scope, idem, requestHash, resp.Meta.GetResultCode(), resp); err != nil {
 		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
-	s.toAccountByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToAccountResponse)
+	if s.useInMemoryIdempotencyCache() {
+		s.toAccountByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToAccountResponse)
+	}
 	s.resetEFTFailures(req.AccountId)
 	return resp, nil
 }
