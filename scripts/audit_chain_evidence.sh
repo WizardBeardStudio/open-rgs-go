@@ -24,58 +24,102 @@ out_dir="${root_dir}/${event_id}"
 mkdir -p "${out_dir}"
 
 partition_day="${RGS_AUDIT_PARTITION_DAY:-$(date -u +%Y-%m-%d)}"
+partition_days_csv="${RGS_AUDIT_PARTITION_DAYS:-${partition_day}}"
 operator_id="${RGS_AUDIT_OPERATOR_ID:-op-evidence}"
 
-request_file="${out_dir}/request.json"
-response_file="${out_dir}/response.json"
 summary_file="${out_dir}/summary.json"
+overall_status="pass"
+day_rows=""
 
-cat >"${request_file}" <<EOF_REQ
+IFS=',' read -r -a partition_days <<<"${partition_days_csv}"
+for raw_day in "${partition_days[@]}"; do
+  day="$(echo "${raw_day}" | xargs)"
+  if [[ -z "${day}" ]]; then
+    continue
+  fi
+  if [[ ! "${day}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+    echo "invalid partition day format: ${day} (expected YYYY-MM-DD)" >&2
+    exit 1
+  fi
+
+  day_slug="${day//-/}"
+  request_file="${out_dir}/request_${day_slug}.json"
+  response_file="${out_dir}/response_${day_slug}.json"
+
+  cat >"${request_file}" <<EOF_REQ
 {
   "meta": {
-    "requestId": "${event_id}",
+    "requestId": "${event_id}-${day_slug}",
     "actor": {
       "actorId": "${operator_id}",
       "actorType": "ACTOR_TYPE_OPERATOR"
     }
   },
-  "partitionDay": "${partition_day}"
+  "partitionDay": "${day}"
 }
 EOF_REQ
 
-curl --silent --show-error --fail \
-  -H "Authorization: Bearer ${RGS_AUDIT_BEARER_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -X POST "${RGS_AUDIT_VERIFY_URL}" \
-  --data @"${request_file}" >"${response_file}"
+  day_status="pass"
+  if ! curl --silent --show-error --fail \
+    -H "Authorization: Bearer ${RGS_AUDIT_BEARER_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -X POST "${RGS_AUDIT_VERIFY_URL}" \
+    --data @"${request_file}" >"${response_file}"; then
+    day_status="fail"
+    overall_status="fail"
+    cat >"${response_file}" <<EOF_RESP
+{
+  "meta": {
+    "resultCode": "RESULT_CODE_ERROR",
+    "denialReason": "http request failed"
+  },
+  "valid": false
+}
+EOF_RESP
+  fi
 
-result_code="$(jq -r '.meta.resultCode // "RESULT_CODE_UNSPECIFIED"' "${response_file}")"
-valid="$(jq -r '.valid // false' "${response_file}")"
-status="pass"
-if [[ "${result_code}" != "RESULT_CODE_OK" || "${valid}" != "true" ]]; then
-  status="fail"
-fi
+  result_code="$(jq -r '.meta.resultCode // "RESULT_CODE_UNSPECIFIED"' "${response_file}")"
+  valid="$(jq -r '.valid // false' "${response_file}")"
+  if [[ "${result_code}" != "RESULT_CODE_OK" || "${valid}" != "true" ]]; then
+    day_status="fail"
+    overall_status="fail"
+  fi
+
+  row=$(cat <<EOF_ROW
+    {
+      "partition_day": "${day}",
+      "request_file": "${request_file}",
+      "response_file": "${response_file}",
+      "result_code": "${result_code}",
+      "valid": ${valid},
+      "result": "${day_status}"
+    }
+EOF_ROW
+)
+  if [[ -n "${day_rows}" ]]; then
+    day_rows+=$',\n'
+  fi
+  day_rows+="${row}"
+done
 
 cat >"${summary_file}" <<EOF_SUMMARY
 {
   "event_id": "${event_id}",
   "captured_at_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "verify_url": "${RGS_AUDIT_VERIFY_URL}",
-  "partition_day": "${partition_day}",
+  "partition_days": [
+${day_rows}
+  ],
   "operator_id": "${operator_id}",
-  "result_code": "${result_code}",
-  "valid": ${valid},
-  "result": "${status}"
+  "result": "${overall_status}"
 }
 EOF_SUMMARY
 
 cat <<EOF_OUT
 audit-chain evidence created:
-  ${request_file}
-  ${response_file}
   ${summary_file}
 EOF_OUT
 
-if [[ "${status}" != "pass" ]]; then
+if [[ "${overall_status}" != "pass" ]]; then
   exit 1
 fi

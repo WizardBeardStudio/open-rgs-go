@@ -20,7 +20,7 @@ Release gate companion:
 
 ## 3. Audit and Immutability Evidence
 - Audit append-only hash-chain verification outputs.
-- `make audit-chain-evidence` artifact pack (`request.json`, `response.json`, `summary.json`) for API-level chain verification evidence.
+- `make audit-chain-evidence` artifact pack (`request_YYYYMMDD.json`, `response_YYYYMMDD.json`, `summary.json`) for API-level chain verification evidence (single or multi-partition run).
 - Significant event and alteration retrieval samples.
 - Remote access activity retrieval samples (DB-backed mode).
 - Change-control evidence for config and download library actions.

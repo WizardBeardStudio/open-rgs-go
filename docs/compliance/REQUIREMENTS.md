@@ -324,4 +324,4 @@ This document maps implemented requirements to standards references, code locati
 - Standard refs: GLI-13 audit immutability verification and regulator evidence expectations
 - Code: `scripts/audit_chain_evidence.sh`, `docs/deployment/AUDIT_CHAIN_VERIFICATION.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`, `docs/compliance/GO_LIVE_CHECKLIST.md`
 - Tests: `go test ./...` release-gate execution
-- Status: implemented (repeatable API-driven artifact capture for partition-scoped audit-chain verification)
+- Status: implemented (repeatable API-driven artifact capture for single or multi-partition audit-chain verification runs)

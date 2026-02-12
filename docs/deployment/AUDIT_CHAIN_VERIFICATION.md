@@ -19,6 +19,14 @@ RGS_AUDIT_PARTITION_DAY="2026-02-17" \
 make audit-chain-evidence
 ```
 
+Verify multiple partitions in one run:
+
+```bash
+RGS_AUDIT_BEARER_TOKEN="<operator-jwt>" \
+RGS_AUDIT_PARTITION_DAYS="2026-02-15,2026-02-16,2026-02-17" \
+make audit-chain-evidence
+```
+
 Optional endpoint override:
 
 ```bash
@@ -32,15 +40,15 @@ make audit-chain-evidence
 
 Artifacts are written under `${RGS_AUDIT_CHAIN_WORKDIR:-/tmp/open-rgs-go-audit-chain}/<event id>/`:
 
-- `request.json`
-- `response.json`
+- `request_YYYYMMDD.json`
+- `response_YYYYMMDD.json`
 - `summary.json`
 
 `summary.json` includes:
 
-- `result_code`
-- `valid`
-- `partition_day`
+- per-partition `result_code`
+- per-partition `valid`
+- `partition_days` results
 - pass/fail `result`
 
 Use `summary.json` as release evidence for audit immutability verification.

@@ -52,8 +52,8 @@ Release metadata:
     - `critical_table_counts.csv`
     - `restore_status.txt`
   - `make audit-chain-evidence` artifacts:
-    - `request.json`
-    - `response.json`
+    - `request_YYYYMMDD.json`
+    - `response_YYYYMMDD.json`
     - `summary.json`
   - `docs/deployment/DR_DRILLS.md` execution record
   - `docs/deployment/AUDIT_CHAIN_VERIFICATION.md` execution record
