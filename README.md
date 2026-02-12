@@ -22,7 +22,7 @@ Implemented and wired:
 
 Current persistence model:
 - Runtime services support optional PostgreSQL-backed paths when `RGS_DATABASE_URL` is configured.
-- DB-backed paths currently include ledger reads/writes and idempotency replay, wagering state and idempotency replay, registry reads/writes, events/meters reads/writes, reporting run persistence and report payload sourcing, config/download change-control reads/writes, remote access activity retention, player session persistence, and audit event retrieval/writes for DB-enabled ledger/sessions operations.
+- DB-backed paths currently include ledger reads/writes and idempotency replay, wagering state and idempotency replay, registry reads/writes, events/meters reads/writes, reporting run persistence and report payload sourcing, config/download change-control reads/writes, remote access activity retention, player session persistence, and audit event retrieval/writes for DB-enabled core state-changing operations.
 - Identity credential verification and lockout state use PostgreSQL tables when configured (`identity_credentials`, `identity_lockouts`).
 - In-memory behavior remains available as a fallback for local/dev execution without PostgreSQL.
 

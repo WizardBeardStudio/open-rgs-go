@@ -172,7 +172,7 @@ func (s *IdentityService) appendAudit(meta *rgsv1.RequestMeta, objectID, action 
 		actorType = meta.Actor.ActorType.String()
 	}
 	now := s.now()
-	_, err := s.AuditStore.Append(audit.Event{
+	ev := audit.Event{
 		AuditID:      s.nextAuditIDLocked(),
 		OccurredAt:   now,
 		RecordedAt:   now,
@@ -186,7 +186,13 @@ func (s *IdentityService) appendAudit(meta *rgsv1.RequestMeta, objectID, action 
 		Result:       result,
 		Reason:       reason,
 		PartitionDay: now.Format("2006-01-02"),
-	})
+	}
+	if s.db != nil {
+		if err := appendAuditEventToDB(context.Background(), s.db, ev); err != nil {
+			return err
+		}
+	}
+	_, err := s.AuditStore.Append(ev)
 	return err
 }
 

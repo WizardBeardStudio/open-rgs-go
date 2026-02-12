@@ -316,6 +316,6 @@ This document maps implemented requirements to standards references, code locati
 
 ## RGS-0718 DB-backed Audit Event Persistence and Retrieval
 - Standard refs: GLI-13 significant event/alteration retention and regulator retrieval expectations
-- Code: `internal/platform/server/audit_postgres.go`, `internal/platform/server/audit_grpc.go`, `internal/platform/server/ledger_grpc.go`, `internal/platform/server/sessions_grpc.go`, `cmd/rgsd/main.go`
+- Code: `internal/platform/server/audit_postgres.go`, `internal/platform/server/audit_grpc.go`, `internal/platform/server/ledger_grpc.go`, `internal/platform/server/wagering_grpc.go`, `internal/platform/server/identity_grpc.go`, `internal/platform/server/registry_grpc.go`, `internal/platform/server/events_grpc.go`, `internal/platform/server/reporting_grpc.go`, `internal/platform/server/config_grpc.go`, `internal/platform/server/extensions_grpc.go`, `internal/platform/server/sessions_grpc.go`, `cmd/rgsd/main.go`
 - Tests: `internal/platform/server/audit_grpc_test.go`, `internal/platform/server/postgres_integration_test.go`
-- Status: implemented (DB-enabled ledger/sessions audit appends persist to `audit_events` with hash chaining semantics and `AuditService/ListAuditEvents` reads DB-backed records when configured)
+- Status: implemented (DB-enabled core services persist audit appends to `audit_events` with hash chaining semantics, and `AuditService/ListAuditEvents` reads DB-backed records when configured)

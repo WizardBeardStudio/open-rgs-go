@@ -305,6 +305,42 @@ func TestPostgresAuditServiceListsPersistedAuditEvents(t *testing.T) {
 	}
 }
 
+func TestPostgresAuditServiceListsPersistedConfigAuditEvents(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 17, 12, 50, 0, 0, time.UTC)}
+	ctx := context.Background()
+
+	configSvc := NewConfigService(clk, db)
+	_, err := configSvc.ProposeConfigChange(ctx, &rgsv1.ProposeConfigChangeRequest{
+		Meta:            meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		ConfigNamespace: "ops",
+		ConfigKey:       "max_sessions",
+		ProposedValue:   "5",
+		Reason:          "integration-test",
+	})
+	if err != nil {
+		t.Fatalf("propose config change err: %v", err)
+	}
+
+	auditSvc := NewAuditService(clk, nil)
+	auditSvc.SetDB(db)
+	resp, err := auditSvc.ListAuditEvents(ctx, &rgsv1.ListAuditEventsRequest{
+		Meta:             meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		ObjectTypeFilter: "config_change",
+	})
+	if err != nil {
+		t.Fatalf("list audit events err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("unexpected list audit result: code=%v reason=%q", resp.Meta.GetResultCode(), resp.Meta.GetDenialReason())
+	}
+	if len(resp.Events) == 0 {
+		t.Fatalf("expected persisted config audit events from db")
+	}
+}
+
 func TestPostgresLedgerEFTLockoutPersistsAcrossRestart(t *testing.T) {
 	db := openPostgresIntegrationDB(t)
 	resetPostgresIntegrationState(t, db)
