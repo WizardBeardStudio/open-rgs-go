@@ -234,7 +234,7 @@ This document maps implemented requirements to standards references, code locati
 - Standard refs: GLI-21 connection-attempt logging and remote access review expectations
 - Code: `internal/platform/server/remote_access.go`, `internal/platform/server/audit_grpc.go`, `migrations/000008_remote_access_activity.up.sql`, `cmd/rgsd/main.go`
 - Tests: `internal/platform/server/remote_access_test.go`, `internal/platform/server/postgres_integration_test.go`
-- Status: implemented (DB-backed remote access activity retrieval in PostgreSQL mode)
+- Status: implemented (DB-backed remote access activity retrieval in PostgreSQL mode; strict production disables in-memory remote-access activity cache)
 
 ## RGS-0705 Bonusing/Promotions/UI Overlay Recall Scaffolds
 - Standard refs: GLI-13/GLI-28/GLI-16 scaffold requirements from AGENTS for bonus/promotional meters and system-window recall

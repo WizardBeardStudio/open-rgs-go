@@ -31,11 +31,12 @@ type RemoteAccessGuard struct {
 	Clock      clock.Clock
 	AuditStore *audit.InMemoryStore
 
-	trusted []*net.IPNet
-	mu      sync.Mutex
-	logs    []RemoteAccessActivity
-	nextID  int64
-	db      *sql.DB
+	trusted              []*net.IPNet
+	mu                   sync.Mutex
+	logs                 []RemoteAccessActivity
+	nextID               int64
+	db                   *sql.DB
+	disableInMemoryCache bool
 }
 
 func NewRemoteAccessGuard(clk clock.Clock, store *audit.InMemoryStore, cidrs []string) (*RemoteAccessGuard, error) {
@@ -74,6 +75,15 @@ func (g *RemoteAccessGuard) SetDB(db *sql.DB) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.db = db
+}
+
+func (g *RemoteAccessGuard) SetDisableInMemoryActivityCache(disable bool) {
+	if g == nil {
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.disableInMemoryCache = disable
 }
 
 func (g *RemoteAccessGuard) isAdminPath(path string) bool {
@@ -153,7 +163,9 @@ func (g *RemoteAccessGuard) logActivity(r *http.Request, sourceIP, sourcePort st
 		Reason:          reason,
 	}
 	g.mu.Lock()
-	g.logs = append(g.logs, entry)
+	if !g.disableInMemoryCache {
+		g.logs = append(g.logs, entry)
+	}
 	db := g.db
 	g.mu.Unlock()
 	if db != nil {
@@ -164,6 +176,7 @@ func (g *RemoteAccessGuard) logActivity(r *http.Request, sourceIP, sourcePort st
 func (g *RemoteAccessGuard) Activities() []RemoteAccessActivity {
 	g.mu.Lock()
 	db := g.db
+	disableInMemory := g.disableInMemoryCache
 	out := make([]RemoteAccessActivity, len(g.logs))
 	copy(out, g.logs)
 	g.mu.Unlock()
@@ -172,6 +185,9 @@ func (g *RemoteAccessGuard) Activities() []RemoteAccessActivity {
 		if err == nil {
 			return dbOut
 		}
+	}
+	if disableInMemory {
+		return nil
 	}
 	return out
 }

@@ -283,7 +283,7 @@ Chaos tests:
 ## 13. Known Limitations and Next Work
 
 Current limitations:
-- Some non-authoritative caches remain in-memory for performance, with PostgreSQL as system-of-record where configured; strict production mode now disables in-memory idempotency replay caches for ledger/wagering.
+- Some non-authoritative operational mirrors remain in-memory for performance, with PostgreSQL as system-of-record where configured; strict production mode disables in-memory idempotency replay caches for ledger/wagering and disables in-memory remote-access activity caching.
 - JWT issuance/refresh/rotation is implemented, including live keyset-file reload hooks, but full KMS/HSM operational integration and key custody controls remain deployment responsibilities.
 - Promotions/UI services are implemented at baseline CRUD/reportability level, but advanced campaign policy engines and full device-side interaction workflows are still pending.
 

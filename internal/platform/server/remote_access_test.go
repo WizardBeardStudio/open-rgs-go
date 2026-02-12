@@ -54,3 +54,28 @@ func TestRemoteAccessGuardAllowsTrustedAdminPath(t *testing.T) {
 		t.Fatalf("expected one allowed activity log")
 	}
 }
+
+func TestRemoteAccessGuardDisableInMemoryActivityCache(t *testing.T) {
+	guard, err := NewRemoteAccessGuard(ledgerFixedClock{now: time.Date(2026, 2, 12, 18, 0, 0, 0, time.UTC)}, nil, []string{"127.0.0.1/32"})
+	if err != nil {
+		t.Fatalf("new guard err: %v", err)
+	}
+	guard.SetDisableInMemoryActivityCache(true)
+
+	h := guard.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/reporting/runs", nil)
+	req.RemoteAddr = "127.0.0.1:44000"
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if rec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected ok for trusted admin path, got=%d", rec.Result().StatusCode)
+	}
+	logs := guard.Activities()
+	if len(logs) != 0 {
+		t.Fatalf("expected no in-memory activities when cache disabled, got=%d", len(logs))
+	}
+}
