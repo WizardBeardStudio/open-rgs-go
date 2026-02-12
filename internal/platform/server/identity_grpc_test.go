@@ -168,6 +168,44 @@ func TestIdentitySetCredentialRequiresDatabase(t *testing.T) {
 	}
 }
 
+func TestIdentitySetCredentialRejectsInvalidBcryptHash(t *testing.T) {
+	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 13, 31, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "op-1", Type: "ACTOR_TYPE_OPERATOR"})
+	resp, err := svc.SetCredential(ctx, &rgsv1.SetCredentialRequest{
+		Meta:           meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:          &rgsv1.Actor{ActorId: "player-new", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		CredentialHash: "not-a-bcrypt-hash",
+		Reason:         "bootstrap",
+	})
+	if err != nil {
+		t.Fatalf("set credential err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid for non-bcrypt hash, got=%v", resp.Meta.GetResultCode())
+	}
+}
+
+func TestIdentitySetCredentialRejectsLowCostBcryptHash(t *testing.T) {
+	hash, err := bcrypt.GenerateFromPassword([]byte("new-pin"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("generate low-cost hash: %v", err)
+	}
+	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 13, 32, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "op-1", Type: "ACTOR_TYPE_OPERATOR"})
+	resp, err := svc.SetCredential(ctx, &rgsv1.SetCredentialRequest{
+		Meta:           meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:          &rgsv1.Actor{ActorId: "player-new", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		CredentialHash: string(hash),
+		Reason:         "bootstrap",
+	})
+	if err != nil {
+		t.Fatalf("set credential err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid for low-cost hash, got=%v", resp.Meta.GetResultCode())
+	}
+}
+
 func TestIdentitySetCredentialAndLoginWithDatabase(t *testing.T) {
 	dsn := os.Getenv("RGS_TEST_DATABASE_URL")
 	if dsn == "" {
