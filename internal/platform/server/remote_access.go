@@ -1,6 +1,8 @@
 package server
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
 	"net"
 	"net/http"
@@ -33,6 +35,7 @@ type RemoteAccessGuard struct {
 	mu      sync.Mutex
 	logs    []RemoteAccessActivity
 	nextID  int64
+	db      *sql.DB
 }
 
 func NewRemoteAccessGuard(clk clock.Clock, store *audit.InMemoryStore, cidrs []string) (*RemoteAccessGuard, error) {
@@ -62,6 +65,15 @@ func (g *RemoteAccessGuard) now() time.Time {
 		return time.Now().UTC()
 	}
 	return g.Clock.Now().UTC()
+}
+
+func (g *RemoteAccessGuard) SetDB(db *sql.DB) {
+	if g == nil {
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.db = db
 }
 
 func (g *RemoteAccessGuard) isAdminPath(path string) bool {
@@ -142,15 +154,85 @@ func (g *RemoteAccessGuard) logActivity(r *http.Request, sourceIP, sourcePort st
 	}
 	g.mu.Lock()
 	g.logs = append(g.logs, entry)
+	db := g.db
 	g.mu.Unlock()
+	if db != nil {
+		g.persistActivity(context.Background(), db, entry)
+	}
 }
 
 func (g *RemoteAccessGuard) Activities() []RemoteAccessActivity {
 	g.mu.Lock()
-	defer g.mu.Unlock()
+	db := g.db
 	out := make([]RemoteAccessActivity, len(g.logs))
 	copy(out, g.logs)
+	g.mu.Unlock()
+	if db != nil {
+		dbOut, err := g.activitiesFromDB(context.Background(), db)
+		if err == nil {
+			return dbOut
+		}
+	}
 	return out
+}
+
+func (g *RemoteAccessGuard) persistActivity(ctx context.Context, db *sql.DB, activity RemoteAccessActivity) {
+	const q = `
+INSERT INTO remote_access_activity (
+  occurred_at, source_ip, source_port, destination_host, destination_port, path, method, allowed, reason
+)
+VALUES (
+  $1::timestamptz, $2, $3, $4, $5, $6, $7, $8, $9
+)
+`
+	_, _ = db.ExecContext(ctx, q,
+		activity.Timestamp,
+		activity.SourceIP,
+		activity.SourcePort,
+		activity.Destination,
+		activity.DestinationPort,
+		activity.Path,
+		activity.Method,
+		activity.Allowed,
+		activity.Reason,
+	)
+}
+
+func (g *RemoteAccessGuard) activitiesFromDB(ctx context.Context, db *sql.DB) ([]RemoteAccessActivity, error) {
+	const q = `
+SELECT occurred_at, source_ip, source_port, destination_host, destination_port, path, method, allowed, reason
+FROM remote_access_activity
+ORDER BY occurred_at DESC, activity_id DESC
+LIMIT 5000
+`
+	rows, err := db.QueryContext(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]RemoteAccessActivity, 0)
+	for rows.Next() {
+		var (
+			occurredAt time.Time
+			entry      RemoteAccessActivity
+		)
+		if err := rows.Scan(
+			&occurredAt,
+			&entry.SourceIP,
+			&entry.SourcePort,
+			&entry.Destination,
+			&entry.DestinationPort,
+			&entry.Path,
+			&entry.Method,
+			&entry.Allowed,
+			&entry.Reason,
+		); err != nil {
+			return nil, err
+		}
+		entry.Timestamp = occurredAt.UTC().Format(time.RFC3339Nano)
+		out = append(out, entry)
+	}
+	return out, rows.Err()
 }
 
 func (g *RemoteAccessGuard) Wrap(next http.Handler) http.Handler {

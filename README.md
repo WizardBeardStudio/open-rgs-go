@@ -104,6 +104,7 @@ Schema files are ordered and additive:
 - `000005_config_change_control.*` config/download change-control
 - `000006_identity_auth.*` identity credentials and lockout tracking
 - `000007_identity_sessions.*` refresh-session persistence and cleanup
+- `000008_remote_access_activity.*` remote access activity persistence
 
 Apply migrations with your preferred migration runner in numeric order.
 

@@ -4,12 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
 )
 
 func openPostgresIntegrationDB(t *testing.T) *sql.DB {
@@ -52,6 +55,7 @@ TRUNCATE TABLE
   identity_sessions,
   identity_lockouts,
   identity_credentials,
+  remote_access_activity,
   audit_events
 RESTART IDENTITY CASCADE
 `
@@ -441,5 +445,47 @@ VALUES ('op-bootstrap-1', 'ACTOR_TYPE_OPERATOR', '$2a$10$7jvnYQ5lzu4iAfDdc0AGJOh
 	}
 	if !ok {
 		t.Fatalf("expected active credentials after seed")
+	}
+}
+
+func TestPostgresRemoteAccessActivityPersistenceAcrossRestart(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 15, 45, 0, 0, time.UTC)}
+	guardA, err := NewRemoteAccessGuard(clk, audit.NewInMemoryStore(), []string{"127.0.0.1/32"})
+	if err != nil {
+		t.Fatalf("new remote access guard err: %v", err)
+	}
+	guardA.SetDB(db)
+	handler := guardA.Wrap(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "http://example.test/v1/reporting/runs", nil)
+	req.RemoteAddr = "127.0.0.1:12345"
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected trusted request to pass, got code=%d", rr.Code)
+	}
+
+	guardB, err := NewRemoteAccessGuard(clk, audit.NewInMemoryStore(), []string{"127.0.0.1/32"})
+	if err != nil {
+		t.Fatalf("new remote access guard err: %v", err)
+	}
+	guardB.SetDB(db)
+	auditSvc := NewAuditService(clk, guardB, audit.NewInMemoryStore())
+	resp, err := auditSvc.ListRemoteAccessActivities(context.Background(), &rgsv1.ListRemoteAccessActivitiesRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+	})
+	if err != nil {
+		t.Fatalf("list remote access activities err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected ok response, got=%v", resp.Meta.GetResultCode())
+	}
+	if len(resp.Activities) == 0 {
+		t.Fatalf("expected persisted remote access activity row")
 	}
 }

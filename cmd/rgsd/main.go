@@ -201,6 +201,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("configure remote access guard: %v", err)
 	}
+	if db != nil {
+		guard.SetDB(db)
+	}
 	auditSvc := server.NewAuditService(
 		clk,
 		guard,
