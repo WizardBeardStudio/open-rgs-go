@@ -304,6 +304,6 @@ This document maps implemented requirements to standards references, code locati
 
 ## RGS-0716 Sustained Load/Soak Qualification Evidence
 - Standard refs: GLI-13 deterministic operation and operational resilience evidence expectations
-- Code: `internal/platform/server/ledger_benchmark_test.go`, `internal/platform/server/wagering_benchmark_test.go`, `scripts/load_soak_check.sh`, `scripts/load_soak_matrix.sh`, `docs/deployment/LOAD_SOAK_QUALIFICATION.md`, `Makefile`
-- Tests: `go test ./internal/platform/server -run '^$' -bench '^(BenchmarkLedgerDeposit|BenchmarkWageringPlaceWager)$' -benchmem`
-- Status: implemented (multi-run soak benchmarks with optional threshold gating and operator-class profile matrix evidence artifacts)
+- Code: `internal/platform/server/ledger_benchmark_test.go`, `internal/platform/server/wagering_benchmark_test.go`, `internal/platform/server/postgres_benchmark_test.go`, `scripts/load_soak_check.sh`, `scripts/load_soak_check_db.sh`, `scripts/load_soak_matrix.sh`, `docs/deployment/LOAD_SOAK_QUALIFICATION.md`, `Makefile`
+- Tests: `go test ./internal/platform/server -run '^$' -bench '^(BenchmarkLedgerDeposit|BenchmarkWageringPlaceWager|BenchmarkLedgerDepositPostgres|BenchmarkWageringPlaceWagerPostgres)$' -benchmem`
+- Status: implemented (multi-run soak benchmarks with optional threshold gating, DB-backed durability-path qualification, and operator-class profile matrix evidence artifacts)

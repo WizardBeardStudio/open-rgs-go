@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: all fmt test test-integration-postgres lint proto generate-tools dr-drill perf-qual failover-evidence keyset-evidence soak-qual soak-qual-matrix
+.PHONY: all fmt test test-integration-postgres lint proto generate-tools dr-drill perf-qual failover-evidence keyset-evidence soak-qual soak-qual-db soak-qual-matrix
 
 all: fmt test
 
@@ -52,6 +52,15 @@ soak-qual:
 	RGS_SOAK_LEDGER_DEPOSIT_NS_OP_MAX=$${RGS_SOAK_LEDGER_DEPOSIT_NS_OP_MAX:-} \
 	RGS_SOAK_WAGER_PLACE_NS_OP_MAX=$${RGS_SOAK_WAGER_PLACE_NS_OP_MAX:-} \
 	./scripts/load_soak_check.sh
+
+soak-qual-db:
+	RGS_SOAK_DATABASE_URL=$${RGS_SOAK_DATABASE_URL:?set RGS_SOAK_DATABASE_URL} \
+	RGS_SOAK_RUNS=$${RGS_SOAK_RUNS:-3} \
+	RGS_SOAK_BENCHTIME=$${RGS_SOAK_BENCHTIME:-30s} \
+	RGS_SOAK_CPU=$${RGS_SOAK_CPU:-} \
+	RGS_SOAK_DB_LEDGER_DEPOSIT_NS_OP_MAX=$${RGS_SOAK_DB_LEDGER_DEPOSIT_NS_OP_MAX:-} \
+	RGS_SOAK_DB_WAGER_PLACE_NS_OP_MAX=$${RGS_SOAK_DB_WAGER_PLACE_NS_OP_MAX:-} \
+	./scripts/load_soak_check_db.sh
 
 soak-qual-matrix:
 	RGS_SOAK_MATRIX_WORKDIR=$${RGS_SOAK_MATRIX_WORKDIR:-} \

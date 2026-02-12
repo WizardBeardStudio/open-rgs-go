@@ -39,6 +39,7 @@ Release gate companion:
 - Alerting rules and dashboard screenshots for key risk indicators.
 - `make perf-qual` artifact pack (`benchmark_output.txt`, `summary.txt`) with accepted threshold references.
 - `make soak-qual` artifact pack (`benchmark_output.txt`, `summary.json`) for sustained multi-run threshold-gated checks.
+- `make soak-qual-db` artifact pack (`benchmark_output.txt`, `summary.json`) for PostgreSQL durability-path sustained checks.
 - `make soak-qual-matrix` artifact pack (`matrix_summary.json`, `<profile>/summary.json`) for operator-class profile qualification.
 
 ## 6. Compliance Traceability Evidence

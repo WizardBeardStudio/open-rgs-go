@@ -79,3 +79,24 @@ Matrix mode artifacts are written under `${RGS_SOAK_MATRIX_WORKDIR:-/tmp/open-rg
 - `matrix_summary.json`
 
 Use `matrix_summary.json` as the operator-class qualification evidence anchor.
+
+## DB-backed Qualification
+
+To validate durability-path throughput with PostgreSQL enabled:
+
+```bash
+RGS_SOAK_DATABASE_URL=postgres://user:pass@localhost:5432/open_rgs_go?sslmode=disable \
+RGS_SOAK_RUNS=3 \
+RGS_SOAK_BENCHTIME=30s \
+RGS_SOAK_CPU=2 \
+RGS_SOAK_DB_LEDGER_DEPOSIT_NS_OP_MAX=350000 \
+RGS_SOAK_DB_WAGER_PLACE_NS_OP_MAX=400000 \
+make soak-qual-db
+```
+
+DB-backed artifacts are written under `${RGS_SOAK_DB_WORKDIR:-/tmp/open-rgs-go-soak-db}/<UTC timestamp>/`:
+
+- `benchmark_output.txt`
+- `summary.json`
+
+Use DB-backed `summary.json` alongside in-memory and profile-matrix artifacts for release sign-off.

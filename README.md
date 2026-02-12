@@ -290,4 +290,4 @@ Current limitations:
 - Promotions/UI services are implemented at baseline CRUD/reportability level, but advanced campaign policy engines and full device-side interaction workflows are still pending.
 
 Recommended next steps:
-- Execute `make soak-qual-matrix` in each DB-backed deployment tier and record per-profile thresholds/baselines as release evidence.
+- Execute `make soak-qual-db` and `make soak-qual-matrix` in each DB-backed deployment tier and record per-profile thresholds/baselines as release evidence.
