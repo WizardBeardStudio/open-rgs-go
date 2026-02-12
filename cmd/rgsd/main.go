@@ -2,13 +2,16 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -43,6 +46,8 @@ func main() {
 	jwtSigningSecret := envOr("RGS_JWT_SIGNING_SECRET", "dev-insecure-change-me")
 	jwtKeysetSpec := envOr("RGS_JWT_KEYSET", "")
 	jwtActiveKID := envOr("RGS_JWT_ACTIVE_KID", "default")
+	jwtKeysetFile := envOr("RGS_JWT_KEYSET_FILE", "")
+	jwtKeysetRefreshInterval := mustParseDurationEnv("RGS_JWT_KEYSET_REFRESH_INTERVAL", "1m")
 	jwtAccessTTL := mustParseDurationEnv("RGS_JWT_ACCESS_TTL", "15m")
 	jwtRefreshTTL := mustParseDurationEnv("RGS_JWT_REFRESH_TTL", "24h")
 	identityLockoutTTL := mustParseDurationEnv("RGS_IDENTITY_LOCKOUT_TTL", "15m")
@@ -56,7 +61,7 @@ func main() {
 	tlsEnabled := envOr("RGS_TLS_ENABLED", "false") == "true"
 	tlsRequireClientCert := envOr("RGS_TLS_REQUIRE_CLIENT_CERT", "false") == "true"
 	strictProductionMode := mustParseBoolEnv("RGS_STRICT_PRODUCTION_MODE", version != "dev")
-	if err := validateProductionRuntime(strictProductionMode, databaseURL, tlsEnabled, jwtSigningSecret, jwtKeysetSpec); err != nil {
+	if err := validateProductionRuntime(strictProductionMode, databaseURL, tlsEnabled, jwtSigningSecret, jwtKeysetSpec, jwtKeysetFile); err != nil {
 		log.Fatalf("invalid production runtime configuration: %v", err)
 	}
 	tlsCfg, err := server.BuildTLSConfig(server.TLSConfig{
@@ -71,9 +76,9 @@ func main() {
 		log.Fatalf("configure tls: %v", err)
 	}
 
-	jwtKeyset, err := platformauth.ParseHMACKeyset(jwtSigningSecret, jwtKeysetSpec, jwtActiveKID)
+	jwtKeyset, keysetFingerprint, err := loadJWTKeyset(jwtSigningSecret, jwtKeysetSpec, jwtActiveKID, jwtKeysetFile)
 	if err != nil {
-		log.Fatalf("parse jwt keyset: %v", err)
+		log.Fatalf("load jwt keyset: %v", err)
 	}
 	jwtSigner := platformauth.NewJWTSignerWithKeyset(jwtKeyset)
 	jwtVerifier := platformauth.NewJWTVerifierWithKeyset(jwtKeyset)
@@ -110,6 +115,38 @@ func main() {
 	identitySvc.SetJWTSigner(jwtSigner)
 	identitySvc.SetLockoutPolicy(identityLockoutMaxFailures, identityLockoutTTL)
 	identitySvc.StartSessionCleanupWorker(ctx, identitySessionCleanupInterval, identitySessionCleanupBatch, log.Printf)
+	if strings.TrimSpace(jwtKeysetFile) != "" && jwtKeysetRefreshInterval > 0 {
+		go func() {
+			ticker := time.NewTicker(jwtKeysetRefreshInterval)
+			defer ticker.Stop()
+			currentFingerprint := keysetFingerprint
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					loaded, fingerprint, err := loadJWTKeyset(jwtSigningSecret, jwtKeysetSpec, jwtActiveKID, jwtKeysetFile)
+					if err != nil {
+						log.Printf("jwt keyset refresh failed: %v", err)
+						continue
+					}
+					if fingerprint == currentFingerprint {
+						continue
+					}
+					if err := jwtSigner.SetKeyset(loaded); err != nil {
+						log.Printf("jwt signer keyset refresh failed: %v", err)
+						continue
+					}
+					if err := jwtVerifier.SetKeyset(loaded); err != nil {
+						log.Printf("jwt verifier keyset refresh failed: %v", err)
+						continue
+					}
+					currentFingerprint = fingerprint
+					log.Printf("jwt keyset reloaded (active_kid=%s)", loaded.ActiveKID)
+				}
+			}
+		}()
+	}
 	if db != nil {
 		ok, err := identitySvc.HasActiveCredentials(ctx)
 		if err != nil {
@@ -313,7 +350,7 @@ func mustParseBoolEnv(key string, def bool) bool {
 	}
 }
 
-func validateProductionRuntime(strict bool, databaseURL string, tlsEnabled bool, jwtSigningSecret string, jwtKeysetSpec string) error {
+func validateProductionRuntime(strict bool, databaseURL string, tlsEnabled bool, jwtSigningSecret string, jwtKeysetSpec string, jwtKeysetFile string) error {
 	if !strict {
 		return nil
 	}
@@ -323,8 +360,37 @@ func validateProductionRuntime(strict bool, databaseURL string, tlsEnabled bool,
 	if !tlsEnabled {
 		return fmt.Errorf("RGS_TLS_ENABLED must be true when RGS_STRICT_PRODUCTION_MODE=true")
 	}
-	if strings.TrimSpace(jwtKeysetSpec) == "" && jwtSigningSecret == "dev-insecure-change-me" {
+	if strings.TrimSpace(jwtKeysetSpec) == "" && strings.TrimSpace(jwtKeysetFile) == "" && jwtSigningSecret == "dev-insecure-change-me" {
 		return fmt.Errorf("default JWT signing secret is not allowed when RGS_STRICT_PRODUCTION_MODE=true")
 	}
 	return nil
+}
+
+func loadJWTKeyset(jwtSigningSecret string, jwtKeysetSpec string, jwtActiveKID string, jwtKeysetFile string) (platformauth.HMACKeyset, string, error) {
+	if strings.TrimSpace(jwtKeysetFile) != "" {
+		keyset, err := platformauth.LoadHMACKeysetFile(jwtKeysetFile)
+		if err != nil {
+			return platformauth.HMACKeyset{}, "", err
+		}
+		return keyset, keysetFingerprint(keyset), nil
+	}
+	keyset, err := platformauth.ParseHMACKeyset(jwtSigningSecret, jwtKeysetSpec, jwtActiveKID)
+	if err != nil {
+		return platformauth.HMACKeyset{}, "", err
+	}
+	return keyset, keysetFingerprint(keyset), nil
+}
+
+func keysetFingerprint(keyset platformauth.HMACKeyset) string {
+	keys := make([]string, 0, len(keyset.Keys))
+	for kid := range keyset.Keys {
+		keys = append(keys, kid)
+	}
+	sort.Strings(keys)
+	joined := keyset.ActiveKID
+	for _, kid := range keys {
+		joined += "|" + kid + ":" + string(keyset.Keys[kid])
+	}
+	sum := sha256.Sum256([]byte(joined))
+	return hex.EncodeToString(sum[:])
 }

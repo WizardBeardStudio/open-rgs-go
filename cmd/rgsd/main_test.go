@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 	cases := []struct {
@@ -10,6 +14,7 @@ func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 		tlsEnabled    bool
 		jwtSecret     string
 		jwtKeysetSpec string
+		jwtKeysetFile string
 		wantErr       bool
 	}{
 		{
@@ -66,14 +71,42 @@ func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 			jwtKeysetSpec: "",
 			wantErr:       false,
 		},
+		{
+			name:          "strict allows keyset file with default secret",
+			strict:        true,
+			databaseURL:   "postgres://x",
+			tlsEnabled:    true,
+			jwtSecret:     "dev-insecure-change-me",
+			jwtKeysetSpec: "",
+			jwtKeysetFile: "/etc/rgs/jwt-keyset.json",
+			wantErr:       false,
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validateProductionRuntime(tc.strict, tc.databaseURL, tc.tlsEnabled, tc.jwtSecret, tc.jwtKeysetSpec)
+			err := validateProductionRuntime(tc.strict, tc.databaseURL, tc.tlsEnabled, tc.jwtSecret, tc.jwtKeysetSpec, tc.jwtKeysetFile)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("validateProductionRuntime() err=%v wantErr=%v", err, tc.wantErr)
 			}
 		})
+	}
+}
+
+func TestLoadJWTKeysetFromFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "jwt-keyset.json")
+	if err := os.WriteFile(path, []byte(`{"active_kid":"k2","keys":{"k1":"secret1","k2":"secret2"}}`), 0o600); err != nil {
+		t.Fatalf("write keyset: %v", err)
+	}
+	keyset, fingerprint, err := loadJWTKeyset("ignored", "", "default", path)
+	if err != nil {
+		t.Fatalf("load keyset: %v", err)
+	}
+	if keyset.ActiveKID != "k2" {
+		t.Fatalf("expected active kid k2, got=%s", keyset.ActiveKID)
+	}
+	if fingerprint == "" {
+		t.Fatalf("expected non-empty fingerprint")
 	}
 }

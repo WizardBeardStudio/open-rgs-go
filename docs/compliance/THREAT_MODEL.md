@@ -51,6 +51,11 @@
 - Strict production startup guardrails (DB+TLS+non-default signing configuration)
   - `cmd/rgsd/main.go`
   - `cmd/rgsd/main_test.go`
+- JWT keyset file loading and live in-process key reload
+  - `internal/platform/auth/keyset_source.go`
+  - `internal/platform/auth/jwt.go`
+  - `cmd/rgsd/main.go`
+  - `docs/deployment/KEY_MANAGEMENT.md`
 - Explicit audit retrieval API (audit events + remote access activity)
   - `api/proto/rgs/v1/audit.proto`
   - `internal/platform/server/audit_grpc.go`
@@ -67,7 +72,7 @@
 
 ## Residual Risks / Follow-up
 - Integrate persistent DB-backed service repositories (replace in-memory stores)
-- Add KMS/HSM-backed key management and rotation automation for production
+- Add full KMS/HSM custody integration and attested key lifecycle controls beyond file-based runtime hooks
 - Add explicit rate-limiting, session lockout, and antifraud controls
 - Add signed package verification pipeline for download library entries
-- Implement runtime services for promotions/bonusing/UI scaffold APIs
+- Expand promotions/bonusing/UI services beyond baseline record/list into full policy/workflow engines

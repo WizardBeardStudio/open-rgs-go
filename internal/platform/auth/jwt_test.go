@@ -68,3 +68,42 @@ func TestParseActorWithKeyRotation(t *testing.T) {
 		t.Fatalf("unexpected actors after rotation: old=%+v new=%+v", oldActor, newActor)
 	}
 }
+
+func TestJWTLiveKeysetReload(t *testing.T) {
+	initial, err := ParseHMACKeyset("", "old:old-secret", "old")
+	if err != nil {
+		t.Fatalf("parse initial keyset: %v", err)
+	}
+	rotated, err := ParseHMACKeyset("", "new:new-secret", "new")
+	if err != nil {
+		t.Fatalf("parse rotated keyset: %v", err)
+	}
+	signer := NewJWTSignerWithKeyset(initial)
+	verifier := NewJWTVerifierWithKeyset(initial)
+
+	oldToken, _, err := signer.SignActor(Actor{ID: "player-old", Type: "ACTOR_TYPE_PLAYER"}, time.Now().UTC(), time.Hour)
+	if err != nil {
+		t.Fatalf("sign old token: %v", err)
+	}
+	if _, err := verifier.ParseActor(oldToken); err != nil {
+		t.Fatalf("verify old token before reload: %v", err)
+	}
+
+	if err := signer.SetKeyset(rotated); err != nil {
+		t.Fatalf("reload signer keyset: %v", err)
+	}
+	if err := verifier.SetKeyset(rotated); err != nil {
+		t.Fatalf("reload verifier keyset: %v", err)
+	}
+
+	if _, err := verifier.ParseActor(oldToken); err == nil {
+		t.Fatalf("expected old token to fail after keyset rotation")
+	}
+	newToken, _, err := signer.SignActor(Actor{ID: "player-new", Type: "ACTOR_TYPE_PLAYER"}, time.Now().UTC(), time.Hour)
+	if err != nil {
+		t.Fatalf("sign new token: %v", err)
+	}
+	if _, err := verifier.ParseActor(newToken); err != nil {
+		t.Fatalf("verify new token after reload: %v", err)
+	}
+}

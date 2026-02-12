@@ -253,3 +253,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `api/proto/rgs/v1/extensions.proto`, `internal/platform/server/extensions_grpc.go`, `internal/platform/server/extensions_postgres.go`, `cmd/rgsd/main.go`, `migrations/000009_bonus_ui_scaffolds.up.sql`
 - Tests: `internal/platform/server/extensions_grpc_test.go`, `internal/platform/server/extensions_gateway_test.go`
 - Status: implemented (record/list bonus transactions, record promotional awards, submit/list system-window events with DB-backed persistence when configured)
+
+## RGS-0708 JWT Keyset File Source and Live Reload
+- Standard refs: GLI-21 secure remote access/authentication controls and key lifecycle hardening expectations
+- Code: `internal/platform/auth/jwt.go`, `internal/platform/auth/keyset_source.go`, `cmd/rgsd/main.go`, `docs/deployment/KEY_MANAGEMENT.md`
+- Tests: `internal/platform/auth/jwt_test.go`, `internal/platform/auth/keyset_source_test.go`, `cmd/rgsd/main_test.go`
+- Status: implemented (file-backed keyset loading and in-process signer/verifier hot reload with periodic refresh)

@@ -124,6 +124,8 @@ Environment variables:
 - `RGS_JWT_SIGNING_SECRET` (default: `dev-insecure-change-me`; HMAC key for identity access tokens)
 - `RGS_JWT_KEYSET` (optional; comma-separated `kid:secret` entries for key rotation, e.g. `old:secret1,new:secret2`)
 - `RGS_JWT_ACTIVE_KID` (default: `default`; active signing key id from `RGS_JWT_KEYSET`)
+- `RGS_JWT_KEYSET_FILE` (optional; JSON keyset file path, intended for KMS/HSM sidecar-managed key material)
+- `RGS_JWT_KEYSET_REFRESH_INTERVAL` (default: `1m`; when `RGS_JWT_KEYSET_FILE` is set, reload cadence for live signer/verifier rotation)
 - `RGS_JWT_ACCESS_TTL` (default: `15m`)
 - `RGS_JWT_REFRESH_TTL` (default: `24h`)
 - `RGS_IDENTITY_LOCKOUT_MAX_FAILURES` (default: `5`)
@@ -203,6 +205,7 @@ Deployment guidance:
 - `docs/deployment/FIREWALL_LOGGING.md`
 - `docs/deployment/METRICS_ALERTING.md`
 - `docs/deployment/WIRELESS_ONBOARDING.md`
+- `docs/deployment/KEY_MANAGEMENT.md`
 
 ## 10. API Surface (Current)
 
@@ -267,7 +270,7 @@ Chaos tests:
 
 Current limitations:
 - Some stateful behavior is still partially in-memory (for example wagering state and local idempotency response caches), with PostgreSQL used as the durable source where wired.
-- JWT issuance/refresh/rotation is implemented, but production secret lifecycle still needs KMS/HSM-backed key management and rotation automation.
+- JWT issuance/refresh/rotation is implemented, including live keyset-file reload hooks, but full KMS/HSM operational integration and key custody controls remain deployment responsibilities.
 - Promotions/UI services are implemented at baseline CRUD/reportability level, but advanced campaign policy engines and full device-side interaction workflows are still pending.
 
 Recommended next steps:

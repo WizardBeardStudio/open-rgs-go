@@ -68,6 +68,7 @@ func ParseHMACKeyset(legacySecret, keysetSpec, activeKID string) (HMACKeyset, er
 }
 
 type JWTSigner struct {
+	mu        sync.RWMutex
 	activeKID string
 	keys      map[string][]byte
 }
@@ -83,7 +84,7 @@ func NewJWTSigner(secret string) *JWTSigner {
 func NewJWTSignerWithKeyset(keyset HMACKeyset) *JWTSigner {
 	return &JWTSigner{
 		activeKID: keyset.ActiveKID,
-		keys:      keyset.Keys,
+		keys:      copyKeyMap(keyset.Keys),
 	}
 }
 
@@ -91,7 +92,10 @@ func (s *JWTSigner) SignActor(actor Actor, now time.Time, ttl time.Duration) (st
 	if s == nil {
 		return "", time.Time{}, errors.New("signer is nil")
 	}
-	secret := s.keys[s.activeKID]
+	s.mu.RLock()
+	activeKID := s.activeKID
+	secret := s.keys[activeKID]
+	s.mu.RUnlock()
 	if len(secret) == 0 {
 		return "", time.Time{}, errors.New("active jwt key is missing")
 	}
@@ -103,7 +107,7 @@ func (s *JWTSigner) SignActor(actor Actor, now time.Time, ttl time.Duration) (st
 		"exp":        expiresAt.Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	token.Header["kid"] = s.activeKID
+	token.Header["kid"] = activeKID
 	signed, err := token.SignedString(secret)
 	if err != nil {
 		return "", time.Time{}, err
@@ -111,7 +115,22 @@ func (s *JWTSigner) SignActor(actor Actor, now time.Time, ttl time.Duration) (st
 	return signed, expiresAt, nil
 }
 
+func (s *JWTSigner) SetKeyset(keyset HMACKeyset) error {
+	if s == nil {
+		return errors.New("signer is nil")
+	}
+	if _, ok := keyset.Keys[keyset.ActiveKID]; !ok {
+		return errors.New("active key not present in keyset")
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.activeKID = keyset.ActiveKID
+	s.keys = copyKeyMap(keyset.Keys)
+	return nil
+}
+
 type JWTVerifier struct {
+	mu        sync.RWMutex
 	activeKID string
 	keys      map[string][]byte
 }
@@ -125,10 +144,14 @@ func NewJWTVerifier(secret string) *JWTVerifier {
 }
 
 func NewJWTVerifierWithKeyset(keyset HMACKeyset) *JWTVerifier {
-	return &JWTVerifier{activeKID: keyset.ActiveKID, keys: keyset.Keys}
+	return &JWTVerifier{activeKID: keyset.ActiveKID, keys: copyKeyMap(keyset.Keys)}
 }
 
 func (v *JWTVerifier) ParseActor(tokenString string) (Actor, error) {
+	v.mu.RLock()
+	activeKID := v.activeKID
+	keys := copyKeyMap(v.keys)
+	v.mu.RUnlock()
 	claims := jwt.MapClaims{}
 	tok, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (any, error) {
 		if token.Method != jwt.SigningMethodHS256 {
@@ -136,9 +159,9 @@ func (v *JWTVerifier) ParseActor(tokenString string) (Actor, error) {
 		}
 		kid, _ := token.Header["kid"].(string)
 		if strings.TrimSpace(kid) == "" {
-			kid = v.activeKID
+			kid = activeKID
 		}
-		secret := v.keys[kid]
+		secret := keys[kid]
 		if len(secret) == 0 {
 			return nil, errors.New("unknown key id")
 		}
@@ -154,6 +177,33 @@ func (v *JWTVerifier) ParseActor(tokenString string) (Actor, error) {
 		return Actor{}, errors.New("missing actor claims")
 	}
 	return Actor{ID: sub, Type: actorType}, nil
+}
+
+func (v *JWTVerifier) SetKeyset(keyset HMACKeyset) error {
+	if v == nil {
+		return errors.New("verifier is nil")
+	}
+	if _, ok := keyset.Keys[keyset.ActiveKID]; !ok {
+		return errors.New("active key not present in keyset")
+	}
+	v.mu.Lock()
+	defer v.mu.Unlock()
+	v.activeKID = keyset.ActiveKID
+	v.keys = copyKeyMap(keyset.Keys)
+	return nil
+}
+
+func copyKeyMap(in map[string][]byte) map[string][]byte {
+	out := make(map[string][]byte, len(in))
+	for k, v := range in {
+		if v == nil {
+			continue
+		}
+		cp := make([]byte, len(v))
+		copy(cp, v)
+		out[k] = cp
+	}
+	return out
 }
 
 func WithActor(ctx context.Context, actor Actor) context.Context {
