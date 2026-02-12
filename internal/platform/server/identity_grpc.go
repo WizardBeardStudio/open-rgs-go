@@ -45,6 +45,8 @@ type IdentityService struct {
 	lockoutTTL      time.Duration
 	maxFailures     int
 	db              *sql.DB
+	onLogin         func(result rgsv1.ResultCode, actorType rgsv1.ActorType)
+	onLockout       func(actorType rgsv1.ActorType)
 }
 
 func NewIdentityService(clk clock.Clock, signingSecret string, accessTTL, refreshTTL time.Duration, db ...*sql.DB) *IdentityService {
@@ -83,6 +85,16 @@ func (s *IdentityService) SetJWTSigner(signer *platformauth.JWTSigner) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.tokenSigner = signer
+}
+
+func (s *IdentityService) SetMetricsObservers(onLogin func(result rgsv1.ResultCode, actorType rgsv1.ActorType), onLockout func(actorType rgsv1.ActorType)) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.onLogin = onLogin
+	s.onLockout = onLockout
 }
 
 func (s *IdentityService) SetLockoutPolicy(maxFailures int, ttl time.Duration) {
@@ -242,8 +254,12 @@ WHERE actor_id = $1 AND actor_type = $2
 	return until.After(s.now()), nil
 }
 
-func (s *IdentityService) recordFailure(ctx context.Context, actorID string, actorType rgsv1.ActorType) error {
+func (s *IdentityService) recordFailure(ctx context.Context, actorID string, actorType rgsv1.ActorType) (bool, error) {
 	if s.db != nil {
+		wasLocked, err := s.checkLocked(ctx, actorID, actorType)
+		if err != nil {
+			return false, err
+		}
 		const q = `
 INSERT INTO identity_lockouts (actor_id, actor_type, failed_attempts, locked_until)
 VALUES ($1, $2, 1, NULL)
@@ -256,15 +272,24 @@ SET failed_attempts = identity_lockouts.failed_attempts + 1,
     END,
     updated_at = NOW()
 `
-		_, err := s.db.ExecContext(ctx, q, actorID, actorType.String(), s.maxFailures, int(s.lockoutTTL.Seconds()))
-		return err
+		_, err = s.db.ExecContext(ctx, q, actorID, actorType.String(), s.maxFailures, int(s.lockoutTTL.Seconds()))
+		if err != nil {
+			return false, err
+		}
+		nowLocked, err := s.checkLocked(ctx, actorID, actorType)
+		if err != nil {
+			return false, err
+		}
+		return !wasLocked && nowLocked, nil
 	}
 	k := lockKey(actorID, actorType)
+	beforeLocked := s.lockedUntil[k].After(s.now())
 	s.failedAttempts[k]++
 	if s.failedAttempts[k] >= s.maxFailures {
 		s.lockedUntil[k] = s.now().Add(s.lockoutTTL)
 	}
-	return nil
+	afterLocked := s.lockedUntil[k].After(s.now())
+	return !beforeLocked && afterLocked, nil
 }
 
 func (s *IdentityService) resetFailures(ctx context.Context, actorID string, actorType rgsv1.ActorType) error {
@@ -350,6 +375,9 @@ func (s *IdentityService) Login(ctx context.Context, req *rgsv1.LoginRequest) (*
 			meta = req.Meta
 		}
 		s.auditDenied(meta, "", "identity_login", reason)
+		if s.onLogin != nil {
+			s.onLogin(rgsv1.ResultCode_RESULT_CODE_DENIED, rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED)
+		}
 		return &rgsv1.LoginResponse{Meta: s.responseMeta(meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	secret := ""
@@ -365,32 +393,56 @@ func (s *IdentityService) Login(ctx context.Context, req *rgsv1.LoginRequest) (*
 
 	locked, err := s.checkLocked(ctx, actorID, actorType)
 	if err != nil {
+		if s.onLogin != nil {
+			s.onLogin(rgsv1.ResultCode_RESULT_CODE_ERROR, actorType)
+		}
 		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
 	if locked {
 		s.auditDenied(req.Meta, "", "identity_login", "account locked")
+		if s.onLogin != nil {
+			s.onLogin(rgsv1.ResultCode_RESULT_CODE_DENIED, actorType)
+		}
 		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "account locked")}, nil
 	}
 
 	okCreds, err := s.verifyCredentials(ctx, actorID, actorType, secret)
 	if err != nil {
+		if s.onLogin != nil {
+			s.onLogin(rgsv1.ResultCode_RESULT_CODE_ERROR, actorType)
+		}
 		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
 	if !okCreds {
-		_ = s.recordFailure(ctx, actorID, actorType)
+		lockedNow, _ := s.recordFailure(ctx, actorID, actorType)
+		if lockedNow && s.onLockout != nil {
+			s.onLockout(actorType)
+		}
 		s.auditDenied(req.Meta, "", "identity_login", "invalid credentials")
+		if s.onLogin != nil {
+			s.onLogin(rgsv1.ResultCode_RESULT_CODE_DENIED, actorType)
+		}
 		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "invalid credentials")}, nil
 	}
 	if err := s.resetFailures(ctx, actorID, actorType); err != nil {
+		if s.onLogin != nil {
+			s.onLogin(rgsv1.ResultCode_RESULT_CODE_ERROR, actorType)
+		}
 		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
 
 	accessToken, accessExpiry, err := s.signAccessToken(actorID, actorType)
 	if err != nil {
+		if s.onLogin != nil {
+			s.onLogin(rgsv1.ResultCode_RESULT_CODE_ERROR, actorType)
+		}
 		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "failed to sign token")}, nil
 	}
 	refreshToken, err := randomToken()
 	if err != nil {
+		if s.onLogin != nil {
+			s.onLogin(rgsv1.ResultCode_RESULT_CODE_ERROR, actorType)
+		}
 		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "failed to create refresh token")}, nil
 	}
 
@@ -403,6 +455,9 @@ func (s *IdentityService) Login(ctx context.Context, req *rgsv1.LoginRequest) (*
 	}
 	if s.db != nil {
 		if err := s.storeSession(ctx, sess); err != nil {
+			if s.onLogin != nil {
+				s.onLogin(rgsv1.ResultCode_RESULT_CODE_ERROR, actorType)
+			}
 			return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
 	} else {
@@ -414,7 +469,13 @@ func (s *IdentityService) Login(ctx context.Context, req *rgsv1.LoginRequest) (*
 		} else {
 			delete(s.refreshSessions, refreshToken)
 		}
+		if s.onLogin != nil {
+			s.onLogin(rgsv1.ResultCode_RESULT_CODE_ERROR, actorType)
+		}
 		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+	if s.onLogin != nil {
+		s.onLogin(rgsv1.ResultCode_RESULT_CODE_OK, actorType)
 	}
 
 	return &rgsv1.LoginResponse{

@@ -117,8 +117,10 @@ func main() {
 	rgsv1.RegisterIdentityServiceServer(grpcServer, identitySvc)
 	ledgerSvc := server.NewLedgerService(clk, db)
 	metrics := server.NewMetrics()
+	identitySvc.SetMetricsObservers(metrics.ObserveIdentityLogin, metrics.ObserveIdentityLockoutActivation)
 	if db != nil {
 		metrics.RefreshLedgerIdempotencyCounts(ctx, db)
+		metrics.RefreshIdentitySessionCounts(ctx, db)
 		if metricsRefreshInterval > 0 {
 			go func() {
 				ticker := time.NewTicker(metricsRefreshInterval)
@@ -129,6 +131,7 @@ func main() {
 						return
 					case <-ticker.C:
 						metrics.RefreshLedgerIdempotencyCounts(ctx, db)
+						metrics.RefreshIdentitySessionCounts(ctx, db)
 					}
 				}
 			}()
@@ -139,6 +142,7 @@ func main() {
 		metrics.ObserveLedgerIdempotencyCleanup(deleted, err)
 		if db != nil {
 			metrics.RefreshLedgerIdempotencyCounts(ctx, db)
+			metrics.RefreshIdentitySessionCounts(ctx, db)
 		}
 	})
 	rgsv1.RegisterLedgerServiceServer(grpcServer, ledgerSvc)
