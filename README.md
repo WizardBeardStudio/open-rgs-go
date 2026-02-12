@@ -111,6 +111,7 @@ Schema files are ordered and additive:
 - `000010_wagering_persistence.*` wagering durability and idempotency persistence
 - `000011_download_signature_verification.*` signed download activation verification fields/indexes
 - `000012_identity_login_rate_limits.*` DB-backed login rate limiting state
+- `000013_ledger_eft_lockouts.*` DB-backed EFT fraud lockout state
 
 Apply migrations with your preferred migration runner in numeric order.
 

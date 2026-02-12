@@ -262,9 +262,9 @@ This document maps implemented requirements to standards references, code locati
 
 ## RGS-0709 Identity Rate Limiting and EFT Fraud Lockout Controls
 - Standard refs: GLI-21 unauthorized access prevention and GLI-16 EFT fraud lockout guidance
-- Code: `internal/platform/server/identity_grpc.go`, `internal/platform/server/ledger_grpc.go`, `internal/platform/server/postgres_integration_test.go`, `migrations/000012_identity_login_rate_limits.up.sql`, `cmd/rgsd/main.go`, `README.md`
+- Code: `internal/platform/server/identity_grpc.go`, `internal/platform/server/ledger_grpc.go`, `internal/platform/server/postgres_integration_test.go`, `migrations/000012_identity_login_rate_limits.up.sql`, `migrations/000013_ledger_eft_lockouts.up.sql`, `cmd/rgsd/main.go`, `README.md`
 - Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/postgres_integration_test.go`, `internal/platform/server/ledger_grpc_test.go`
-- Status: implemented (configurable login rate limits with DB-backed rate-limit state in PostgreSQL mode and configurable EFT fraud lockouts for repeated denied cashless operations)
+- Status: implemented (configurable login rate limits with DB-backed rate-limit state in PostgreSQL mode and configurable EFT fraud lockouts with DB-backed lockout state in PostgreSQL mode)
 
 ## RGS-0710 Signed Download Activation Verification
 - Standard refs: GLI-21/GLI-13 download activation and change integrity expectations

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -44,6 +45,7 @@ TRUNCATE TABLE
   ledger_postings,
   ledger_transactions,
   ledger_accounts,
+  ledger_eft_lockouts,
   ledger_idempotency_keys,
   ingestion_buffer_audit,
   ingestion_buffers,
@@ -192,6 +194,53 @@ VALUES
 	}
 	if count != 1 {
 		t.Fatalf("expected 1 remaining idempotency key, got=%d", count)
+	}
+}
+
+func TestPostgresLedgerEFTLockoutPersistsAcrossRestart(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 11, 0, 0, 0, time.UTC)}
+	ctx := context.Background()
+
+	svcA := NewLedgerService(clk, db)
+	svcA.SetEFTFraudPolicy(2, 15*time.Minute)
+	_, err := svcA.Deposit(ctx, &rgsv1.DepositRequest{
+		Meta:      meta("acct-eft-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-eft-dep-1"),
+		AccountId: "acct-eft-1",
+		Amount:    &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+	})
+	if err != nil {
+		t.Fatalf("seed deposit err: %v", err)
+	}
+
+	for i := 0; i < 2; i++ {
+		resp, err := svcA.Withdraw(ctx, &rgsv1.WithdrawRequest{
+			Meta:      meta("acct-eft-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-eft-wd-"+strconv.Itoa(i+1)),
+			AccountId: "acct-eft-1",
+			Amount:    &rgsv1.Money{AmountMinor: 200, Currency: "USD"},
+		})
+		if err != nil {
+			t.Fatalf("withdraw %d err: %v", i+1, err)
+		}
+		if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+			t.Fatalf("expected denied withdraw %d, got=%v", i+1, resp.Meta.GetResultCode())
+		}
+	}
+
+	svcB := NewLedgerService(clk, db)
+	svcB.SetEFTFraudPolicy(2, 15*time.Minute)
+	locked, err := svcB.Withdraw(ctx, &rgsv1.WithdrawRequest{
+		Meta:      meta("acct-eft-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-eft-wd-3"),
+		AccountId: "acct-eft-1",
+		Amount:    &rgsv1.Money{AmountMinor: 50, Currency: "USD"},
+	})
+	if err != nil {
+		t.Fatalf("withdraw after restart err: %v", err)
+	}
+	if locked.Meta.GetDenialReason() != "eft account locked" {
+		t.Fatalf("expected eft account locked denial, got=%q", locked.Meta.GetDenialReason())
 	}
 }
 

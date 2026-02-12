@@ -321,26 +321,72 @@ func (s *LedgerService) auditDenied(meta *rgsv1.RequestMeta, objectType, objectI
 	_ = s.appendAudit(meta, objectType, objectID, action, []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 }
 
-func (s *LedgerService) eftLocked(accountID string) bool {
-	return s.eftFraudLockedUntil[accountID].After(s.now())
+func (s *LedgerService) eftLocked(ctx context.Context, accountID string) (bool, error) {
+	if s.dbEnabled() {
+		const q = `
+SELECT COALESCE(locked_until, to_timestamp(0))
+FROM ledger_eft_lockouts
+WHERE account_id = $1
+`
+		var lockedUntil time.Time
+		err := s.db.QueryRowContext(ctx, q, accountID).Scan(&lockedUntil)
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		return lockedUntil.After(s.now()), nil
+	}
+	return s.eftFraudLockedUntil[accountID].After(s.now()), nil
 }
 
-func (s *LedgerService) recordEFTFailure(accountID string) {
+func (s *LedgerService) recordEFTFailure(ctx context.Context, accountID string) error {
 	if accountID == "" {
-		return
+		return nil
+	}
+	if s.dbEnabled() {
+		const q = `
+INSERT INTO ledger_eft_lockouts (account_id, failed_attempts, locked_until, updated_at)
+VALUES ($1, 1, NULL, NOW())
+ON CONFLICT (account_id) DO UPDATE
+SET failed_attempts = ledger_eft_lockouts.failed_attempts + 1,
+    locked_until = CASE
+      WHEN ledger_eft_lockouts.failed_attempts + 1 >= $2
+      THEN NOW() + ($3 || ' seconds')::interval
+      ELSE ledger_eft_lockouts.locked_until
+    END,
+    updated_at = NOW()
+`
+		_, err := s.db.ExecContext(ctx, q, accountID, s.eftFraudMaxFailures, int(s.eftFraudLockoutTTL.Seconds()))
+		return err
 	}
 	s.eftFraudFailures[accountID]++
 	if s.eftFraudFailures[accountID] >= s.eftFraudMaxFailures {
 		s.eftFraudLockedUntil[accountID] = s.now().Add(s.eftFraudLockoutTTL)
 	}
+	return nil
 }
 
-func (s *LedgerService) resetEFTFailures(accountID string) {
+func (s *LedgerService) resetEFTFailures(ctx context.Context, accountID string) error {
 	if accountID == "" {
-		return
+		return nil
+	}
+	if s.dbEnabled() {
+		const q = `
+INSERT INTO ledger_eft_lockouts (account_id, failed_attempts, locked_until, updated_at)
+VALUES ($1, 0, NULL, NOW())
+ON CONFLICT (account_id) DO UPDATE
+SET failed_attempts = 0,
+    locked_until = NULL,
+    updated_at = NOW()
+`
+		_, err := s.db.ExecContext(ctx, q, accountID)
+		return err
 	}
 	delete(s.eftFraudFailures, accountID)
 	delete(s.eftFraudLockedUntil, accountID)
+	return nil
 }
 
 func (s *LedgerService) AuditEvents() []audit.Event {
@@ -402,7 +448,11 @@ func (s *LedgerService) Deposit(ctx context.Context, req *rgsv1.DepositRequest) 
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.eftLocked(req.AccountId) {
+	locked, err := s.eftLocked(ctx, req.AccountId)
+	if err != nil {
+		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if locked {
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "deposit", "eft account locked")
 		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "eft account locked")}, nil
 	}
@@ -510,7 +560,7 @@ func (s *LedgerService) Deposit(ctx context.Context, req *rgsv1.DepositRequest) 
 	if s.useInMemoryIdempotencyCache() {
 		s.depositByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.DepositResponse)
 	}
-	s.resetEFTFailures(req.AccountId)
+	_ = s.resetEFTFailures(ctx, req.AccountId)
 	return resp, nil
 }
 
@@ -532,7 +582,11 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.eftLocked(req.AccountId) {
+	locked, err := s.eftLocked(ctx, req.AccountId)
+	if err != nil {
+		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if locked {
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "withdraw", "eft account locked")
 		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "eft account locked")}, nil
 	}
@@ -592,7 +646,9 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "currency mismatch for account")}, nil
 	}
 	if acct.available < req.Amount.AmountMinor {
-		s.recordEFTFailure(req.AccountId)
+		if err := s.recordEFTFailure(ctx, req.AccountId); err != nil {
+			return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "withdraw", "insufficient balance")
 		resp := &rgsv1.WithdrawResponse{
 			Meta:             s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "insufficient balance"),
@@ -654,7 +710,7 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 	if s.useInMemoryIdempotencyCache() {
 		s.withdrawByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.WithdrawResponse)
 	}
-	s.resetEFTFailures(req.AccountId)
+	_ = s.resetEFTFailures(ctx, req.AccountId)
 	return resp, nil
 }
 
@@ -676,7 +732,11 @@ func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.Transfe
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.eftLocked(req.AccountId) {
+	locked, err := s.eftLocked(ctx, req.AccountId)
+	if err != nil {
+		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if locked {
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "transfer_to_device", "eft account locked")
 		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "eft account locked")}, nil
 	}
@@ -713,7 +773,9 @@ func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.Transfe
 	}
 
 	if acct.available <= 0 {
-		s.recordEFTFailure(req.AccountId)
+		if err := s.recordEFTFailure(ctx, req.AccountId); err != nil {
+			return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "transfer_to_device", "insufficient balance")
 		resp := &rgsv1.TransferToDeviceResponse{
 			Meta:              s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "insufficient balance"),
@@ -789,7 +851,7 @@ func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.Transfe
 	if s.useInMemoryIdempotencyCache() {
 		s.toDeviceByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToDeviceResponse)
 	}
-	s.resetEFTFailures(req.AccountId)
+	_ = s.resetEFTFailures(ctx, req.AccountId)
 	return resp, nil
 }
 
@@ -811,7 +873,11 @@ func (s *LedgerService) TransferToAccount(ctx context.Context, req *rgsv1.Transf
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.eftLocked(req.AccountId) {
+	locked, err := s.eftLocked(ctx, req.AccountId)
+	if err != nil {
+		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if locked {
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "transfer_to_account", "eft account locked")
 		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "eft account locked")}, nil
 	}
@@ -918,7 +984,7 @@ func (s *LedgerService) TransferToAccount(ctx context.Context, req *rgsv1.Transf
 	if s.useInMemoryIdempotencyCache() {
 		s.toAccountByIdempotency[key], _ = proto.Clone(resp).(*rgsv1.TransferToAccountResponse)
 	}
-	s.resetEFTFailures(req.AccountId)
+	_ = s.resetEFTFailures(ctx, req.AccountId)
 	return resp, nil
 }
 
