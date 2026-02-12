@@ -544,6 +544,118 @@ func (x *RefreshTokenResponse) GetToken() *SessionToken {
 	return nil
 }
 
+type SetCredentialRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *RequestMeta           `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Actor         *Actor                 `protobuf:"bytes,2,opt,name=actor,proto3" json:"actor,omitempty"`
+	Secret        string                 `protobuf:"bytes,3,opt,name=secret,proto3" json:"secret,omitempty"`
+	Reason        string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetCredentialRequest) Reset() {
+	*x = SetCredentialRequest{}
+	mi := &file_rgs_v1_identity_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetCredentialRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetCredentialRequest) ProtoMessage() {}
+
+func (x *SetCredentialRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_identity_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetCredentialRequest.ProtoReflect.Descriptor instead.
+func (*SetCredentialRequest) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_identity_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *SetCredentialRequest) GetMeta() *RequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *SetCredentialRequest) GetActor() *Actor {
+	if x != nil {
+		return x.Actor
+	}
+	return nil
+}
+
+func (x *SetCredentialRequest) GetSecret() string {
+	if x != nil {
+		return x.Secret
+	}
+	return ""
+}
+
+func (x *SetCredentialRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type SetCredentialResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *ResponseMeta          `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetCredentialResponse) Reset() {
+	*x = SetCredentialResponse{}
+	mi := &file_rgs_v1_identity_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetCredentialResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetCredentialResponse) ProtoMessage() {}
+
+func (x *SetCredentialResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_identity_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetCredentialResponse.ProtoReflect.Descriptor instead.
+func (*SetCredentialResponse) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_identity_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SetCredentialResponse) GetMeta() *ResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
 var File_rgs_v1_identity_proto protoreflect.FileDescriptor
 
 const file_rgs_v1_identity_proto_rawDesc = "" +
@@ -582,11 +694,19 @@ const file_rgs_v1_identity_proto_rawDesc = "" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"l\n" +
 	"\x14RefreshTokenResponse\x12(\n" +
 	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta\x12*\n" +
-	"\x05token\x18\x02 \x01(\v2\x14.rgs.v1.SessionTokenR\x05token2\xab\x02\n" +
+	"\x05token\x18\x02 \x01(\v2\x14.rgs.v1.SessionTokenR\x05token\"\x94\x01\n" +
+	"\x14SetCredentialRequest\x12'\n" +
+	"\x04meta\x18\x01 \x01(\v2\x13.rgs.v1.RequestMetaR\x04meta\x12#\n" +
+	"\x05actor\x18\x02 \x01(\v2\r.rgs.v1.ActorR\x05actor\x12\x16\n" +
+	"\x06secret\x18\x03 \x01(\tR\x06secret\x12\x16\n" +
+	"\x06reason\x18\x04 \x01(\tR\x06reason\"A\n" +
+	"\x15SetCredentialResponse\x12(\n" +
+	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta2\xa2\x03\n" +
 	"\x0fIdentityService\x12S\n" +
 	"\x05Login\x12\x14.rgs.v1.LoginRequest\x1a\x15.rgs.v1.LoginResponse\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/v1/identity/login\x12W\n" +
 	"\x06Logout\x12\x15.rgs.v1.LogoutRequest\x1a\x16.rgs.v1.LogoutResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/v1/identity/logout\x12j\n" +
-	"\fRefreshToken\x12\x1b.rgs.v1.RefreshTokenRequest\x1a\x1c.rgs.v1.RefreshTokenResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/v1/identity/refreshB\x89\x01\n" +
+	"\fRefreshToken\x12\x1b.rgs.v1.RefreshTokenRequest\x1a\x1c.rgs.v1.RefreshTokenResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/v1/identity/refresh\x12u\n" +
+	"\rSetCredential\x12\x1c.rgs.v1.SetCredentialRequest\x1a\x1d.rgs.v1.SetCredentialResponse\"'\x82\xd3\xe4\x93\x02!:\x01*\"\x1c/v1/identity/credentials:setB\x89\x01\n" +
 	"\n" +
 	"com.rgs.v1B\rIdentityProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
@@ -602,44 +722,51 @@ func file_rgs_v1_identity_proto_rawDescGZIP() []byte {
 	return file_rgs_v1_identity_proto_rawDescData
 }
 
-var file_rgs_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_rgs_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_rgs_v1_identity_proto_goTypes = []any{
-	(*PlayerCredentials)(nil),    // 0: rgs.v1.PlayerCredentials
-	(*OperatorCredentials)(nil),  // 1: rgs.v1.OperatorCredentials
-	(*SessionToken)(nil),         // 2: rgs.v1.SessionToken
-	(*LoginRequest)(nil),         // 3: rgs.v1.LoginRequest
-	(*LoginResponse)(nil),        // 4: rgs.v1.LoginResponse
-	(*LogoutRequest)(nil),        // 5: rgs.v1.LogoutRequest
-	(*LogoutResponse)(nil),       // 6: rgs.v1.LogoutResponse
-	(*RefreshTokenRequest)(nil),  // 7: rgs.v1.RefreshTokenRequest
-	(*RefreshTokenResponse)(nil), // 8: rgs.v1.RefreshTokenResponse
-	(*Actor)(nil),                // 9: rgs.v1.Actor
-	(*RequestMeta)(nil),          // 10: rgs.v1.RequestMeta
-	(*ResponseMeta)(nil),         // 11: rgs.v1.ResponseMeta
+	(*PlayerCredentials)(nil),     // 0: rgs.v1.PlayerCredentials
+	(*OperatorCredentials)(nil),   // 1: rgs.v1.OperatorCredentials
+	(*SessionToken)(nil),          // 2: rgs.v1.SessionToken
+	(*LoginRequest)(nil),          // 3: rgs.v1.LoginRequest
+	(*LoginResponse)(nil),         // 4: rgs.v1.LoginResponse
+	(*LogoutRequest)(nil),         // 5: rgs.v1.LogoutRequest
+	(*LogoutResponse)(nil),        // 6: rgs.v1.LogoutResponse
+	(*RefreshTokenRequest)(nil),   // 7: rgs.v1.RefreshTokenRequest
+	(*RefreshTokenResponse)(nil),  // 8: rgs.v1.RefreshTokenResponse
+	(*SetCredentialRequest)(nil),  // 9: rgs.v1.SetCredentialRequest
+	(*SetCredentialResponse)(nil), // 10: rgs.v1.SetCredentialResponse
+	(*Actor)(nil),                 // 11: rgs.v1.Actor
+	(*RequestMeta)(nil),           // 12: rgs.v1.RequestMeta
+	(*ResponseMeta)(nil),          // 13: rgs.v1.ResponseMeta
 }
 var file_rgs_v1_identity_proto_depIdxs = []int32{
-	9,  // 0: rgs.v1.SessionToken.actor:type_name -> rgs.v1.Actor
-	10, // 1: rgs.v1.LoginRequest.meta:type_name -> rgs.v1.RequestMeta
+	11, // 0: rgs.v1.SessionToken.actor:type_name -> rgs.v1.Actor
+	12, // 1: rgs.v1.LoginRequest.meta:type_name -> rgs.v1.RequestMeta
 	0,  // 2: rgs.v1.LoginRequest.player:type_name -> rgs.v1.PlayerCredentials
 	1,  // 3: rgs.v1.LoginRequest.operator:type_name -> rgs.v1.OperatorCredentials
-	11, // 4: rgs.v1.LoginResponse.meta:type_name -> rgs.v1.ResponseMeta
+	13, // 4: rgs.v1.LoginResponse.meta:type_name -> rgs.v1.ResponseMeta
 	2,  // 5: rgs.v1.LoginResponse.token:type_name -> rgs.v1.SessionToken
-	10, // 6: rgs.v1.LogoutRequest.meta:type_name -> rgs.v1.RequestMeta
-	11, // 7: rgs.v1.LogoutResponse.meta:type_name -> rgs.v1.ResponseMeta
-	10, // 8: rgs.v1.RefreshTokenRequest.meta:type_name -> rgs.v1.RequestMeta
-	11, // 9: rgs.v1.RefreshTokenResponse.meta:type_name -> rgs.v1.ResponseMeta
+	12, // 6: rgs.v1.LogoutRequest.meta:type_name -> rgs.v1.RequestMeta
+	13, // 7: rgs.v1.LogoutResponse.meta:type_name -> rgs.v1.ResponseMeta
+	12, // 8: rgs.v1.RefreshTokenRequest.meta:type_name -> rgs.v1.RequestMeta
+	13, // 9: rgs.v1.RefreshTokenResponse.meta:type_name -> rgs.v1.ResponseMeta
 	2,  // 10: rgs.v1.RefreshTokenResponse.token:type_name -> rgs.v1.SessionToken
-	3,  // 11: rgs.v1.IdentityService.Login:input_type -> rgs.v1.LoginRequest
-	5,  // 12: rgs.v1.IdentityService.Logout:input_type -> rgs.v1.LogoutRequest
-	7,  // 13: rgs.v1.IdentityService.RefreshToken:input_type -> rgs.v1.RefreshTokenRequest
-	4,  // 14: rgs.v1.IdentityService.Login:output_type -> rgs.v1.LoginResponse
-	6,  // 15: rgs.v1.IdentityService.Logout:output_type -> rgs.v1.LogoutResponse
-	8,  // 16: rgs.v1.IdentityService.RefreshToken:output_type -> rgs.v1.RefreshTokenResponse
-	14, // [14:17] is the sub-list for method output_type
-	11, // [11:14] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	12, // 11: rgs.v1.SetCredentialRequest.meta:type_name -> rgs.v1.RequestMeta
+	11, // 12: rgs.v1.SetCredentialRequest.actor:type_name -> rgs.v1.Actor
+	13, // 13: rgs.v1.SetCredentialResponse.meta:type_name -> rgs.v1.ResponseMeta
+	3,  // 14: rgs.v1.IdentityService.Login:input_type -> rgs.v1.LoginRequest
+	5,  // 15: rgs.v1.IdentityService.Logout:input_type -> rgs.v1.LogoutRequest
+	7,  // 16: rgs.v1.IdentityService.RefreshToken:input_type -> rgs.v1.RefreshTokenRequest
+	9,  // 17: rgs.v1.IdentityService.SetCredential:input_type -> rgs.v1.SetCredentialRequest
+	4,  // 18: rgs.v1.IdentityService.Login:output_type -> rgs.v1.LoginResponse
+	6,  // 19: rgs.v1.IdentityService.Logout:output_type -> rgs.v1.LogoutResponse
+	8,  // 20: rgs.v1.IdentityService.RefreshToken:output_type -> rgs.v1.RefreshTokenResponse
+	10, // 21: rgs.v1.IdentityService.SetCredential:output_type -> rgs.v1.SetCredentialResponse
+	18, // [18:22] is the sub-list for method output_type
+	14, // [14:18] is the sub-list for method input_type
+	14, // [14:14] is the sub-list for extension type_name
+	14, // [14:14] is the sub-list for extension extendee
+	0,  // [0:14] is the sub-list for field type_name
 }
 
 func init() { file_rgs_v1_identity_proto_init() }
@@ -658,7 +785,7 @@ func file_rgs_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rgs_v1_identity_proto_rawDesc), len(file_rgs_v1_identity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -60,6 +60,14 @@ go test ./internal/platform/server -run '^TestPostgres'
 make test-integration-postgres
 ```
 
+Credential hash tool:
+
+```bash
+go run ./cmd/credhash "plain-secret"
+# or
+printf 'plain-secret\n' | go run ./cmd/credhash
+```
+
 Format + tests:
 
 ```bash
@@ -197,6 +205,10 @@ Services and methods are defined in:
 
 Cross-cutting request/response metadata is in `api/proto/rgs/v1/common.proto`.
 
+Identity admin flow:
+- `IdentityService/SetCredential` is restricted to operator/service actors and requires DB persistence.
+- Use it to create/rotate player and operator credentials.
+
 ## 11. Operations Runbook
 
 ### Deployment Checklist
@@ -204,6 +216,12 @@ Cross-cutting request/response metadata is in `api/proto/rgs/v1/common.proto`.
 - Set `RGS_TRUSTED_CIDRS` for your trusted ops network.
 - Verify `/healthz` and `/v1/system/status`.
 - Run smoke checks for at least one endpoint per major service.
+
+### Identity Credential Seeding
+- Apply `000006_identity_auth.*` migrations.
+- Generate a bcrypt hash:
+  - `go run ./cmd/credhash "initial-password"`
+- Insert bootstrap credentials directly (one-time) or call `POST /v1/identity/credentials:set` as an authenticated operator/service.
 
 ### Post-Deploy Validation
 - `go test ./...` in CI is green.

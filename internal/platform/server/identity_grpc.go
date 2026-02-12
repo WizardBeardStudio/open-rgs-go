@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"strconv"
 	"sync"
 	"time"
@@ -16,6 +17,8 @@ import (
 	"github.com/wizardbeard/open-rgs-go/internal/platform/clock"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var errIdentityPersistenceRequired = errors.New("identity persistence required")
 
 type identitySession struct {
 	refreshToken string
@@ -308,6 +311,22 @@ WHERE actor_id = $1 AND actor_type = $2
 	return false, nil
 }
 
+func (s *IdentityService) setCredentialHash(ctx context.Context, actorID string, actorType rgsv1.ActorType, hash string) error {
+	if s.db == nil {
+		return errIdentityPersistenceRequired
+	}
+	const q = `
+INSERT INTO identity_credentials (actor_id, actor_type, password_hash, status, updated_at)
+VALUES ($1, $2, $3, 'active', NOW())
+ON CONFLICT (actor_id, actor_type) DO UPDATE
+SET password_hash = EXCLUDED.password_hash,
+    status = 'active',
+    updated_at = NOW()
+`
+	_, err := s.db.ExecContext(ctx, q, actorID, actorType.String(), hash)
+	return err
+}
+
 func (s *IdentityService) Login(ctx context.Context, req *rgsv1.LoginRequest) (*rgsv1.LoginResponse, error) {
 	actorID, actorType, reason := s.validateLoginRequest(req)
 	if reason != "" {
@@ -469,4 +488,47 @@ func (s *IdentityService) RefreshToken(_ context.Context, req *rgsv1.RefreshToke
 			Actor:        &rgsv1.Actor{ActorId: sess.actorID, ActorType: sess.actorType},
 		},
 	}, nil
+}
+
+func (s *IdentityService) SetCredential(ctx context.Context, req *rgsv1.SetCredentialRequest) (*rgsv1.SetCredentialResponse, error) {
+	if req == nil || req.Actor == nil || req.Actor.ActorId == "" || req.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED || req.Secret == "" {
+		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor and secret are required")}, nil
+	}
+	authActor, reason := resolveActor(ctx, req.Meta)
+	if reason != "" {
+		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	if authActor.ActorType != rgsv1.ActorType_ACTOR_TYPE_OPERATOR && authActor.ActorType != rgsv1.ActorType_ACTOR_TYPE_SERVICE {
+		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "unauthorized actor type")}, nil
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(req.Secret), bcrypt.DefaultCost)
+	if err != nil {
+		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "failed to hash secret")}, nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if err := s.setCredentialHash(ctx, req.Actor.ActorId, req.Actor.ActorType, string(hash)); err != nil {
+		if errors.Is(err, errIdentityPersistenceRequired) {
+			return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "credential management requires database")}, nil
+		}
+		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+
+	if err := s.resetFailures(ctx, req.Actor.ActorId, req.Actor.ActorType); err != nil {
+		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+
+	after := map[string]any{
+		"actor_id":   req.Actor.ActorId,
+		"actor_type": req.Actor.ActorType.String(),
+		"status":     "active",
+	}
+	afterJSON, _ := json.Marshal(after)
+	if err := s.appendAudit(req.Meta, req.Actor.ActorId, "identity_set_credential", []byte(`{}`), afterJSON, audit.ResultSuccess, req.Reason); err != nil {
+		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+	return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, "")}, nil
 }

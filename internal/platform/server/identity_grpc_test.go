@@ -2,9 +2,12 @@ package server
 
 import (
 	"context"
+	"database/sql"
+	"os"
 	"testing"
 	"time"
 
+	_ "github.com/jackc/pgx/v5/stdlib"
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
 	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 )
@@ -144,5 +147,67 @@ func TestResolveActorContextMismatchDenied(t *testing.T) {
 	_, reason := resolveActor(ctx, meta("player-meta", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""))
 	if reason != "actor mismatch with token" {
 		t.Fatalf("expected actor mismatch, got=%q", reason)
+	}
+}
+
+func TestIdentitySetCredentialRequiresDatabase(t *testing.T) {
+	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 13, 30, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "op-1", Type: "ACTOR_TYPE_OPERATOR"})
+	resp, err := svc.SetCredential(ctx, &rgsv1.SetCredentialRequest{
+		Meta:   meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:  &rgsv1.Actor{ActorId: "player-new", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		Secret: "new-pin",
+		Reason: "bootstrap",
+	})
+	if err != nil {
+		t.Fatalf("set credential err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied without database, got=%v", resp.Meta.GetResultCode())
+	}
+}
+
+func TestIdentitySetCredentialAndLoginWithDatabase(t *testing.T) {
+	dsn := os.Getenv("RGS_TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("set RGS_TEST_DATABASE_URL to run postgres integration tests")
+	}
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	defer db.Close()
+	if _, err := db.Exec(`
+TRUNCATE TABLE identity_lockouts, identity_credentials RESTART IDENTITY CASCADE
+`); err != nil {
+		t.Fatalf("truncate identity tables: %v", err)
+	}
+
+	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 13, 40, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour, db)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "op-1", Type: "ACTOR_TYPE_OPERATOR"})
+	setResp, err := svc.SetCredential(ctx, &rgsv1.SetCredentialRequest{
+		Meta:   meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:  &rgsv1.Actor{ActorId: "player-db-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		Secret: "player-secret",
+		Reason: "seed test user",
+	})
+	if err != nil {
+		t.Fatalf("set credential err: %v", err)
+	}
+	if setResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected set credential ok, got=%v", setResp.Meta.GetResultCode())
+	}
+
+	loginResp, err := svc.Login(context.Background(), &rgsv1.LoginRequest{
+		Meta: meta("player-db-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Credentials: &rgsv1.LoginRequest_Player{
+			Player: &rgsv1.PlayerCredentials{PlayerId: "player-db-1", Pin: "player-secret"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("login err: %v", err)
+	}
+	if loginResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected login ok, got=%v", loginResp.Meta.GetResultCode())
 	}
 }

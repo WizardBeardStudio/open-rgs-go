@@ -19,9 +19,10 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	IdentityService_Login_FullMethodName        = "/rgs.v1.IdentityService/Login"
-	IdentityService_Logout_FullMethodName       = "/rgs.v1.IdentityService/Logout"
-	IdentityService_RefreshToken_FullMethodName = "/rgs.v1.IdentityService/RefreshToken"
+	IdentityService_Login_FullMethodName         = "/rgs.v1.IdentityService/Login"
+	IdentityService_Logout_FullMethodName        = "/rgs.v1.IdentityService/Logout"
+	IdentityService_RefreshToken_FullMethodName  = "/rgs.v1.IdentityService/RefreshToken"
+	IdentityService_SetCredential_FullMethodName = "/rgs.v1.IdentityService/SetCredential"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -31,6 +32,7 @@ type IdentityServiceClient interface {
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*RefreshTokenResponse, error)
+	SetCredential(ctx context.Context, in *SetCredentialRequest, opts ...grpc.CallOption) (*SetCredentialResponse, error)
 }
 
 type identityServiceClient struct {
@@ -71,6 +73,16 @@ func (c *identityServiceClient) RefreshToken(ctx context.Context, in *RefreshTok
 	return out, nil
 }
 
+func (c *identityServiceClient) SetCredential(ctx context.Context, in *SetCredentialRequest, opts ...grpc.CallOption) (*SetCredentialResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetCredentialResponse)
+	err := c.cc.Invoke(ctx, IdentityService_SetCredential_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IdentityServiceServer is the server API for IdentityService service.
 // All implementations must embed UnimplementedIdentityServiceServer
 // for forward compatibility.
@@ -78,6 +90,7 @@ type IdentityServiceServer interface {
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	RefreshToken(context.Context, *RefreshTokenRequest) (*RefreshTokenResponse, error)
+	SetCredential(context.Context, *SetCredentialRequest) (*SetCredentialResponse, error)
 	mustEmbedUnimplementedIdentityServiceServer()
 }
 
@@ -96,6 +109,9 @@ func (UnimplementedIdentityServiceServer) Logout(context.Context, *LogoutRequest
 }
 func (UnimplementedIdentityServiceServer) RefreshToken(context.Context, *RefreshTokenRequest) (*RefreshTokenResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RefreshToken not implemented")
+}
+func (UnimplementedIdentityServiceServer) SetCredential(context.Context, *SetCredentialRequest) (*SetCredentialResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetCredential not implemented")
 }
 func (UnimplementedIdentityServiceServer) mustEmbedUnimplementedIdentityServiceServer() {}
 func (UnimplementedIdentityServiceServer) testEmbeddedByValue()                         {}
@@ -172,6 +188,24 @@ func _IdentityService_RefreshToken_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_SetCredential_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetCredentialRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).SetCredential(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_SetCredential_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).SetCredential(ctx, req.(*SetCredentialRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IdentityService_ServiceDesc is the grpc.ServiceDesc for IdentityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +224,10 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RefreshToken",
 			Handler:    _IdentityService_RefreshToken_Handler,
+		},
+		{
+			MethodName: "SetCredential",
+			Handler:    _IdentityService_SetCredential_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

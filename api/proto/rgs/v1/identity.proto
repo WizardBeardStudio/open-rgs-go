@@ -46,6 +46,13 @@ service IdentityService {
       body: "*"
     };
   }
+
+  rpc SetCredential(SetCredentialRequest) returns (SetCredentialResponse) {
+    option (google.api.http) = {
+      post: "/v1/identity/credentials:set"
+      body: "*"
+    };
+  }
 }
 
 message LoginRequest {
@@ -78,4 +85,15 @@ message RefreshTokenRequest {
 message RefreshTokenResponse {
   ResponseMeta meta = 1;
   SessionToken token = 2;
+}
+
+message SetCredentialRequest {
+  RequestMeta meta = 1;
+  Actor actor = 2;
+  string secret = 3;
+  string reason = 4;
+}
+
+message SetCredentialResponse {
+  ResponseMeta meta = 1;
 }

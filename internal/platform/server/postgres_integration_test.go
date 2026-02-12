@@ -49,6 +49,8 @@ TRUNCATE TABLE
   config_current_values,
   config_changes,
   download_library_changes,
+  identity_lockouts,
+  identity_credentials,
   audit_events
 RESTART IDENTITY CASCADE
 `
