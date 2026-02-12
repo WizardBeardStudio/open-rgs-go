@@ -231,12 +231,53 @@ ORDER BY account_id ASC
 	return out, totalAvailable, totalPending, nil
 }
 
+func (s *ReportingService) fetchAccountTransactionStatementRows(now time.Time, interval rgsv1.ReportInterval) ([]map[string]any, error) {
+	if s == nil || s.db == nil {
+		return nil, nil
+	}
+	start := intervalStart(now, interval)
+	const q = `
+SELECT transaction_id, account_id, transaction_type::text, amount_minor, currency_code, occurred_at, authorization_id
+FROM ledger_transactions
+WHERE ($1::timestamptz IS NULL OR occurred_at >= $1::timestamptz)
+  AND ($2::timestamptz IS NULL OR occurred_at <= $2::timestamptz)
+ORDER BY occurred_at ASC, transaction_id ASC
+`
+	rows, err := s.db.QueryContext(context.Background(), q, nullTime(start), now.UTC())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make([]map[string]any, 0)
+	for rows.Next() {
+		var txID, accountID, txType, currency, authID string
+		var amount int64
+		var occurredAt time.Time
+		if err := rows.Scan(&txID, &accountID, &txType, &amount, &currency, &occurredAt, &authID); err != nil {
+			return nil, err
+		}
+		out = append(out, map[string]any{
+			"transaction_id":   txID,
+			"account_id":       accountID,
+			"transaction_type": ledgerTxTypeFromDB(txType).String(),
+			"amount_minor":     amount,
+			"currency":         currency,
+			"occurred_at":      occurredAt.UTC().Format(time.RFC3339Nano),
+			"authorization_id": authID,
+		})
+	}
+	return out, rows.Err()
+}
+
 func reportTypeToDB(v rgsv1.ReportType) string {
 	switch v {
 	case rgsv1.ReportType_REPORT_TYPE_SIGNIFICANT_EVENTS_ALTERATIONS:
 		return "significant_events_alterations"
 	case rgsv1.ReportType_REPORT_TYPE_CASHLESS_LIABILITY_SUMMARY:
 		return "cashless_liability_summary"
+	case rgsv1.ReportType_REPORT_TYPE_ACCOUNT_TRANSACTION_STATEMENT:
+		return "account_transaction_statement"
 	default:
 		return "unknown"
 	}
@@ -248,6 +289,8 @@ func reportTypeFromDB(v string) rgsv1.ReportType {
 		return rgsv1.ReportType_REPORT_TYPE_SIGNIFICANT_EVENTS_ALTERATIONS
 	case "cashless_liability_summary":
 		return rgsv1.ReportType_REPORT_TYPE_CASHLESS_LIABILITY_SUMMARY
+	case "account_transaction_statement":
+		return rgsv1.ReportType_REPORT_TYPE_ACCOUNT_TRANSACTION_STATEMENT
 	default:
 		return rgsv1.ReportType_REPORT_TYPE_UNSPECIFIED
 	}

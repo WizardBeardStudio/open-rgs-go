@@ -169,6 +169,8 @@ func reportTitle(t rgsv1.ReportType) string {
 		return "System Significant Events and Alterations"
 	case rgsv1.ReportType_REPORT_TYPE_CASHLESS_LIABILITY_SUMMARY:
 		return "Cashless Liability Summary"
+	case rgsv1.ReportType_REPORT_TYPE_ACCOUNT_TRANSACTION_STATEMENT:
+		return "Account Transaction Statement"
 	default:
 		return "Unknown Report"
 	}
@@ -285,6 +287,64 @@ func (s *ReportingService) buildCashlessLiabilityPayload(interval rgsv1.ReportIn
 	return payload, noActivity
 }
 
+func (s *ReportingService) buildAccountTransactionStatementPayload(interval rgsv1.ReportInterval, operatorID string) (map[string]any, bool) {
+	now := s.now()
+	rows := make([]map[string]any, 0)
+
+	if s.db != nil {
+		dbRows, err := s.fetchAccountTransactionStatementRows(now, interval)
+		if err == nil {
+			rows = dbRows
+		}
+	}
+
+	if len(rows) == 0 && s.Ledger != nil {
+		s.Ledger.mu.Lock()
+		accountIDs := make([]string, 0, len(s.Ledger.transactionsByAcct))
+		for accountID := range s.Ledger.transactionsByAcct {
+			accountIDs = append(accountIDs, accountID)
+		}
+		sort.Strings(accountIDs)
+		for _, accountID := range accountIDs {
+			txs := s.Ledger.transactionsByAcct[accountID]
+			for _, tx := range txs {
+				if tx == nil {
+					continue
+				}
+				ts := parseTS(tx.OccurredAt)
+				if !inInterval(ts, interval, now) {
+					continue
+				}
+				rows = append(rows, map[string]any{
+					"transaction_id":   tx.TransactionId,
+					"account_id":       tx.AccountId,
+					"transaction_type": tx.TransactionType.String(),
+					"amount_minor":     tx.Amount.GetAmountMinor(),
+					"currency":         tx.Amount.GetCurrency(),
+					"occurred_at":      tx.OccurredAt,
+					"authorization_id": tx.AuthorizationId,
+				})
+			}
+		}
+		s.Ledger.mu.Unlock()
+	}
+
+	noActivity := len(rows) == 0
+	payload := map[string]any{
+		"operator_id":       operatorID,
+		"report_title":      reportTitle(rgsv1.ReportType_REPORT_TYPE_ACCOUNT_TRANSACTION_STATEMENT),
+		"selected_interval": interval.String(),
+		"generated_at":      now.Format(time.RFC3339Nano),
+		"no_activity":       noActivity,
+		"row_count":         len(rows),
+		"rows":              rows,
+	}
+	if noActivity {
+		payload["note"] = "No Activity"
+	}
+	return payload, noActivity
+}
+
 func payloadToCSV(reportType rgsv1.ReportType, payload map[string]any) ([]byte, error) {
 	buf := &bytes.Buffer{}
 	w := csv.NewWriter(buf)
@@ -311,6 +371,17 @@ func payloadToCSV(reportType rgsv1.ReportType, payload map[string]any) ([]byte, 
 		}
 		for _, r := range rows {
 			_ = w.Write([]string{toString(r["account_id"]), toString(r["currency"]), toString(r["available"]), toString(r["pending"]), toString(r["total"])})
+		}
+	case rgsv1.ReportType_REPORT_TYPE_ACCOUNT_TRANSACTION_STATEMENT:
+		_ = w.Write([]string{"operator_id", "report_title", "selected_interval", "generated_at"})
+		_ = w.Write([]string{toString(payload["operator_id"]), toString(payload["report_title"]), toString(payload["selected_interval"]), toString(payload["generated_at"])})
+		_ = w.Write([]string{"transaction_id", "account_id", "transaction_type", "amount_minor", "currency", "occurred_at", "authorization_id"})
+		rows, _ := payload["rows"].([]map[string]any)
+		if len(rows) == 0 {
+			_ = w.Write([]string{"No Activity"})
+		}
+		for _, r := range rows {
+			_ = w.Write([]string{toString(r["transaction_id"]), toString(r["account_id"]), toString(r["transaction_type"]), toString(r["amount_minor"]), toString(r["currency"]), toString(r["occurred_at"]), toString(r["authorization_id"])})
 		}
 	default:
 		_ = w.Write([]string{"No Activity"})
@@ -367,6 +438,8 @@ func (s *ReportingService) GenerateReport(ctx context.Context, req *rgsv1.Genera
 		payload, noActivity = s.buildSignificantEventsPayload(req.Interval, req.OperatorId)
 	case rgsv1.ReportType_REPORT_TYPE_CASHLESS_LIABILITY_SUMMARY:
 		payload, noActivity = s.buildCashlessLiabilityPayload(req.Interval, req.OperatorId)
+	case rgsv1.ReportType_REPORT_TYPE_ACCOUNT_TRANSACTION_STATEMENT:
+		payload, noActivity = s.buildAccountTransactionStatementPayload(req.Interval, req.OperatorId)
 	default:
 		return &rgsv1.GenerateReportResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "unsupported report_type")}, nil
 	}

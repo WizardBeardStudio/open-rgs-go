@@ -28,6 +28,7 @@ const (
 	ReportType_REPORT_TYPE_UNSPECIFIED                    ReportType = 0
 	ReportType_REPORT_TYPE_SIGNIFICANT_EVENTS_ALTERATIONS ReportType = 1
 	ReportType_REPORT_TYPE_CASHLESS_LIABILITY_SUMMARY     ReportType = 2
+	ReportType_REPORT_TYPE_ACCOUNT_TRANSACTION_STATEMENT  ReportType = 3
 )
 
 // Enum value maps for ReportType.
@@ -36,11 +37,13 @@ var (
 		0: "REPORT_TYPE_UNSPECIFIED",
 		1: "REPORT_TYPE_SIGNIFICANT_EVENTS_ALTERATIONS",
 		2: "REPORT_TYPE_CASHLESS_LIABILITY_SUMMARY",
+		3: "REPORT_TYPE_ACCOUNT_TRANSACTION_STATEMENT",
 	}
 	ReportType_value = map[string]int32{
 		"REPORT_TYPE_UNSPECIFIED":                    0,
 		"REPORT_TYPE_SIGNIFICANT_EVENTS_ALTERATIONS": 1,
 		"REPORT_TYPE_CASHLESS_LIABILITY_SUMMARY":     2,
+		"REPORT_TYPE_ACCOUNT_TRANSACTION_STATEMENT":  3,
 	}
 )
 
@@ -758,12 +761,13 @@ const file_rgs_v1_reporting_proto_rawDesc = "" +
 	"\x14GetReportRunResponse\x12(\n" +
 	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta\x120\n" +
 	"\n" +
-	"report_run\x18\x02 \x01(\v2\x11.rgs.v1.ReportRunR\treportRun*\x85\x01\n" +
+	"report_run\x18\x02 \x01(\v2\x11.rgs.v1.ReportRunR\treportRun*\xb4\x01\n" +
 	"\n" +
 	"ReportType\x12\x1b\n" +
 	"\x17REPORT_TYPE_UNSPECIFIED\x10\x00\x12.\n" +
 	"*REPORT_TYPE_SIGNIFICANT_EVENTS_ALTERATIONS\x10\x01\x12*\n" +
-	"&REPORT_TYPE_CASHLESS_LIABILITY_SUMMARY\x10\x02*\x95\x01\n" +
+	"&REPORT_TYPE_CASHLESS_LIABILITY_SUMMARY\x10\x02\x12-\n" +
+	")REPORT_TYPE_ACCOUNT_TRANSACTION_STATEMENT\x10\x03*\x95\x01\n" +
 	"\x0eReportInterval\x12\x1f\n" +
 	"\x1bREPORT_INTERVAL_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13REPORT_INTERVAL_DTD\x10\x01\x12\x17\n" +

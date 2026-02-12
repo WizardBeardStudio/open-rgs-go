@@ -45,6 +45,26 @@
   - total available
   - total pending
 
+### 3) Account Transaction Statement
+- `report_type`: `REPORT_TYPE_ACCOUNT_TRANSACTION_STATEMENT`
+- Purpose: regulator/operator account-level transaction statement across ledger activity.
+- Primary source data:
+  - `ledger_transactions`
+- Required metadata fields in every output:
+  - operator identifier
+  - report title
+  - selected interval
+  - generated timestamp
+  - no activity indicator
+- Output fields (row-level):
+  - transaction id
+  - account id
+  - transaction type
+  - amount (minor units)
+  - currency
+  - occurred at
+  - authorization id
+
 ## Supported Intervals
 - `REPORT_INTERVAL_DTD`
 - `REPORT_INTERVAL_MTD`

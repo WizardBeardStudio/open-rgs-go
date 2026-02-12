@@ -123,3 +123,43 @@ func TestReportingListAndGetRun(t *testing.T) {
 		t.Fatalf("report run id mismatch")
 	}
 }
+
+func TestReportingGenerateAccountTransactionStatement(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 12, 16, 0, 0, 0, time.UTC)}
+	ledgerSvc := NewLedgerService(clk)
+	reportingSvc := NewReportingService(clk, ledgerSvc, NewEventsService(clk))
+	ctx := context.Background()
+
+	_, err := ledgerSvc.Deposit(ctx, &rgsv1.DepositRequest{
+		Meta:      meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-rpt-tx-1"),
+		AccountId: "player-1",
+		Amount:    &rgsv1.Money{AmountMinor: 500, Currency: "USD"},
+	})
+	if err != nil {
+		t.Fatalf("deposit err: %v", err)
+	}
+
+	resp, err := reportingSvc.GenerateReport(ctx, &rgsv1.GenerateReportRequest{
+		Meta:       meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		ReportType: rgsv1.ReportType_REPORT_TYPE_ACCOUNT_TRANSACTION_STATEMENT,
+		Interval:   rgsv1.ReportInterval_REPORT_INTERVAL_DTD,
+		Format:     rgsv1.ReportFormat_REPORT_FORMAT_JSON,
+		OperatorId: "casino-1",
+	})
+	if err != nil {
+		t.Fatalf("generate report err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected ok result, got=%v", resp.Meta.GetResultCode())
+	}
+
+	var payload struct {
+		RowCount int `json:"row_count"`
+	}
+	if err := json.Unmarshal(resp.ReportRun.Content, &payload); err != nil {
+		t.Fatalf("unmarshal report content: %v", err)
+	}
+	if payload.RowCount != 1 {
+		t.Fatalf("expected one transaction row, got=%d", payload.RowCount)
+	}
+}
