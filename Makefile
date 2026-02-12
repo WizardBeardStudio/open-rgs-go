@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: all fmt test test-integration-postgres lint proto generate-tools dr-drill perf-qual failover-evidence keyset-evidence soak-qual soak-qual-db soak-qual-matrix
+.PHONY: all fmt test test-integration-postgres lint proto generate-tools dr-drill perf-qual failover-evidence keyset-evidence audit-chain-evidence soak-qual soak-qual-db soak-qual-matrix
 
 all: fmt test
 
@@ -44,6 +44,15 @@ keyset-evidence:
 	RGS_KEYSET_EVENT_ID=$${RGS_KEYSET_EVENT_ID:-} \
 	RGS_KEYSET_PREVIOUS_SUMMARY_FILE=$${RGS_KEYSET_PREVIOUS_SUMMARY_FILE:-} \
 	./scripts/keyset_rotation_evidence.sh
+
+audit-chain-evidence:
+	RGS_AUDIT_VERIFY_URL=$${RGS_AUDIT_VERIFY_URL:-http://127.0.0.1:8080/v1/audit/chain:verify} \
+	RGS_AUDIT_BEARER_TOKEN=$${RGS_AUDIT_BEARER_TOKEN:?set RGS_AUDIT_BEARER_TOKEN} \
+	RGS_AUDIT_CHAIN_EVENT_ID=$${RGS_AUDIT_CHAIN_EVENT_ID:-} \
+	RGS_AUDIT_CHAIN_WORKDIR=$${RGS_AUDIT_CHAIN_WORKDIR:-} \
+	RGS_AUDIT_PARTITION_DAY=$${RGS_AUDIT_PARTITION_DAY:-} \
+	RGS_AUDIT_OPERATOR_ID=$${RGS_AUDIT_OPERATOR_ID:-op-evidence} \
+	./scripts/audit_chain_evidence.sh
 
 soak-qual:
 	RGS_SOAK_RUNS=$${RGS_SOAK_RUNS:-3} \

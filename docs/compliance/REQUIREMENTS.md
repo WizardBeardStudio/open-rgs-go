@@ -319,3 +319,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `api/proto/rgs/v1/audit.proto`, `internal/platform/server/audit_postgres.go`, `internal/platform/server/audit_grpc.go`, `internal/platform/server/ledger_grpc.go`, `internal/platform/server/wagering_grpc.go`, `internal/platform/server/identity_grpc.go`, `internal/platform/server/registry_grpc.go`, `internal/platform/server/events_grpc.go`, `internal/platform/server/reporting_grpc.go`, `internal/platform/server/config_grpc.go`, `internal/platform/server/extensions_grpc.go`, `internal/platform/server/sessions_grpc.go`, `internal/platform/server/remote_access.go`, `cmd/rgsd/main.go`
 - Tests: `internal/platform/server/audit_grpc_test.go`, `internal/platform/server/postgres_integration_test.go` (`TestPostgresAuditChainVerificationPassesForPersistedEvents`, `TestPostgresAuditChainVerificationDetectsTamper`, `TestPostgresAuditServiceVerifyAuditChain`)
 - Status: implemented (DB-enabled core services and remote-access outcomes persist audit appends to `audit_events` with hash chaining semantics, `AuditService/ListAuditEvents` reads DB-backed records when configured, and `AuditService/VerifyAuditChain` provides an explicit regulator/operator verification API that detects tamper/mismatch conditions)
+
+## RGS-0719 Audit Chain Verification Evidence Automation
+- Standard refs: GLI-13 audit immutability verification and regulator evidence expectations
+- Code: `scripts/audit_chain_evidence.sh`, `docs/deployment/AUDIT_CHAIN_VERIFICATION.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`, `docs/compliance/GO_LIVE_CHECKLIST.md`
+- Tests: `go test ./...` release-gate execution
+- Status: implemented (repeatable API-driven artifact capture for partition-scoped audit-chain verification)

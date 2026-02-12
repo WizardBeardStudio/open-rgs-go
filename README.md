@@ -223,6 +223,7 @@ Deployment guidance:
 - `docs/deployment/PERFORMANCE_QUALIFICATION.md`
 - `docs/deployment/FAILOVER_DRILLS.md`
 - `docs/deployment/LOAD_SOAK_QUALIFICATION.md`
+- `docs/deployment/AUDIT_CHAIN_VERIFICATION.md`
 
 ## 10. API Surface (Current)
 

@@ -44,13 +44,19 @@ Release metadata:
   - Backup artifact successfully created
   - Restore drill completed in isolated target
   - Data integrity spot checks passed post-restore
+  - Audit chain verification API run passes for selected partition day
 - Evidence:
   - `make dr-drill` artifacts:
     - `open_rgs_go.backup`
     - `manifest.txt`
     - `critical_table_counts.csv`
     - `restore_status.txt`
+  - `make audit-chain-evidence` artifacts:
+    - `request.json`
+    - `response.json`
+    - `summary.json`
   - `docs/deployment/DR_DRILLS.md` execution record
+  - `docs/deployment/AUDIT_CHAIN_VERIFICATION.md` execution record
 
 ## Gate 4: Failover and Partition Recovery Proven
 - Owner: Platform/SRE
