@@ -212,6 +212,7 @@ func main() {
 	reportingSvc.SetDisableInMemoryCache(strictProductionMode)
 	rgsv1.RegisterReportingServiceServer(grpcServer, reportingSvc)
 	configSvc := server.NewConfigService(clk, db)
+	configSvc.SetDisableInMemoryCache(strictProductionMode)
 	configSvc.SetDownloadSignatureKeys(parseKeyValueSecrets(downloadSigningKeysSpec))
 	rgsv1.RegisterConfigServiceServer(grpcServer, configSvc)
 	promotionsSvc := server.NewPromotionsService(clk, db)

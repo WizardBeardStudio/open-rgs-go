@@ -33,12 +33,13 @@ type ConfigService struct {
 
 	currentValues map[string]string
 
-	downloadEntries map[string]*rgsv1.DownloadLibraryEntry
-	downloadOrder   []string
-	nextEntryID     int64
-	nextAuditID     int64
-	db              *sql.DB
-	downloadSigKeys map[string][]byte
+	downloadEntries      map[string]*rgsv1.DownloadLibraryEntry
+	downloadOrder        []string
+	nextEntryID          int64
+	nextAuditID          int64
+	db                   *sql.DB
+	downloadSigKeys      map[string][]byte
+	disableInMemoryCache bool
 }
 
 func NewConfigService(clk clock.Clock, db ...*sql.DB) *ConfigService {
@@ -55,6 +56,15 @@ func NewConfigService(clk clock.Clock, db ...*sql.DB) *ConfigService {
 		downloadSigKeys: make(map[string][]byte),
 		db:              handle,
 	}
+}
+
+func (s *ConfigService) SetDisableInMemoryCache(disable bool) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.disableInMemoryCache = disable
 }
 
 func (s *ConfigService) SetDownloadSignatureKeys(keys map[string][]byte) {
@@ -232,8 +242,10 @@ func (s *ConfigService) ProposeConfigChange(ctx context.Context, req *rgsv1.Prop
 		return &rgsv1.ProposeConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
 
-	s.changes[id] = change
-	s.changeOrder = append(s.changeOrder, id)
+	if !s.disableInMemoryCache {
+		s.changes[id] = change
+		s.changeOrder = append(s.changeOrder, id)
+	}
 	return &rgsv1.ProposeConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Change: cloneChange(change)}, nil
 }
 
@@ -255,7 +267,7 @@ func (s *ConfigService) ApproveConfigChange(ctx context.Context, req *rgsv1.Appr
 		if err != nil {
 			return &rgsv1.ApproveConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
-		if change != nil {
+		if change != nil && !s.disableInMemoryCache {
 			s.changes[req.ChangeId] = change
 		}
 	}
@@ -299,7 +311,7 @@ func (s *ConfigService) ApplyConfigChange(ctx context.Context, req *rgsv1.ApplyC
 		if err != nil {
 			return &rgsv1.ApplyConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
-		if change != nil {
+		if change != nil && !s.disableInMemoryCache {
 			s.changes[req.ChangeId] = change
 		}
 	}
@@ -314,7 +326,9 @@ func (s *ConfigService) ApplyConfigChange(ctx context.Context, req *rgsv1.ApplyC
 	change.Status = rgsv1.ConfigChangeStatus_CONFIG_CHANGE_STATUS_APPLIED
 	change.AppliedBy = req.Meta.Actor.ActorId
 	change.AppliedAt = s.now().Format(time.RFC3339Nano)
-	s.currentValues[keyFor(change.ConfigNamespace, change.ConfigKey)] = change.ProposedValue
+	if !s.disableInMemoryCache {
+		s.currentValues[keyFor(change.ConfigNamespace, change.ConfigKey)] = change.ProposedValue
+	}
 	after, _ := json.Marshal(change)
 	if err := s.appendAudit(req.Meta, "config_change", change.ChangeId, "apply_config_change", before, after, audit.ResultSuccess, req.Reason); err != nil {
 		return &rgsv1.ApplyConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
@@ -433,8 +447,10 @@ func (s *ConfigService) RecordDownloadLibraryChange(ctx context.Context, req *rg
 		return &rgsv1.RecordDownloadLibraryChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
 
-	s.downloadEntries[entry.EntryId] = entry
-	s.downloadOrder = append(s.downloadOrder, entry.EntryId)
+	if !s.disableInMemoryCache {
+		s.downloadEntries[entry.EntryId] = entry
+		s.downloadOrder = append(s.downloadOrder, entry.EntryId)
+	}
 
 	return &rgsv1.RecordDownloadLibraryChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Entry: cloneDownload(entry)}, nil
 }

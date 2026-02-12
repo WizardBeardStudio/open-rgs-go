@@ -108,6 +108,39 @@ func TestDownloadLibraryChangeRecording(t *testing.T) {
 	}
 }
 
+func TestConfigDisableInMemoryCacheSkipsDownloadMirror(t *testing.T) {
+	svc := NewConfigService(ledgerFixedClock{now: time.Date(2026, 2, 12, 17, 15, 0, 0, time.UTC)})
+	svc.SetDisableInMemoryCache(true)
+	ctx := context.Background()
+
+	resp, err := svc.RecordDownloadLibraryChange(ctx, &rgsv1.RecordDownloadLibraryChangeRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Entry: &rgsv1.DownloadLibraryEntry{
+			LibraryPath: "games/slot-b.pkg",
+			Checksum:    "xyz789",
+			Version:     "1.0.0",
+			Action:      rgsv1.DownloadAction_DOWNLOAD_ACTION_ADD,
+			Reason:      "initial load",
+		},
+	})
+	if err != nil {
+		t.Fatalf("record entry err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("record entry result not ok: %v", resp.Meta.GetResultCode())
+	}
+
+	list, err := svc.ListDownloadLibraryChanges(ctx, &rgsv1.ListDownloadLibraryChangesRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+	})
+	if err != nil {
+		t.Fatalf("list download changes err: %v", err)
+	}
+	if len(list.Entries) != 0 {
+		t.Fatalf("expected no in-memory download entries when cache disabled, got=%d", len(list.Entries))
+	}
+}
+
 func TestConfigDeniedForPlayer(t *testing.T) {
 	svc := NewConfigService(ledgerFixedClock{now: time.Date(2026, 2, 12, 17, 20, 0, 0, time.UTC)})
 	resp, err := svc.ProposeConfigChange(context.Background(), &rgsv1.ProposeConfigChangeRequest{

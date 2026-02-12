@@ -114,7 +114,7 @@ This document maps implemented requirements to standards references, code locati
 - Standard refs: GLI-13 significant system alterations and change-control expectations
 - Code: `api/proto/rgs/v1/config.proto`, `internal/platform/server/config_grpc.go`, `migrations/000005_config_change_control.up.sql`
 - Tests: `internal/platform/server/config_grpc_test.go`
-- Status: implemented
+- Status: implemented (strict production disables in-memory config/download mirrors and relies on DB-backed retrieval paths)
 
 ## RGS-0402 Immutable Configuration History and Current Value Tracking
 - Standard refs: GLI-13 alteration history/reportability requirements
