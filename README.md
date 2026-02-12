@@ -282,6 +282,6 @@ Current limitations:
 - Promotions/UI services are implemented at baseline CRUD/reportability level, but advanced campaign policy engines and full device-side interaction workflows are still pending.
 
 Recommended next steps:
-- Add service-level SLO/error-budget alerting for gRPC/REST result-code failure rates and latency percentiles.
 - Implement KMS/HSM-backed signing key management and automated rotation runbooks.
-- Add antifraud/rate-limiting controls and signed package verification for download library activation.
+- Add DR automation for backup/restore verification and periodic failover evidence capture.
+- Expand production performance qualification (load/soak with SLO acceptance thresholds) and attach release evidence artifacts.

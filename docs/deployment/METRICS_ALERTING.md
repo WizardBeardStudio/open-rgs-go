@@ -17,6 +17,10 @@ From `GET /metrics`:
 - `open_rgs_identity_sessions_active`
 - `open_rgs_identity_sessions_revoked`
 - `open_rgs_identity_sessions_expired`
+- `open_rgs_rpc_requests_total{transport,method,result}`
+- `open_rgs_rpc_request_duration_seconds_bucket{transport,method,le}`
+- `open_rgs_http_requests_total{method,path,status}`
+- `open_rgs_http_request_duration_seconds_bucket{method,path,le}`
 
 ## Recommended Baseline Alerts
 
@@ -99,6 +103,29 @@ open_rgs_identity_sessions_expired > 5000
 
 Suggested severity: `warning`.
 
+### 8) gRPC/REST failure-rate spike
+
+Trigger when non-OK responses exceed expected baseline:
+
+```promql
+sum(increase(open_rgs_rpc_requests_total{result!="OK"}[15m]))
+/
+clamp_min(sum(increase(open_rgs_rpc_requests_total[15m])), 1)
+> 0.05
+```
+
+Suggested severity: `warning` (raise to `critical` if sustained and above your error budget).
+
+### 9) gRPC/REST latency SLO breach
+
+Trigger when p95 latency exceeds objective:
+
+```promql
+histogram_quantile(0.95, sum(rate(open_rgs_rpc_request_duration_seconds_bucket[5m])) by (transport, method, le)) > 0.5
+```
+
+Suggested severity: `warning` (set threshold per endpoint SLOs).
+
 ## Operational Tuning Notes
 
 - If `open_rgs_ledger_idempotency_keys_expired` remains high:
@@ -113,6 +140,8 @@ Suggested severity: `warning`.
   - identity login outcomes (`ok` / `denied` / `invalid` / `error`)
   - lockout activation rate
   - active/revoked/expired session gauges
+  - per-method gRPC/REST request rate and non-OK ratio
+  - per-method gRPC/REST p95 latency
 
 ## Rule Group Example (YAML)
 

@@ -271,3 +271,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `api/proto/rgs/v1/config.proto`, `internal/platform/server/config_grpc.go`, `internal/platform/server/config_postgres.go`, `cmd/rgsd/main.go`, `migrations/000011_download_signature_verification.up.sql`, `docs/deployment/PACKAGE_SIGNING.md`
 - Tests: `internal/platform/server/config_grpc_test.go`, `cmd/rgsd/main_test.go`
 - Status: implemented (activation entries require valid signer id and package signature verification before acceptance)
+
+## RGS-0711 Service-Level Request SLO Observability
+- Standard refs: GLI-13/GLI-21 operational monitoring and security event review expectations
+- Code: `internal/platform/server/metrics.go`, `cmd/rgsd/main.go`, `docs/deployment/METRICS_ALERTING.md`
+- Tests: `internal/platform/server/metrics_observability_test.go`
+- Status: implemented (gRPC and REST request outcome/latency metrics with baseline failure-rate and latency alert guidance)

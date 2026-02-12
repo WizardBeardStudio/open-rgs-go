@@ -88,13 +88,17 @@ func main() {
 	}
 	jwtSigner := platformauth.NewJWTSignerWithKeyset(jwtKeyset)
 	jwtVerifier := platformauth.NewJWTVerifierWithKeyset(jwtKeyset)
+	metrics := server.NewMetrics()
 	grpcOpts := []grpc.ServerOption{
-		grpc.UnaryInterceptor(platformauth.UnaryJWTInterceptor(jwtVerifier, []string{
-			"/rgs.v1.SystemService/GetSystemStatus",
-			"/rgs.v1.IdentityService/Login",
-			"/rgs.v1.IdentityService/RefreshToken",
-			"/grpc.health.v1.Health/Check",
-		})),
+		grpc.ChainUnaryInterceptor(
+			server.UnaryMetricsInterceptor(metrics),
+			platformauth.UnaryJWTInterceptor(jwtVerifier, []string{
+				"/rgs.v1.SystemService/GetSystemStatus",
+				"/rgs.v1.IdentityService/Login",
+				"/rgs.v1.IdentityService/RefreshToken",
+				"/grpc.health.v1.Health/Check",
+			}),
+		),
 	}
 	if tlsCfg != nil {
 		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsCfg)))
@@ -167,7 +171,6 @@ func main() {
 	ledgerSvc := server.NewLedgerService(clk, db)
 	ledgerSvc.SetEFTFraudPolicy(eftFraudMaxFailures, eftFraudLockoutTTL)
 	ledgerSvc.SetDisableInMemoryIdempotencyCache(strictProductionMode)
-	metrics := server.NewMetrics()
 	identitySvc.SetMetricsObservers(metrics.ObserveIdentityLogin, metrics.ObserveIdentityLockoutActivation)
 	if db != nil {
 		metrics.RefreshLedgerIdempotencyCounts(ctx, db)
@@ -284,7 +287,7 @@ func main() {
 		"/v1/identity/login",
 		"/v1/identity/refresh",
 	})
-	mux.Handle("/", guard.Wrap(authenticatedGateway))
+	mux.Handle("/", guard.Wrap(server.HTTPMetricsMiddleware(metrics, authenticatedGateway)))
 	httpServer := &http.Server{Addr: httpAddr, Handler: mux, TLSConfig: tlsCfg}
 
 	go func() {
