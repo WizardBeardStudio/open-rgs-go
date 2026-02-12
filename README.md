@@ -286,5 +286,4 @@ Current limitations:
 - Promotions/UI services are implemented at baseline CRUD/reportability level, but advanced campaign policy engines and full device-side interaction workflows are still pending.
 
 Recommended next steps:
-- Implement KMS/HSM-backed signing key management and automated rotation runbooks.
 - Expand performance qualification from microbenchmarks to sustained load/soak scenarios aligned to full service-level SLOs.

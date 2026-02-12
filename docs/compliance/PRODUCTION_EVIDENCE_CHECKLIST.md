@@ -11,6 +11,7 @@ Use this checklist to assemble a regulator/operator-ready release packet.
 ## 2. Security Controls Evidence
 - TLS/mTLS runtime configuration snapshots.
 - JWT keyset configuration and active key rotation procedure.
+- `make keyset-evidence` artifact pack (`keyset.json`, `summary.json`, `fingerprint.sha256`) per rotation event.
 - Identity lockout policy settings and test results.
 - Remote admin boundary CIDR policy and denied-attempt samples.
 

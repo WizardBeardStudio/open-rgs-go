@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: all fmt test test-integration-postgres lint proto generate-tools dr-drill perf-qual failover-evidence
+.PHONY: all fmt test test-integration-postgres lint proto generate-tools dr-drill perf-qual failover-evidence keyset-evidence
 
 all: fmt test
 
@@ -37,3 +37,10 @@ failover-evidence:
 	RGS_FAILOVER_RTO_MAX_SECONDS=$${RGS_FAILOVER_RTO_MAX_SECONDS:-} \
 	RGS_FAILOVER_RPO_MAX_SECONDS=$${RGS_FAILOVER_RPO_MAX_SECONDS:-} \
 	./scripts/failover_evidence_snapshot.sh
+
+keyset-evidence:
+	RGS_JWT_KEYSET_FILE=$${RGS_JWT_KEYSET_FILE:-} \
+	RGS_JWT_KEYSET_COMMAND=$${RGS_JWT_KEYSET_COMMAND:-} \
+	RGS_KEYSET_EVENT_ID=$${RGS_KEYSET_EVENT_ID:-} \
+	RGS_KEYSET_PREVIOUS_SUMMARY_FILE=$${RGS_KEYSET_PREVIOUS_SUMMARY_FILE:-} \
+	./scripts/keyset_rotation_evidence.sh

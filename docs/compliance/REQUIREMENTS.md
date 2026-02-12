@@ -295,3 +295,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `scripts/failover_evidence_snapshot.sh`, `docs/deployment/FAILOVER_DRILLS.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
 - Tests: `go test ./...` release-gate execution
 - Status: implemented (scripted failover snapshot capture with explicit RTO/RPO computation and threshold pass/fail gate)
+
+## RGS-0715 Key Rotation Evidence Pack for External Key Custody
+- Standard refs: GLI-21 secure key lifecycle controls and GLI-13 operational auditability expectations
+- Code: `scripts/keyset_rotation_evidence.sh`, `docs/deployment/KEY_MANAGEMENT.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
+- Tests: `go test ./...` release-gate execution
+- Status: implemented (scripted keyset snapshot/fingerprint evidence with active-kid rotation-state capture)
