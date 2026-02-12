@@ -11,6 +11,10 @@ This guide describes production key management for JWT signing/verification.
 - `RGS_JWT_KEYSET_FILE=/path/to/jwt-keyset.json`
 - `RGS_JWT_KEYSET_REFRESH_INTERVAL=1m` (or lower for faster rotation convergence)
 
+3. Command-based keyset fetch (for KMS/HSM client wrappers):
+- `RGS_JWT_KEYSET_COMMAND="kms-client get-jwt-keyset --format json"`
+- `RGS_JWT_KEYSET_REFRESH_INTERVAL=1m`
+
 File format:
 
 ```json

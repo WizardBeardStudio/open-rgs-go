@@ -126,6 +126,7 @@ Environment variables:
 - `RGS_JWT_KEYSET` (optional; comma-separated `kid:secret` entries for key rotation, e.g. `old:secret1,new:secret2`)
 - `RGS_JWT_ACTIVE_KID` (default: `default`; active signing key id from `RGS_JWT_KEYSET`)
 - `RGS_JWT_KEYSET_FILE` (optional; JSON keyset file path, intended for KMS/HSM sidecar-managed key material)
+- `RGS_JWT_KEYSET_COMMAND` (optional; command that returns keyset JSON payload, for KMS/HSM client integration)
 - `RGS_JWT_KEYSET_REFRESH_INTERVAL` (default: `1m`; when `RGS_JWT_KEYSET_FILE` is set, reload cadence for live signer/verifier rotation)
 - `RGS_DOWNLOAD_SIGNING_KEYS` (optional; comma-separated `kid:secret` keys used to verify download-library activation signatures)
 - `RGS_JWT_ACCESS_TTL` (default: `15m`)

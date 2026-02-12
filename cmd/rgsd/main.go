@@ -47,6 +47,7 @@ func main() {
 	jwtKeysetSpec := envOr("RGS_JWT_KEYSET", "")
 	jwtActiveKID := envOr("RGS_JWT_ACTIVE_KID", "default")
 	jwtKeysetFile := envOr("RGS_JWT_KEYSET_FILE", "")
+	jwtKeysetCommand := envOr("RGS_JWT_KEYSET_COMMAND", "")
 	jwtKeysetRefreshInterval := mustParseDurationEnv("RGS_JWT_KEYSET_REFRESH_INTERVAL", "1m")
 	downloadSigningKeysSpec := envOr("RGS_DOWNLOAD_SIGNING_KEYS", "")
 	jwtAccessTTL := mustParseDurationEnv("RGS_JWT_ACCESS_TTL", "15m")
@@ -66,7 +67,7 @@ func main() {
 	tlsEnabled := envOr("RGS_TLS_ENABLED", "false") == "true"
 	tlsRequireClientCert := envOr("RGS_TLS_REQUIRE_CLIENT_CERT", "false") == "true"
 	strictProductionMode := mustParseBoolEnv("RGS_STRICT_PRODUCTION_MODE", version != "dev")
-	if err := validateProductionRuntime(strictProductionMode, databaseURL, tlsEnabled, jwtSigningSecret, jwtKeysetSpec, jwtKeysetFile); err != nil {
+	if err := validateProductionRuntime(strictProductionMode, databaseURL, tlsEnabled, jwtSigningSecret, jwtKeysetSpec, jwtKeysetFile, jwtKeysetCommand); err != nil {
 		log.Fatalf("invalid production runtime configuration: %v", err)
 	}
 	tlsCfg, err := server.BuildTLSConfig(server.TLSConfig{
@@ -81,7 +82,7 @@ func main() {
 		log.Fatalf("configure tls: %v", err)
 	}
 
-	jwtKeyset, keysetFingerprint, err := loadJWTKeyset(jwtSigningSecret, jwtKeysetSpec, jwtActiveKID, jwtKeysetFile)
+	jwtKeyset, keysetFingerprint, err := loadJWTKeyset(ctx, jwtSigningSecret, jwtKeysetSpec, jwtActiveKID, jwtKeysetFile, jwtKeysetCommand)
 	if err != nil {
 		log.Fatalf("load jwt keyset: %v", err)
 	}
@@ -121,7 +122,7 @@ func main() {
 	identitySvc.SetLockoutPolicy(identityLockoutMaxFailures, identityLockoutTTL)
 	identitySvc.SetLoginRateLimit(identityLoginRateLimitMaxAttempts, identityLoginRateLimitWindow)
 	identitySvc.StartSessionCleanupWorker(ctx, identitySessionCleanupInterval, identitySessionCleanupBatch, log.Printf)
-	if strings.TrimSpace(jwtKeysetFile) != "" && jwtKeysetRefreshInterval > 0 {
+	if (strings.TrimSpace(jwtKeysetFile) != "" || strings.TrimSpace(jwtKeysetCommand) != "") && jwtKeysetRefreshInterval > 0 {
 		go func() {
 			ticker := time.NewTicker(jwtKeysetRefreshInterval)
 			defer ticker.Stop()
@@ -131,7 +132,7 @@ func main() {
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					loaded, fingerprint, err := loadJWTKeyset(jwtSigningSecret, jwtKeysetSpec, jwtActiveKID, jwtKeysetFile)
+					loaded, fingerprint, err := loadJWTKeyset(ctx, jwtSigningSecret, jwtKeysetSpec, jwtActiveKID, jwtKeysetFile, jwtKeysetCommand)
 					if err != nil {
 						log.Printf("jwt keyset refresh failed: %v", err)
 						continue
@@ -360,7 +361,7 @@ func mustParseBoolEnv(key string, def bool) bool {
 	}
 }
 
-func validateProductionRuntime(strict bool, databaseURL string, tlsEnabled bool, jwtSigningSecret string, jwtKeysetSpec string, jwtKeysetFile string) error {
+func validateProductionRuntime(strict bool, databaseURL string, tlsEnabled bool, jwtSigningSecret string, jwtKeysetSpec string, jwtKeysetFile string, jwtKeysetCommand string) error {
 	if !strict {
 		return nil
 	}
@@ -370,15 +371,22 @@ func validateProductionRuntime(strict bool, databaseURL string, tlsEnabled bool,
 	if !tlsEnabled {
 		return fmt.Errorf("RGS_TLS_ENABLED must be true when RGS_STRICT_PRODUCTION_MODE=true")
 	}
-	if strings.TrimSpace(jwtKeysetSpec) == "" && strings.TrimSpace(jwtKeysetFile) == "" && jwtSigningSecret == "dev-insecure-change-me" {
+	if strings.TrimSpace(jwtKeysetSpec) == "" && strings.TrimSpace(jwtKeysetFile) == "" && strings.TrimSpace(jwtKeysetCommand) == "" && jwtSigningSecret == "dev-insecure-change-me" {
 		return fmt.Errorf("default JWT signing secret is not allowed when RGS_STRICT_PRODUCTION_MODE=true")
 	}
 	return nil
 }
 
-func loadJWTKeyset(jwtSigningSecret string, jwtKeysetSpec string, jwtActiveKID string, jwtKeysetFile string) (platformauth.HMACKeyset, string, error) {
+func loadJWTKeyset(ctx context.Context, jwtSigningSecret string, jwtKeysetSpec string, jwtActiveKID string, jwtKeysetFile string, jwtKeysetCommand string) (platformauth.HMACKeyset, string, error) {
 	if strings.TrimSpace(jwtKeysetFile) != "" {
 		keyset, err := platformauth.LoadHMACKeysetFile(jwtKeysetFile)
+		if err != nil {
+			return platformauth.HMACKeyset{}, "", err
+		}
+		return keyset, keysetFingerprint(keyset), nil
+	}
+	if strings.TrimSpace(jwtKeysetCommand) != "" {
+		keyset, err := platformauth.LoadHMACKeysetCommand(ctx, jwtKeysetCommand)
 		if err != nil {
 			return platformauth.HMACKeyset{}, "", err
 		}

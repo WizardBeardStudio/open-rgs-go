@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -85,7 +86,7 @@ func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validateProductionRuntime(tc.strict, tc.databaseURL, tc.tlsEnabled, tc.jwtSecret, tc.jwtKeysetSpec, tc.jwtKeysetFile)
+			err := validateProductionRuntime(tc.strict, tc.databaseURL, tc.tlsEnabled, tc.jwtSecret, tc.jwtKeysetSpec, tc.jwtKeysetFile, "")
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("validateProductionRuntime() err=%v wantErr=%v", err, tc.wantErr)
 			}
@@ -99,7 +100,7 @@ func TestLoadJWTKeysetFromFile(t *testing.T) {
 	if err := os.WriteFile(path, []byte(`{"active_kid":"k2","keys":{"k1":"secret1","k2":"secret2"}}`), 0o600); err != nil {
 		t.Fatalf("write keyset: %v", err)
 	}
-	keyset, fingerprint, err := loadJWTKeyset("ignored", "", "default", path)
+	keyset, fingerprint, err := loadJWTKeyset(context.Background(), "ignored", "", "default", path, "")
 	if err != nil {
 		t.Fatalf("load keyset: %v", err)
 	}
@@ -118,5 +119,18 @@ func TestParseKeyValueSecrets(t *testing.T) {
 	}
 	if string(keys["k1"]) != "secret1" || string(keys["k2"]) != "secret2" {
 		t.Fatalf("unexpected key parsing result")
+	}
+}
+
+func TestLoadJWTKeysetFromCommand(t *testing.T) {
+	keyset, fingerprint, err := loadJWTKeyset(context.Background(), "ignored", "", "default", "", `printf '{"active_kid":"k1","keys":{"k1":"secret1"}}'`)
+	if err != nil {
+		t.Fatalf("load keyset from command: %v", err)
+	}
+	if keyset.ActiveKID != "k1" {
+		t.Fatalf("expected active kid k1, got=%s", keyset.ActiveKID)
+	}
+	if fingerprint == "" {
+		t.Fatalf("expected non-empty fingerprint")
 	}
 }
