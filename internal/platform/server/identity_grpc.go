@@ -28,6 +28,11 @@ type identitySession struct {
 	revoked      bool
 }
 
+type loginRateWindow struct {
+	start time.Time
+	count int
+}
+
 type IdentityService struct {
 	rgsv1.UnimplementedIdentityServiceServer
 
@@ -44,6 +49,9 @@ type IdentityService struct {
 	refreshTTL      time.Duration
 	lockoutTTL      time.Duration
 	maxFailures     int
+	loginRateMax    int
+	loginRateWindow time.Duration
+	loginRates      map[string]loginRateWindow
 	db              *sql.DB
 	onLogin         func(result rgsv1.ResultCode, actorType rgsv1.ActorType)
 	onLockout       func(actorType rgsv1.ActorType)
@@ -74,6 +82,9 @@ func NewIdentityService(clk clock.Clock, signingSecret string, accessTTL, refres
 		refreshTTL:      refreshTTL,
 		lockoutTTL:      15 * time.Minute,
 		maxFailures:     5,
+		loginRateMax:    60,
+		loginRateWindow: time.Minute,
+		loginRates:      make(map[string]loginRateWindow),
 		db:              handle,
 	}
 }
@@ -111,6 +122,22 @@ func (s *IdentityService) SetLockoutPolicy(maxFailures int, ttl time.Duration) {
 	defer s.mu.Unlock()
 	s.maxFailures = maxFailures
 	s.lockoutTTL = ttl
+}
+
+func (s *IdentityService) SetLoginRateLimit(maxAttempts int, window time.Duration) {
+	if s == nil {
+		return
+	}
+	if maxAttempts < 0 {
+		maxAttempts = 0
+	}
+	if window <= 0 {
+		window = time.Minute
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.loginRateMax = maxAttempts
+	s.loginRateWindow = window
 }
 
 func (s *IdentityService) now() time.Time {
@@ -231,6 +258,25 @@ func sessionSnapshot(refreshToken, actorID string, actorType rgsv1.ActorType, ex
 
 func lockKey(actorID string, actorType rgsv1.ActorType) string {
 	return actorType.String() + "|" + actorID
+}
+
+func loginRateKey(actorID string, actorType rgsv1.ActorType) string {
+	return "login_rate|" + lockKey(actorID, actorType)
+}
+
+func (s *IdentityService) rateLimitExceeded(actorID string, actorType rgsv1.ActorType) bool {
+	if s.loginRateMax <= 0 {
+		return false
+	}
+	key := loginRateKey(actorID, actorType)
+	now := s.now()
+	window := s.loginRates[key]
+	if window.start.IsZero() || now.Sub(window.start) >= s.loginRateWindow {
+		window = loginRateWindow{start: now, count: 0}
+	}
+	window.count++
+	s.loginRates[key] = window
+	return window.count > s.loginRateMax
 }
 
 func (s *IdentityService) checkLocked(ctx context.Context, actorID string, actorType rgsv1.ActorType) (bool, error) {
@@ -390,6 +436,14 @@ func (s *IdentityService) Login(ctx context.Context, req *rgsv1.LoginRequest) (*
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	if s.rateLimitExceeded(actorID, actorType) {
+		s.auditDenied(req.Meta, "", "identity_login", "rate limit exceeded")
+		if s.onLogin != nil {
+			s.onLogin(rgsv1.ResultCode_RESULT_CODE_DENIED, actorType)
+		}
+		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "rate limit exceeded")}, nil
+	}
 
 	locked, err := s.checkLocked(ctx, actorID, actorType)
 	if err != nil {

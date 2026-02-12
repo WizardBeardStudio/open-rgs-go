@@ -259,3 +259,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `internal/platform/auth/jwt.go`, `internal/platform/auth/keyset_source.go`, `cmd/rgsd/main.go`, `docs/deployment/KEY_MANAGEMENT.md`
 - Tests: `internal/platform/auth/jwt_test.go`, `internal/platform/auth/keyset_source_test.go`, `cmd/rgsd/main_test.go`
 - Status: implemented (file-backed keyset loading and in-process signer/verifier hot reload with periodic refresh)
+
+## RGS-0709 Identity Rate Limiting and EFT Fraud Lockout Controls
+- Standard refs: GLI-21 unauthorized access prevention and GLI-16 EFT fraud lockout guidance
+- Code: `internal/platform/server/identity_grpc.go`, `internal/platform/server/ledger_grpc.go`, `cmd/rgsd/main.go`, `README.md`
+- Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/ledger_grpc_test.go`
+- Status: implemented (configurable login rate limits and configurable EFT fraud lockouts for repeated denied cashless operations)

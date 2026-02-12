@@ -143,6 +143,44 @@ func TestIdentityLoginLockoutPolicy(t *testing.T) {
 	}
 }
 
+func TestIdentityLoginRateLimitExceeded(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 13, 25, 0, 0, time.UTC)}
+	svc := NewIdentityService(clk, "test-secret", 15*time.Minute, time.Hour)
+	svc.maxFailures = 10
+	svc.SetLoginRateLimit(2, time.Minute)
+
+	for i := 0; i < 2; i++ {
+		resp, err := svc.Login(context.Background(), &rgsv1.LoginRequest{
+			Meta: meta("player-rate-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+			Credentials: &rgsv1.LoginRequest_Player{
+				Player: &rgsv1.PlayerCredentials{PlayerId: "player-rate-1", Pin: "bad"},
+			},
+		})
+		if err != nil {
+			t.Fatalf("failed login err: %v", err)
+		}
+		if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+			t.Fatalf("expected denied failed login, got=%v", resp.Meta.GetResultCode())
+		}
+	}
+
+	limited, err := svc.Login(context.Background(), &rgsv1.LoginRequest{
+		Meta: meta("player-rate-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Credentials: &rgsv1.LoginRequest_Player{
+			Player: &rgsv1.PlayerCredentials{PlayerId: "player-rate-1", Pin: "bad"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("rate-limited login err: %v", err)
+	}
+	if limited.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied while rate-limited, got=%v", limited.Meta.GetResultCode())
+	}
+	if limited.Meta.GetDenialReason() != "rate limit exceeded" {
+		t.Fatalf("expected rate limit exceeded reason, got=%q", limited.Meta.GetDenialReason())
+	}
+}
+
 func TestResolveActorContextMismatchDenied(t *testing.T) {
 	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "player-ctx", Type: "ACTOR_TYPE_PLAYER"})
 	_, reason := resolveActor(ctx, meta("player-meta", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""))

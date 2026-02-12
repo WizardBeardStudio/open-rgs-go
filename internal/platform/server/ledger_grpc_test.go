@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"strconv"
 	"testing"
 	"time"
 
@@ -151,5 +152,45 @@ func TestLedgerAuthorizationDeniedForForeignPlayerAccount(t *testing.T) {
 	}
 	if events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit result, got=%s", events[len(events)-1].Result)
+	}
+}
+
+func TestLedgerEFTFraudLockoutAfterRepeatedFailures(t *testing.T) {
+	svc := NewLedgerService(ledgerFixedClock{now: time.Date(2026, 2, 11, 16, 0, 0, 0, time.UTC)})
+	svc.SetEFTFraudPolicy(2, 15*time.Minute)
+
+	_, _ = svc.Deposit(context.Background(), &rgsv1.DepositRequest{
+		Meta:      meta("acct-lock-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "seed-lock"),
+		AccountId: "acct-lock-1",
+		Amount:    &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+	})
+
+	for i := 0; i < 2; i++ {
+		resp, err := svc.Withdraw(context.Background(), &rgsv1.WithdrawRequest{
+			Meta:      meta("acct-lock-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "wd-fail-"+strconv.Itoa(i)),
+			AccountId: "acct-lock-1",
+			Amount:    &rgsv1.Money{AmountMinor: 200, Currency: "USD"},
+		})
+		if err != nil {
+			t.Fatalf("withdraw err: %v", err)
+		}
+		if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+			t.Fatalf("expected denied for insufficient balance, got=%v", resp.Meta.GetResultCode())
+		}
+	}
+
+	locked, err := svc.Withdraw(context.Background(), &rgsv1.WithdrawRequest{
+		Meta:      meta("acct-lock-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "wd-locked"),
+		AccountId: "acct-lock-1",
+		Amount:    &rgsv1.Money{AmountMinor: 10, Currency: "USD"},
+	})
+	if err != nil {
+		t.Fatalf("withdraw locked err: %v", err)
+	}
+	if locked.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied while locked, got=%v", locked.Meta.GetResultCode())
+	}
+	if locked.Meta.GetDenialReason() != "eft account locked" {
+		t.Fatalf("expected eft account locked reason, got=%q", locked.Meta.GetDenialReason())
 	}
 }

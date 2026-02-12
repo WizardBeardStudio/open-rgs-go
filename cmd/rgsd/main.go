@@ -54,6 +54,10 @@ func main() {
 	identityLockoutMaxFailures := mustParseIntEnv("RGS_IDENTITY_LOCKOUT_MAX_FAILURES", 5)
 	identitySessionCleanupInterval := mustParseDurationEnv("RGS_IDENTITY_SESSION_CLEANUP_INTERVAL", "15m")
 	identitySessionCleanupBatch := mustParseIntEnv("RGS_IDENTITY_SESSION_CLEANUP_BATCH", 500)
+	identityLoginRateLimitMaxAttempts := mustParseIntEnv("RGS_IDENTITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS", 60)
+	identityLoginRateLimitWindow := mustParseDurationEnv("RGS_IDENTITY_LOGIN_RATE_LIMIT_WINDOW", "1m")
+	eftFraudMaxFailures := mustParseIntEnv("RGS_EFT_FRAUD_MAX_FAILURES", 5)
+	eftFraudLockoutTTL := mustParseDurationEnv("RGS_EFT_FRAUD_LOCKOUT_TTL", "15m")
 	idempotencyTTL := mustParseDurationEnv("RGS_LEDGER_IDEMPOTENCY_TTL", "24h")
 	idempotencyCleanupInterval := mustParseDurationEnv("RGS_LEDGER_IDEMPOTENCY_CLEANUP_INTERVAL", "15m")
 	idempotencyCleanupBatch := mustParseIntEnv("RGS_LEDGER_IDEMPOTENCY_CLEANUP_BATCH", 500)
@@ -114,6 +118,7 @@ func main() {
 	identitySvc := server.NewIdentityService(clk, jwtSigningSecret, jwtAccessTTL, jwtRefreshTTL, db)
 	identitySvc.SetJWTSigner(jwtSigner)
 	identitySvc.SetLockoutPolicy(identityLockoutMaxFailures, identityLockoutTTL)
+	identitySvc.SetLoginRateLimit(identityLoginRateLimitMaxAttempts, identityLoginRateLimitWindow)
 	identitySvc.StartSessionCleanupWorker(ctx, identitySessionCleanupInterval, identitySessionCleanupBatch, log.Printf)
 	if strings.TrimSpace(jwtKeysetFile) != "" && jwtKeysetRefreshInterval > 0 {
 		go func() {
@@ -158,6 +163,7 @@ func main() {
 	}
 	rgsv1.RegisterIdentityServiceServer(grpcServer, identitySvc)
 	ledgerSvc := server.NewLedgerService(clk, db)
+	ledgerSvc.SetEFTFraudPolicy(eftFraudMaxFailures, eftFraudLockoutTTL)
 	metrics := server.NewMetrics()
 	identitySvc.SetMetricsObservers(metrics.ObserveIdentityLogin, metrics.ObserveIdentityLockoutActivation)
 	if db != nil {

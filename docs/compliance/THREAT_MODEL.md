@@ -33,6 +33,12 @@
   - `migrations/000001_init_core.up.sql`
 - Idempotency enforcement on financial operations
   - `internal/platform/server/ledger_grpc.go`
+- Identity login rate limiting and lockout controls
+  - `internal/platform/server/identity_grpc.go`
+  - `cmd/rgsd/main.go`
+- EFT fraud lockout controls for repeated denied cashless operations
+  - `internal/platform/server/ledger_grpc.go`
+  - `cmd/rgsd/main.go`
 - Buffer + fail-closed disable behavior for ingestion exhaustion
   - `internal/platform/server/events_grpc.go`
 - Configuration proposal/approval/apply workflow with immutable history
@@ -73,6 +79,6 @@
 ## Residual Risks / Follow-up
 - Integrate persistent DB-backed service repositories (replace in-memory stores)
 - Add full KMS/HSM custody integration and attested key lifecycle controls beyond file-based runtime hooks
-- Add explicit rate-limiting, session lockout, and antifraud controls
+- Expand baseline rate-limiting and antifraud controls with network-aware and behavioral scoring models
 - Add signed package verification pipeline for download library entries
 - Expand promotions/bonusing/UI services beyond baseline record/list into full policy/workflow engines
