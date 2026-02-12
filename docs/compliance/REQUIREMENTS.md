@@ -283,3 +283,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `scripts/dr_backup_restore_check.sh`, `docs/deployment/DR_DRILLS.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
 - Tests: `go test ./...` release-gate execution
 - Status: implemented (repeatable script-driven backup hash/count artifact pack with optional drill restore target)
+
+## RGS-0713 Performance Qualification Baseline Evidence
+- Standard refs: GLI-13 operational resilience and deterministic behavior verification objectives
+- Code: `internal/platform/server/ledger_benchmark_test.go`, `scripts/perf_slo_check.sh`, `docs/deployment/PERFORMANCE_QUALIFICATION.md`, `Makefile`
+- Tests: `go test ./internal/platform/server -run '^$' -bench '^BenchmarkLedgerDeposit$' -benchmem`
+- Status: implemented (repeatable ledger benchmark artifacts with optional threshold gate for release evidence)
