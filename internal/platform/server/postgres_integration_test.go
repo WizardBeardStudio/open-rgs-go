@@ -341,6 +341,76 @@ func TestPostgresAuditServiceListsPersistedConfigAuditEvents(t *testing.T) {
 	}
 }
 
+func TestPostgresAuditChainVerificationPassesForPersistedEvents(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 17, 12, 55, 0, 0, time.UTC)}
+	ctx := context.Background()
+
+	ledgerSvc := NewLedgerService(clk, db)
+	if _, err := ledgerSvc.Deposit(ctx, &rgsv1.DepositRequest{
+		Meta:      meta("acct-audit-chain", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-audit-chain-1"),
+		AccountId: "acct-audit-chain",
+		Amount:    &rgsv1.Money{AmountMinor: 500, Currency: "USD"},
+	}); err != nil {
+		t.Fatalf("deposit err: %v", err)
+	}
+
+	configSvc := NewConfigService(clk, db)
+	if _, err := configSvc.ProposeConfigChange(ctx, &rgsv1.ProposeConfigChangeRequest{
+		Meta:            meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		ConfigNamespace: "ops",
+		ConfigKey:       "audit_chain_verify",
+		ProposedValue:   "enabled",
+		Reason:          "test",
+	}); err != nil {
+		t.Fatalf("propose config change err: %v", err)
+	}
+
+	if err := verifyAuditChainFromDB(ctx, db, clk.now.Format("2006-01-02")); err != nil {
+		t.Fatalf("verify audit chain err: %v", err)
+	}
+}
+
+func TestPostgresAuditChainVerificationDetectsTamper(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 17, 13, 0, 0, 0, time.UTC)}
+	ctx := context.Background()
+
+	ledgerSvc := NewLedgerService(clk, db)
+	if _, err := ledgerSvc.Deposit(ctx, &rgsv1.DepositRequest{
+		Meta:      meta("acct-audit-chain-bad", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-audit-chain-bad-1"),
+		AccountId: "acct-audit-chain-bad",
+		Amount:    &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+	}); err != nil {
+		t.Fatalf("deposit err: %v", err)
+	}
+
+	partitionDay := clk.now.Format("2006-01-02")
+	_, err := db.ExecContext(ctx, `
+INSERT INTO audit_events (
+  audit_id, occurred_at, recorded_at, actor_id, actor_type, auth_context,
+  object_type, object_id, action, before_state, after_state, result, reason,
+  partition_day, hash_prev, hash_curr
+)
+VALUES (
+  'tampered-audit-row', $1::timestamptz, $1::timestamptz, 'tamper', 'service', '{}'::jsonb,
+  'tamper_object', 'tamper_id', 'tamper_action', '{}'::jsonb, '{}'::jsonb, 'success', 'tamper',
+  $2::date, 'bad-prev', 'bad-curr'
+)
+`, clk.now.Add(1*time.Second).Format(time.RFC3339Nano), partitionDay)
+	if err != nil {
+		t.Fatalf("insert tampered audit row err: %v", err)
+	}
+
+	if err := verifyAuditChainFromDB(ctx, db, partitionDay); err == nil {
+		t.Fatalf("expected audit chain verification to detect tamper")
+	}
+}
+
 func TestPostgresLedgerEFTLockoutPersistsAcrossRestart(t *testing.T) {
 	db := openPostgresIntegrationDB(t)
 	resetPostgresIntegrationState(t, db)
