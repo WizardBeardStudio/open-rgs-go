@@ -92,6 +92,16 @@ func (s *WageringService) useInMemoryCache() bool {
 	return true
 }
 
+func (s *WageringService) useInMemoryWagerMirror() bool {
+	if s == nil {
+		return false
+	}
+	if s.dbEnabled() && s.disableInMemCache {
+		return false
+	}
+	return true
+}
+
 func (s *WageringService) appendAudit(meta *rgsv1.RequestMeta, objectID, action string, before, after []byte, result audit.Result, reason string) error {
 	if s.AuditStore == nil {
 		return audit.ErrCorruptChain
@@ -220,7 +230,7 @@ func (s *WageringService) PlaceWager(ctx context.Context, req *rgsv1.PlaceWagerR
 			if s.useInMemoryCache() {
 				s.placeByIdempotency[idemKey] = clonePlaceResponse(&replay)
 			}
-			if replay.Wager != nil {
+			if replay.Wager != nil && s.useInMemoryWagerMirror() {
 				s.wagers[replay.Wager.WagerId] = cloneWager(replay.Wager)
 			}
 			return &replay, nil
@@ -237,7 +247,9 @@ func (s *WageringService) PlaceWager(ctx context.Context, req *rgsv1.PlaceWagerR
 		PlacedAt:   now,
 		OutcomeRef: "",
 	}
-	s.wagers[wager.WagerId] = wager
+	if s.useInMemoryWagerMirror() {
+		s.wagers[wager.WagerId] = wager
+	}
 
 	resp := &rgsv1.PlaceWagerResponse{
 		Meta:  s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
@@ -295,21 +307,24 @@ func (s *WageringService) SettleWager(ctx context.Context, req *rgsv1.SettleWage
 			if s.useInMemoryCache() {
 				s.settleByIdempotency[idemKey] = cloneSettleResponse(&replay)
 			}
-			if replay.Wager != nil {
+			if replay.Wager != nil && s.useInMemoryWagerMirror() {
 				s.wagers[replay.Wager.WagerId] = cloneWager(replay.Wager)
 			}
 			return &replay, nil
 		}
 	}
 
-	wager := s.wagers[req.WagerId]
+	var wager *rgsv1.Wager
+	if s.useInMemoryWagerMirror() {
+		wager = s.wagers[req.WagerId]
+	}
 	if wager == nil && s.dbEnabled() {
 		var err error
 		wager, err = s.getWager(ctx, req.WagerId)
 		if err != nil {
 			return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
-		if wager != nil {
+		if wager != nil && s.useInMemoryWagerMirror() {
 			s.wagers[wager.WagerId] = cloneWager(wager)
 		}
 	}
@@ -380,21 +395,24 @@ func (s *WageringService) CancelWager(ctx context.Context, req *rgsv1.CancelWage
 			if s.useInMemoryCache() {
 				s.cancelByIdempotency[idemKey] = cloneCancelResponse(&replay)
 			}
-			if replay.Wager != nil {
+			if replay.Wager != nil && s.useInMemoryWagerMirror() {
 				s.wagers[replay.Wager.WagerId] = cloneWager(replay.Wager)
 			}
 			return &replay, nil
 		}
 	}
 
-	wager := s.wagers[req.WagerId]
+	var wager *rgsv1.Wager
+	if s.useInMemoryWagerMirror() {
+		wager = s.wagers[req.WagerId]
+	}
 	if wager == nil && s.dbEnabled() {
 		var err error
 		wager, err = s.getWager(ctx, req.WagerId)
 		if err != nil {
 			return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
-		if wager != nil {
+		if wager != nil && s.useInMemoryWagerMirror() {
 			s.wagers[wager.WagerId] = cloneWager(wager)
 		}
 	}

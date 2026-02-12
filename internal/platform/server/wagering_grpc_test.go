@@ -79,3 +79,32 @@ func TestWageringCancelDeniedForPlayer(t *testing.T) {
 		t.Fatalf("expected denied cancel for player actor, got=%v", cancel.Meta.GetResultCode())
 	}
 }
+
+func TestWageringDisableInMemoryIdempotencyKeepsNonDBStateMirror(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 15, 10, 10, 0, 0, time.UTC)}
+	svc := NewWageringService(clk)
+	svc.SetDisableInMemoryIdempotencyCache(true)
+
+	place, err := svc.PlaceWager(context.Background(), &rgsv1.PlaceWagerRequest{
+		Meta:     meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-wager-place-3"),
+		PlayerId: "player-1",
+		GameId:   "game-1",
+		Stake:    &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+	})
+	if err != nil {
+		t.Fatalf("place wager err: %v", err)
+	}
+
+	settle, err := svc.SettleWager(context.Background(), &rgsv1.SettleWagerRequest{
+		Meta:       meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, "idem-wager-settle-3"),
+		WagerId:    place.Wager.GetWagerId(),
+		Payout:     &rgsv1.Money{AmountMinor: 150, Currency: "USD"},
+		OutcomeRef: "outcome-xyz",
+	})
+	if err != nil {
+		t.Fatalf("settle wager err: %v", err)
+	}
+	if settle.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected settle ok, got=%v", settle.Meta.GetResultCode())
+	}
+}
