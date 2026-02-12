@@ -40,6 +40,8 @@ func main() {
 	trustedCIDRs := strings.Split(envOr("RGS_TRUSTED_CIDRS", "127.0.0.1/32,::1/128"), ",")
 	databaseURL := envOr("RGS_DATABASE_URL", "")
 	jwtSigningSecret := envOr("RGS_JWT_SIGNING_SECRET", "dev-insecure-change-me")
+	jwtKeysetSpec := envOr("RGS_JWT_KEYSET", "")
+	jwtActiveKID := envOr("RGS_JWT_ACTIVE_KID", "default")
 	jwtAccessTTL := mustParseDurationEnv("RGS_JWT_ACCESS_TTL", "15m")
 	jwtRefreshTTL := mustParseDurationEnv("RGS_JWT_REFRESH_TTL", "24h")
 	identityLockoutTTL := mustParseDurationEnv("RGS_IDENTITY_LOCKOUT_TTL", "15m")
@@ -62,7 +64,12 @@ func main() {
 		log.Fatalf("configure tls: %v", err)
 	}
 
-	jwtVerifier := platformauth.NewJWTVerifier(jwtSigningSecret)
+	jwtKeyset, err := platformauth.ParseHMACKeyset(jwtSigningSecret, jwtKeysetSpec, jwtActiveKID)
+	if err != nil {
+		log.Fatalf("parse jwt keyset: %v", err)
+	}
+	jwtSigner := platformauth.NewJWTSignerWithKeyset(jwtKeyset)
+	jwtVerifier := platformauth.NewJWTVerifierWithKeyset(jwtKeyset)
 	grpcOpts := []grpc.ServerOption{
 		grpc.UnaryInterceptor(platformauth.UnaryJWTInterceptor(jwtVerifier, []string{
 			"/rgs.v1.SystemService/GetSystemStatus",
@@ -93,6 +100,7 @@ func main() {
 	systemSvc := server.SystemService{StartedAt: startedAt, Clock: clk, Version: version}
 	rgsv1.RegisterSystemServiceServer(grpcServer, systemSvc)
 	identitySvc := server.NewIdentityService(clk, jwtSigningSecret, jwtAccessTTL, jwtRefreshTTL, db)
+	identitySvc.SetJWTSigner(jwtSigner)
 	identitySvc.SetLockoutPolicy(identityLockoutMaxFailures, identityLockoutTTL)
 	rgsv1.RegisterIdentityServiceServer(grpcServer, identitySvc)
 	ledgerSvc := server.NewLedgerService(clk, db)

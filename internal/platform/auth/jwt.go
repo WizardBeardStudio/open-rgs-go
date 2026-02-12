@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -20,12 +21,111 @@ type Actor struct {
 	Type string
 }
 
+type HMACKeyset struct {
+	ActiveKID string
+	Keys      map[string][]byte
+}
+
+func ParseHMACKeyset(legacySecret, keysetSpec, activeKID string) (HMACKeyset, error) {
+	out := HMACKeyset{
+		ActiveKID: activeKID,
+		Keys:      make(map[string][]byte),
+	}
+	if strings.TrimSpace(out.ActiveKID) == "" {
+		out.ActiveKID = "default"
+	}
+	if strings.TrimSpace(keysetSpec) != "" {
+		parts := strings.Split(keysetSpec, ",")
+		for _, part := range parts {
+			entry := strings.TrimSpace(part)
+			if entry == "" {
+				continue
+			}
+			pair := strings.SplitN(entry, ":", 2)
+			if len(pair) != 2 {
+				return HMACKeyset{}, fmt.Errorf("invalid keyset entry %q", entry)
+			}
+			kid := strings.TrimSpace(pair[0])
+			secret := strings.TrimSpace(pair[1])
+			if kid == "" || secret == "" {
+				return HMACKeyset{}, fmt.Errorf("invalid keyset entry %q", entry)
+			}
+			out.Keys[kid] = []byte(secret)
+		}
+	} else {
+		if strings.TrimSpace(legacySecret) == "" {
+			return HMACKeyset{}, errors.New("jwt secret is required")
+		}
+		out.Keys[out.ActiveKID] = []byte(legacySecret)
+	}
+	if len(out.Keys) == 0 {
+		return HMACKeyset{}, errors.New("jwt keyset is empty")
+	}
+	if _, ok := out.Keys[out.ActiveKID]; !ok {
+		return HMACKeyset{}, fmt.Errorf("active kid %q not found in keyset", out.ActiveKID)
+	}
+	return out, nil
+}
+
+type JWTSigner struct {
+	activeKID string
+	keys      map[string][]byte
+}
+
+func NewJWTSigner(secret string) *JWTSigner {
+	keyset, err := ParseHMACKeyset(secret, "", "default")
+	if err != nil {
+		panic(err)
+	}
+	return NewJWTSignerWithKeyset(keyset)
+}
+
+func NewJWTSignerWithKeyset(keyset HMACKeyset) *JWTSigner {
+	return &JWTSigner{
+		activeKID: keyset.ActiveKID,
+		keys:      keyset.Keys,
+	}
+}
+
+func (s *JWTSigner) SignActor(actor Actor, now time.Time, ttl time.Duration) (string, time.Time, error) {
+	if s == nil {
+		return "", time.Time{}, errors.New("signer is nil")
+	}
+	secret := s.keys[s.activeKID]
+	if len(secret) == 0 {
+		return "", time.Time{}, errors.New("active jwt key is missing")
+	}
+	expiresAt := now.UTC().Add(ttl)
+	claims := jwt.MapClaims{
+		"sub":        actor.ID,
+		"actor_type": actor.Type,
+		"iat":        now.UTC().Unix(),
+		"exp":        expiresAt.Unix(),
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	token.Header["kid"] = s.activeKID
+	signed, err := token.SignedString(secret)
+	if err != nil {
+		return "", time.Time{}, err
+	}
+	return signed, expiresAt, nil
+}
+
 type JWTVerifier struct {
-	secret []byte
+	activeKID string
+	keys      map[string][]byte
 }
 
 func NewJWTVerifier(secret string) *JWTVerifier {
-	return &JWTVerifier{secret: []byte(secret)}
+	keyset, err := ParseHMACKeyset(secret, "", "default")
+	if err != nil {
+		panic(err)
+	}
+	return NewJWTVerifierWithKeyset(keyset)
+}
+
+func NewJWTVerifierWithKeyset(keyset HMACKeyset) *JWTVerifier {
+	return &JWTVerifier{activeKID: keyset.ActiveKID, keys: keyset.Keys}
 }
 
 func (v *JWTVerifier) ParseActor(tokenString string) (Actor, error) {
@@ -34,7 +134,15 @@ func (v *JWTVerifier) ParseActor(tokenString string) (Actor, error) {
 		if token.Method != jwt.SigningMethodHS256 {
 			return nil, errors.New("unexpected signing method")
 		}
-		return v.secret, nil
+		kid, _ := token.Header["kid"].(string)
+		if strings.TrimSpace(kid) == "" {
+			kid = v.activeKID
+		}
+		secret := v.keys[kid]
+		if len(secret) == 0 {
+			return nil, errors.New("unknown key id")
+		}
+		return secret, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}), jwt.WithLeeway(5*time.Second))
 	if err != nil || !tok.Valid {
 		return Actor{}, errors.New("invalid token")

@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
 	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
+	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 	"github.com/wizardbeard/open-rgs-go/internal/platform/clock"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -39,7 +39,7 @@ type IdentityService struct {
 	failedAttempts  map[string]int
 	lockedUntil     map[string]time.Time
 	nextAuditID     int64
-	signingSecret   []byte
+	tokenSigner     *platformauth.JWTSigner
 	accessTTL       time.Duration
 	refreshTTL      time.Duration
 	lockoutTTL      time.Duration
@@ -67,13 +67,22 @@ func NewIdentityService(clk clock.Clock, signingSecret string, accessTTL, refres
 		refreshSessions: make(map[string]*identitySession),
 		failedAttempts:  make(map[string]int),
 		lockedUntil:     make(map[string]time.Time),
-		signingSecret:   []byte(signingSecret),
+		tokenSigner:     platformauth.NewJWTSigner(signingSecret),
 		accessTTL:       accessTTL,
 		refreshTTL:      refreshTTL,
 		lockoutTTL:      15 * time.Minute,
 		maxFailures:     5,
 		db:              handle,
 	}
+}
+
+func (s *IdentityService) SetJWTSigner(signer *platformauth.JWTSigner) {
+	if s == nil || signer == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.tokenSigner = signer
 }
 
 func (s *IdentityService) SetLockoutPolicy(maxFailures int, ttl time.Duration) {
@@ -178,15 +187,10 @@ func (s *IdentityService) validateLoginRequest(req *rgsv1.LoginRequest) (string,
 
 func (s *IdentityService) signAccessToken(actorID string, actorType rgsv1.ActorType) (string, string, error) {
 	now := s.now()
-	expiresAt := now.Add(s.accessTTL)
-	claims := jwt.MapClaims{
-		"sub":        actorID,
-		"actor_type": actorType.String(),
-		"iat":        now.Unix(),
-		"exp":        expiresAt.Unix(),
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signed, err := token.SignedString(s.signingSecret)
+	signed, expiresAt, err := s.tokenSigner.SignActor(platformauth.Actor{
+		ID:   actorID,
+		Type: actorType.String(),
+	}, now, s.accessTTL)
 	if err != nil {
 		return "", "", err
 	}
