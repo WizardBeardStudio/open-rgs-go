@@ -208,6 +208,7 @@ func main() {
 	registrySvc.SetDisableInMemoryCache(strictProductionMode)
 	rgsv1.RegisterRegistryServiceServer(grpcServer, registrySvc)
 	eventsSvc := server.NewEventsService(clk, db)
+	eventsSvc.SetDisableInMemoryCache(strictProductionMode)
 	rgsv1.RegisterEventsServiceServer(grpcServer, eventsSvc)
 	reportingSvc := server.NewReportingService(clk, ledgerSvc, eventsSvc, db)
 	reportingSvc.SetDisableInMemoryCache(strictProductionMode)

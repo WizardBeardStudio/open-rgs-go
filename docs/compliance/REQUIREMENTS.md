@@ -54,7 +54,7 @@ This document maps implemented requirements to standards references, code locati
 - Standard refs: GLI-13 significant events and event retention/reporting
 - Code: `api/proto/rgs/v1/events.proto`, `internal/platform/server/events_grpc.go`, `migrations/000003_registry_events_meters.up.sql`
 - Tests: `internal/platform/server/registry_events_test.go`, `internal/platform/server/events_replay_test.go`
-- Status: implemented (in-memory service + schema)
+- Status: implemented (DB-backed events with in-memory fallback; strict production disables in-memory events/meters mirrors)
 
 ## RGS-0203 Meter Snapshot/Delta Ingestion Semantics
 - Standard refs: GLI-13 metering information handling and reporting

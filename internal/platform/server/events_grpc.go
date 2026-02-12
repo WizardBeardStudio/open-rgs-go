@@ -41,16 +41,17 @@ type EventsService struct {
 
 	mu sync.Mutex
 
-	events      map[string]*rgsv1.SignificantEvent
-	meters      map[string]*rgsv1.MeterRecord
-	eventOrder  []string
-	meterOrder  []string
-	buffers     []ingestionBufferRecord
-	bufferCap   int
-	disabled    bool
-	nextAuditID int64
-	nextBuffer  int64
-	db          *sql.DB
+	events               map[string]*rgsv1.SignificantEvent
+	meters               map[string]*rgsv1.MeterRecord
+	eventOrder           []string
+	meterOrder           []string
+	buffers              []ingestionBufferRecord
+	bufferCap            int
+	disabled             bool
+	nextAuditID          int64
+	nextBuffer           int64
+	db                   *sql.DB
+	disableInMemoryCache bool
 }
 
 func NewEventsService(clk clock.Clock, db ...*sql.DB) *EventsService {
@@ -66,6 +67,15 @@ func NewEventsService(clk clock.Clock, db ...*sql.DB) *EventsService {
 		bufferCap:  1024,
 		db:         handle,
 	}
+}
+
+func (s *EventsService) SetDisableInMemoryCache(disable bool) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.disableInMemoryCache = disable
 }
 
 func (s *EventsService) now() time.Time {
@@ -237,8 +247,10 @@ func (s *EventsService) SubmitSignificantEvent(ctx context.Context, req *rgsv1.S
 		return &rgsv1.SubmitSignificantEventResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
 
-	s.events[e.EventId] = e
-	s.eventOrder = append(s.eventOrder, e.EventId)
+	if !s.disableInMemoryCache {
+		s.events[e.EventId] = e
+		s.eventOrder = append(s.eventOrder, e.EventId)
+	}
 	s.acknowledgeBufferLocked(buffer.bufferID)
 
 	return &rgsv1.SubmitSignificantEventResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Event: cloneEvent(e)}, nil
@@ -296,8 +308,10 @@ func (s *EventsService) submitMeter(ctx context.Context, meta *rgsv1.RequestMeta
 		return &rgsv1.SubmitMeterSnapshotResponse{Meta: s.responseMeta(meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
 
-	s.meters[m.MeterId] = m
-	s.meterOrder = append(s.meterOrder, m.MeterId)
+	if !s.disableInMemoryCache {
+		s.meters[m.MeterId] = m
+		s.meterOrder = append(s.meterOrder, m.MeterId)
+	}
 	s.acknowledgeBufferLocked(buffer.bufferID)
 
 	return &rgsv1.SubmitMeterSnapshotResponse{Meta: s.responseMeta(meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Meter: cloneMeter(m)}, nil
@@ -335,6 +349,9 @@ func (s *EventsService) ListEvents(ctx context.Context, req *rgsv1.ListEventsReq
 			next = strconv.Itoa(start + len(dbItems))
 		}
 		return &rgsv1.ListEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Events: dbItems, NextPageToken: next}, nil
+	}
+	if s.disableInMemoryCache {
+		return &rgsv1.ListEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Events: nil, NextPageToken: ""}, nil
 	}
 
 	items := make([]*rgsv1.SignificantEvent, 0, len(s.eventOrder))
@@ -410,6 +427,9 @@ func (s *EventsService) ListMeters(ctx context.Context, req *rgsv1.ListMetersReq
 			next = strconv.Itoa(start + len(dbItems))
 		}
 		return &rgsv1.ListMetersResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Meters: dbItems, NextPageToken: next}, nil
+	}
+	if s.disableInMemoryCache {
+		return &rgsv1.ListMetersResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Meters: nil, NextPageToken: ""}, nil
 	}
 
 	items := make([]*rgsv1.MeterRecord, 0, len(s.meterOrder))

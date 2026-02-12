@@ -185,3 +185,51 @@ func TestEventsBufferExhaustionDisablesIngress(t *testing.T) {
 		t.Fatalf("expected service ingestion to be disabled after exhaustion")
 	}
 }
+
+func TestEventsDisableInMemoryCacheSkipsMirrors(t *testing.T) {
+	svc := NewEventsService(ledgerFixedClock{now: time.Date(2026, 2, 12, 11, 15, 0, 0, time.UTC)})
+	svc.SetDisableInMemoryCache(true)
+	ctx := context.Background()
+
+	_, err := svc.SubmitSignificantEvent(ctx, &rgsv1.SubmitSignificantEventRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Event: &rgsv1.SignificantEvent{
+			EventId:     "ev-disabled",
+			EquipmentId: "eq-1",
+			EventCode:   "E101",
+		},
+	})
+	if err != nil {
+		t.Fatalf("submit event err: %v", err)
+	}
+
+	_, err = svc.SubmitMeterSnapshot(ctx, &rgsv1.SubmitMeterSnapshotRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Meter: &rgsv1.MeterRecord{
+			MeterId:      "m-disabled",
+			EquipmentId:  "eq-1",
+			MeterLabel:   "coin_in",
+			MonetaryUnit: "USD",
+			ValueMinor:   1,
+		},
+	})
+	if err != nil {
+		t.Fatalf("submit meter err: %v", err)
+	}
+
+	events, err := svc.ListEvents(ctx, &rgsv1.ListEventsRequest{Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, "")})
+	if err != nil {
+		t.Fatalf("list events err: %v", err)
+	}
+	if len(events.Events) != 0 {
+		t.Fatalf("expected no in-memory events when cache disabled, got=%d", len(events.Events))
+	}
+
+	meters, err := svc.ListMeters(ctx, &rgsv1.ListMetersRequest{Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, "")})
+	if err != nil {
+		t.Fatalf("list meters err: %v", err)
+	}
+	if len(meters.Meters) != 0 {
+		t.Fatalf("expected no in-memory meters when cache disabled, got=%d", len(meters.Meters))
+	}
+}
