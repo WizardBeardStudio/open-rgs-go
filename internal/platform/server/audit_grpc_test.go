@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"net/http"
 	"net/http/httptest"
@@ -75,5 +76,38 @@ func TestAuditGatewayParity(t *testing.T) {
 	var out rgsv1.ListAuditEventsResponse
 	if err := protojson.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("unmarshal list audit events response: %v", err)
+	}
+
+	verifyReq := &rgsv1.VerifyAuditChainRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+	}
+	verifyBody, _ := protojson.Marshal(verifyReq)
+	verifyHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/audit/chain:verify", bytes.NewReader(verifyBody))
+	verifyHTTPReq.Header.Set("Content-Type", "application/json")
+	verifyRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(verifyRec, verifyHTTPReq)
+	if verifyRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("audit verify status: got=%d body=%s", verifyRec.Result().StatusCode, verifyRec.Body.String())
+	}
+	var verifyResp rgsv1.VerifyAuditChainResponse
+	if err := protojson.Unmarshal(verifyRec.Body.Bytes(), &verifyResp); err != nil {
+		t.Fatalf("unmarshal verify response: %v", err)
+	}
+	if verifyResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_ERROR {
+		t.Fatalf("expected verify error without db, got=%v", verifyResp.Meta.GetResultCode())
+	}
+}
+
+func TestAuditServiceVerifyAuditChainRequiresDB(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 11, 0, 0, 0, time.UTC)}
+	auditSvc := NewAuditService(clk, nil)
+	resp, err := auditSvc.VerifyAuditChain(context.Background(), &rgsv1.VerifyAuditChainRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+	})
+	if err != nil {
+		t.Fatalf("verify audit chain err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_ERROR || resp.Valid {
+		t.Fatalf("expected persistence error and valid=false, got code=%v valid=%v", resp.Meta.GetResultCode(), resp.Valid)
 	}
 }

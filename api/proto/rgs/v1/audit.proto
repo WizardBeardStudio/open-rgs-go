@@ -44,6 +44,13 @@ service AuditService {
       get: "/v1/audit/remote-access"
     };
   }
+
+  rpc VerifyAuditChain(VerifyAuditChainRequest) returns (VerifyAuditChainResponse) {
+    option (google.api.http) = {
+      post: "/v1/audit/chain:verify"
+      body: "*"
+    };
+  }
 }
 
 message ListAuditEventsRequest {
@@ -69,4 +76,14 @@ message ListRemoteAccessActivitiesResponse {
   ResponseMeta meta = 1;
   repeated RemoteAccessActivityRecord activities = 2;
   string next_page_token = 3;
+}
+
+message VerifyAuditChainRequest {
+  RequestMeta meta = 1;
+  string partition_day = 2;
+}
+
+message VerifyAuditChainResponse {
+  ResponseMeta meta = 1;
+  bool valid = 2;
 }

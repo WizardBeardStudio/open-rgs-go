@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	AuditService_ListAuditEvents_FullMethodName            = "/rgs.v1.AuditService/ListAuditEvents"
 	AuditService_ListRemoteAccessActivities_FullMethodName = "/rgs.v1.AuditService/ListRemoteAccessActivities"
+	AuditService_VerifyAuditChain_FullMethodName           = "/rgs.v1.AuditService/VerifyAuditChain"
 )
 
 // AuditServiceClient is the client API for AuditService service.
@@ -29,6 +30,7 @@ const (
 type AuditServiceClient interface {
 	ListAuditEvents(ctx context.Context, in *ListAuditEventsRequest, opts ...grpc.CallOption) (*ListAuditEventsResponse, error)
 	ListRemoteAccessActivities(ctx context.Context, in *ListRemoteAccessActivitiesRequest, opts ...grpc.CallOption) (*ListRemoteAccessActivitiesResponse, error)
+	VerifyAuditChain(ctx context.Context, in *VerifyAuditChainRequest, opts ...grpc.CallOption) (*VerifyAuditChainResponse, error)
 }
 
 type auditServiceClient struct {
@@ -59,12 +61,23 @@ func (c *auditServiceClient) ListRemoteAccessActivities(ctx context.Context, in 
 	return out, nil
 }
 
+func (c *auditServiceClient) VerifyAuditChain(ctx context.Context, in *VerifyAuditChainRequest, opts ...grpc.CallOption) (*VerifyAuditChainResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VerifyAuditChainResponse)
+	err := c.cc.Invoke(ctx, AuditService_VerifyAuditChain_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuditServiceServer is the server API for AuditService service.
 // All implementations must embed UnimplementedAuditServiceServer
 // for forward compatibility.
 type AuditServiceServer interface {
 	ListAuditEvents(context.Context, *ListAuditEventsRequest) (*ListAuditEventsResponse, error)
 	ListRemoteAccessActivities(context.Context, *ListRemoteAccessActivitiesRequest) (*ListRemoteAccessActivitiesResponse, error)
+	VerifyAuditChain(context.Context, *VerifyAuditChainRequest) (*VerifyAuditChainResponse, error)
 	mustEmbedUnimplementedAuditServiceServer()
 }
 
@@ -80,6 +93,9 @@ func (UnimplementedAuditServiceServer) ListAuditEvents(context.Context, *ListAud
 }
 func (UnimplementedAuditServiceServer) ListRemoteAccessActivities(context.Context, *ListRemoteAccessActivitiesRequest) (*ListRemoteAccessActivitiesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListRemoteAccessActivities not implemented")
+}
+func (UnimplementedAuditServiceServer) VerifyAuditChain(context.Context, *VerifyAuditChainRequest) (*VerifyAuditChainResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method VerifyAuditChain not implemented")
 }
 func (UnimplementedAuditServiceServer) mustEmbedUnimplementedAuditServiceServer() {}
 func (UnimplementedAuditServiceServer) testEmbeddedByValue()                      {}
@@ -138,6 +154,24 @@ func _AuditService_ListRemoteAccessActivities_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuditService_VerifyAuditChain_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyAuditChainRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuditServiceServer).VerifyAuditChain(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuditService_VerifyAuditChain_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuditServiceServer).VerifyAuditChain(ctx, req.(*VerifyAuditChainRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuditService_ServiceDesc is the grpc.ServiceDesc for AuditService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +186,10 @@ var AuditService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListRemoteAccessActivities",
 			Handler:    _AuditService_ListRemoteAccessActivities_Handler,
+		},
+		{
+			MethodName: "VerifyAuditChain",
+			Handler:    _AuditService_VerifyAuditChain_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -411,6 +411,36 @@ VALUES (
 	}
 }
 
+func TestPostgresAuditServiceVerifyAuditChain(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 17, 13, 5, 0, 0, time.UTC)}
+	ctx := context.Background()
+
+	ledgerSvc := NewLedgerService(clk, db)
+	if _, err := ledgerSvc.Deposit(ctx, &rgsv1.DepositRequest{
+		Meta:      meta("acct-audit-verify-api", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-audit-verify-api-1"),
+		AccountId: "acct-audit-verify-api",
+		Amount:    &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+	}); err != nil {
+		t.Fatalf("deposit err: %v", err)
+	}
+
+	auditSvc := NewAuditService(clk, nil)
+	auditSvc.SetDB(db)
+	resp, err := auditSvc.VerifyAuditChain(ctx, &rgsv1.VerifyAuditChainRequest{
+		Meta:         meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PartitionDay: clk.now.Format("2006-01-02"),
+	})
+	if err != nil {
+		t.Fatalf("verify audit chain err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK || !resp.Valid {
+		t.Fatalf("expected valid chain, got code=%v valid=%v", resp.Meta.GetResultCode(), resp.Valid)
+	}
+}
+
 func TestPostgresLedgerEFTLockoutPersistsAcrossRestart(t *testing.T) {
 	db := openPostgresIntegrationDB(t)
 	resetPostgresIntegrationState(t, db)

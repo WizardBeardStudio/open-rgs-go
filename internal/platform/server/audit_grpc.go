@@ -172,3 +172,19 @@ func (s *AuditService) ListRemoteAccessActivities(ctx context.Context, req *rgsv
 	page, next := paginate(activities, req.PageToken, req.PageSize)
 	return &rgsv1.ListRemoteAccessActivitiesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Activities: page, NextPageToken: next}, nil
 }
+
+func (s *AuditService) VerifyAuditChain(ctx context.Context, req *rgsv1.VerifyAuditChainRequest) (*rgsv1.VerifyAuditChainResponse, error) {
+	if req == nil {
+		req = &rgsv1.VerifyAuditChainRequest{}
+	}
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
+		return &rgsv1.VerifyAuditChainResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason), Valid: false}, nil
+	}
+	if s.db == nil {
+		return &rgsv1.VerifyAuditChainResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable"), Valid: false}, nil
+	}
+	if err := verifyAuditChainFromDB(ctx, s.db, req.PartitionDay); err != nil {
+		return &rgsv1.VerifyAuditChainResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit chain verification failed"), Valid: false}, nil
+	}
+	return &rgsv1.VerifyAuditChainResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Valid: true}, nil
+}

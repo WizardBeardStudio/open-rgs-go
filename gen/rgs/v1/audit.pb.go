@@ -494,6 +494,110 @@ func (x *ListRemoteAccessActivitiesResponse) GetNextPageToken() string {
 	return ""
 }
 
+type VerifyAuditChainRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *RequestMeta           `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	PartitionDay  string                 `protobuf:"bytes,2,opt,name=partition_day,json=partitionDay,proto3" json:"partition_day,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VerifyAuditChainRequest) Reset() {
+	*x = VerifyAuditChainRequest{}
+	mi := &file_rgs_v1_audit_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyAuditChainRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyAuditChainRequest) ProtoMessage() {}
+
+func (x *VerifyAuditChainRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_audit_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyAuditChainRequest.ProtoReflect.Descriptor instead.
+func (*VerifyAuditChainRequest) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_audit_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *VerifyAuditChainRequest) GetMeta() *RequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *VerifyAuditChainRequest) GetPartitionDay() string {
+	if x != nil {
+		return x.PartitionDay
+	}
+	return ""
+}
+
+type VerifyAuditChainResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *ResponseMeta          `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Valid         bool                   `protobuf:"varint,2,opt,name=valid,proto3" json:"valid,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *VerifyAuditChainResponse) Reset() {
+	*x = VerifyAuditChainResponse{}
+	mi := &file_rgs_v1_audit_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *VerifyAuditChainResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VerifyAuditChainResponse) ProtoMessage() {}
+
+func (x *VerifyAuditChainResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_audit_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VerifyAuditChainResponse.ProtoReflect.Descriptor instead.
+func (*VerifyAuditChainResponse) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_audit_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *VerifyAuditChainResponse) GetMeta() *ResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *VerifyAuditChainResponse) GetValid() bool {
+	if x != nil {
+		return x.Valid
+	}
+	return false
+}
+
 var File_rgs_v1_audit_proto protoreflect.FileDescriptor
 
 const file_rgs_v1_audit_proto_rawDesc = "" +
@@ -546,10 +650,17 @@ const file_rgs_v1_audit_proto_rawDesc = "" +
 	"\n" +
 	"activities\x18\x02 \x03(\v2\".rgs.v1.RemoteAccessActivityRecordR\n" +
 	"activities\x12&\n" +
-	"\x0fnext_page_token\x18\x03 \x01(\tR\rnextPageToken2\x93\x02\n" +
+	"\x0fnext_page_token\x18\x03 \x01(\tR\rnextPageToken\"g\n" +
+	"\x17VerifyAuditChainRequest\x12'\n" +
+	"\x04meta\x18\x01 \x01(\v2\x13.rgs.v1.RequestMetaR\x04meta\x12#\n" +
+	"\rpartition_day\x18\x02 \x01(\tR\fpartitionDay\"Z\n" +
+	"\x18VerifyAuditChainResponse\x12(\n" +
+	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta\x12\x14\n" +
+	"\x05valid\x18\x02 \x01(\bR\x05valid2\x8d\x03\n" +
 	"\fAuditService\x12l\n" +
 	"\x0fListAuditEvents\x12\x1e.rgs.v1.ListAuditEventsRequest\x1a\x1f.rgs.v1.ListAuditEventsResponse\"\x18\x82\xd3\xe4\x93\x02\x12\x12\x10/v1/audit/events\x12\x94\x01\n" +
-	"\x1aListRemoteAccessActivities\x12).rgs.v1.ListRemoteAccessActivitiesRequest\x1a*.rgs.v1.ListRemoteAccessActivitiesResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/v1/audit/remote-accessB\x86\x01\n" +
+	"\x1aListRemoteAccessActivities\x12).rgs.v1.ListRemoteAccessActivitiesRequest\x1a*.rgs.v1.ListRemoteAccessActivitiesResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/v1/audit/remote-access\x12x\n" +
+	"\x10VerifyAuditChain\x12\x1f.rgs.v1.VerifyAuditChainRequest\x1a .rgs.v1.VerifyAuditChainResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/v1/audit/chain:verifyB\x86\x01\n" +
 	"\n" +
 	"com.rgs.v1B\n" +
 	"AuditProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
@@ -566,7 +677,7 @@ func file_rgs_v1_audit_proto_rawDescGZIP() []byte {
 	return file_rgs_v1_audit_proto_rawDescData
 }
 
-var file_rgs_v1_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_rgs_v1_audit_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
 var file_rgs_v1_audit_proto_goTypes = []any{
 	(*AuditEventRecord)(nil),                   // 0: rgs.v1.AuditEventRecord
 	(*RemoteAccessActivityRecord)(nil),         // 1: rgs.v1.RemoteAccessActivityRecord
@@ -574,25 +685,31 @@ var file_rgs_v1_audit_proto_goTypes = []any{
 	(*ListAuditEventsResponse)(nil),            // 3: rgs.v1.ListAuditEventsResponse
 	(*ListRemoteAccessActivitiesRequest)(nil),  // 4: rgs.v1.ListRemoteAccessActivitiesRequest
 	(*ListRemoteAccessActivitiesResponse)(nil), // 5: rgs.v1.ListRemoteAccessActivitiesResponse
-	(*RequestMeta)(nil),                        // 6: rgs.v1.RequestMeta
-	(*ResponseMeta)(nil),                       // 7: rgs.v1.ResponseMeta
+	(*VerifyAuditChainRequest)(nil),            // 6: rgs.v1.VerifyAuditChainRequest
+	(*VerifyAuditChainResponse)(nil),           // 7: rgs.v1.VerifyAuditChainResponse
+	(*RequestMeta)(nil),                        // 8: rgs.v1.RequestMeta
+	(*ResponseMeta)(nil),                       // 9: rgs.v1.ResponseMeta
 }
 var file_rgs_v1_audit_proto_depIdxs = []int32{
-	6, // 0: rgs.v1.ListAuditEventsRequest.meta:type_name -> rgs.v1.RequestMeta
-	7, // 1: rgs.v1.ListAuditEventsResponse.meta:type_name -> rgs.v1.ResponseMeta
-	0, // 2: rgs.v1.ListAuditEventsResponse.events:type_name -> rgs.v1.AuditEventRecord
-	6, // 3: rgs.v1.ListRemoteAccessActivitiesRequest.meta:type_name -> rgs.v1.RequestMeta
-	7, // 4: rgs.v1.ListRemoteAccessActivitiesResponse.meta:type_name -> rgs.v1.ResponseMeta
-	1, // 5: rgs.v1.ListRemoteAccessActivitiesResponse.activities:type_name -> rgs.v1.RemoteAccessActivityRecord
-	2, // 6: rgs.v1.AuditService.ListAuditEvents:input_type -> rgs.v1.ListAuditEventsRequest
-	4, // 7: rgs.v1.AuditService.ListRemoteAccessActivities:input_type -> rgs.v1.ListRemoteAccessActivitiesRequest
-	3, // 8: rgs.v1.AuditService.ListAuditEvents:output_type -> rgs.v1.ListAuditEventsResponse
-	5, // 9: rgs.v1.AuditService.ListRemoteAccessActivities:output_type -> rgs.v1.ListRemoteAccessActivitiesResponse
-	8, // [8:10] is the sub-list for method output_type
-	6, // [6:8] is the sub-list for method input_type
-	6, // [6:6] is the sub-list for extension type_name
-	6, // [6:6] is the sub-list for extension extendee
-	0, // [0:6] is the sub-list for field type_name
+	8,  // 0: rgs.v1.ListAuditEventsRequest.meta:type_name -> rgs.v1.RequestMeta
+	9,  // 1: rgs.v1.ListAuditEventsResponse.meta:type_name -> rgs.v1.ResponseMeta
+	0,  // 2: rgs.v1.ListAuditEventsResponse.events:type_name -> rgs.v1.AuditEventRecord
+	8,  // 3: rgs.v1.ListRemoteAccessActivitiesRequest.meta:type_name -> rgs.v1.RequestMeta
+	9,  // 4: rgs.v1.ListRemoteAccessActivitiesResponse.meta:type_name -> rgs.v1.ResponseMeta
+	1,  // 5: rgs.v1.ListRemoteAccessActivitiesResponse.activities:type_name -> rgs.v1.RemoteAccessActivityRecord
+	8,  // 6: rgs.v1.VerifyAuditChainRequest.meta:type_name -> rgs.v1.RequestMeta
+	9,  // 7: rgs.v1.VerifyAuditChainResponse.meta:type_name -> rgs.v1.ResponseMeta
+	2,  // 8: rgs.v1.AuditService.ListAuditEvents:input_type -> rgs.v1.ListAuditEventsRequest
+	4,  // 9: rgs.v1.AuditService.ListRemoteAccessActivities:input_type -> rgs.v1.ListRemoteAccessActivitiesRequest
+	6,  // 10: rgs.v1.AuditService.VerifyAuditChain:input_type -> rgs.v1.VerifyAuditChainRequest
+	3,  // 11: rgs.v1.AuditService.ListAuditEvents:output_type -> rgs.v1.ListAuditEventsResponse
+	5,  // 12: rgs.v1.AuditService.ListRemoteAccessActivities:output_type -> rgs.v1.ListRemoteAccessActivitiesResponse
+	7,  // 13: rgs.v1.AuditService.VerifyAuditChain:output_type -> rgs.v1.VerifyAuditChainResponse
+	11, // [11:14] is the sub-list for method output_type
+	8,  // [8:11] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_rgs_v1_audit_proto_init() }
@@ -607,7 +724,7 @@ func file_rgs_v1_audit_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rgs_v1_audit_proto_rawDesc), len(file_rgs_v1_audit_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   6,
+			NumMessages:   8,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
