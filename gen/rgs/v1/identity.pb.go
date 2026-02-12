@@ -656,6 +656,498 @@ func (x *SetCredentialResponse) GetMeta() *ResponseMeta {
 	return nil
 }
 
+type DisableCredentialRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *RequestMeta           `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Actor         *Actor                 `protobuf:"bytes,2,opt,name=actor,proto3" json:"actor,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DisableCredentialRequest) Reset() {
+	*x = DisableCredentialRequest{}
+	mi := &file_rgs_v1_identity_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DisableCredentialRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DisableCredentialRequest) ProtoMessage() {}
+
+func (x *DisableCredentialRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_identity_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DisableCredentialRequest.ProtoReflect.Descriptor instead.
+func (*DisableCredentialRequest) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_identity_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DisableCredentialRequest) GetMeta() *RequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *DisableCredentialRequest) GetActor() *Actor {
+	if x != nil {
+		return x.Actor
+	}
+	return nil
+}
+
+func (x *DisableCredentialRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type DisableCredentialResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *ResponseMeta          `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DisableCredentialResponse) Reset() {
+	*x = DisableCredentialResponse{}
+	mi := &file_rgs_v1_identity_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DisableCredentialResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DisableCredentialResponse) ProtoMessage() {}
+
+func (x *DisableCredentialResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_identity_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DisableCredentialResponse.ProtoReflect.Descriptor instead.
+func (*DisableCredentialResponse) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_identity_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *DisableCredentialResponse) GetMeta() *ResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+type EnableCredentialRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *RequestMeta           `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Actor         *Actor                 `protobuf:"bytes,2,opt,name=actor,proto3" json:"actor,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnableCredentialRequest) Reset() {
+	*x = EnableCredentialRequest{}
+	mi := &file_rgs_v1_identity_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnableCredentialRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnableCredentialRequest) ProtoMessage() {}
+
+func (x *EnableCredentialRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_identity_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnableCredentialRequest.ProtoReflect.Descriptor instead.
+func (*EnableCredentialRequest) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_identity_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *EnableCredentialRequest) GetMeta() *RequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *EnableCredentialRequest) GetActor() *Actor {
+	if x != nil {
+		return x.Actor
+	}
+	return nil
+}
+
+func (x *EnableCredentialRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type EnableCredentialResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *ResponseMeta          `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnableCredentialResponse) Reset() {
+	*x = EnableCredentialResponse{}
+	mi := &file_rgs_v1_identity_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnableCredentialResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnableCredentialResponse) ProtoMessage() {}
+
+func (x *EnableCredentialResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_identity_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnableCredentialResponse.ProtoReflect.Descriptor instead.
+func (*EnableCredentialResponse) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_identity_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *EnableCredentialResponse) GetMeta() *ResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+type LockoutStatus struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Actor          *Actor                 `protobuf:"bytes,1,opt,name=actor,proto3" json:"actor,omitempty"`
+	FailedAttempts int32                  `protobuf:"varint,2,opt,name=failed_attempts,json=failedAttempts,proto3" json:"failed_attempts,omitempty"`
+	Locked         bool                   `protobuf:"varint,3,opt,name=locked,proto3" json:"locked,omitempty"`
+	LockedUntil    string                 `protobuf:"bytes,4,opt,name=locked_until,json=lockedUntil,proto3" json:"locked_until,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *LockoutStatus) Reset() {
+	*x = LockoutStatus{}
+	mi := &file_rgs_v1_identity_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LockoutStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LockoutStatus) ProtoMessage() {}
+
+func (x *LockoutStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_identity_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LockoutStatus.ProtoReflect.Descriptor instead.
+func (*LockoutStatus) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_identity_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *LockoutStatus) GetActor() *Actor {
+	if x != nil {
+		return x.Actor
+	}
+	return nil
+}
+
+func (x *LockoutStatus) GetFailedAttempts() int32 {
+	if x != nil {
+		return x.FailedAttempts
+	}
+	return 0
+}
+
+func (x *LockoutStatus) GetLocked() bool {
+	if x != nil {
+		return x.Locked
+	}
+	return false
+}
+
+func (x *LockoutStatus) GetLockedUntil() string {
+	if x != nil {
+		return x.LockedUntil
+	}
+	return ""
+}
+
+type GetLockoutRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *RequestMeta           `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Actor         *Actor                 `protobuf:"bytes,2,opt,name=actor,proto3" json:"actor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLockoutRequest) Reset() {
+	*x = GetLockoutRequest{}
+	mi := &file_rgs_v1_identity_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLockoutRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLockoutRequest) ProtoMessage() {}
+
+func (x *GetLockoutRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_identity_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLockoutRequest.ProtoReflect.Descriptor instead.
+func (*GetLockoutRequest) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_identity_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *GetLockoutRequest) GetMeta() *RequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *GetLockoutRequest) GetActor() *Actor {
+	if x != nil {
+		return x.Actor
+	}
+	return nil
+}
+
+type GetLockoutResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *ResponseMeta          `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Status        *LockoutStatus         `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetLockoutResponse) Reset() {
+	*x = GetLockoutResponse{}
+	mi := &file_rgs_v1_identity_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetLockoutResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetLockoutResponse) ProtoMessage() {}
+
+func (x *GetLockoutResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_identity_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetLockoutResponse.ProtoReflect.Descriptor instead.
+func (*GetLockoutResponse) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_identity_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *GetLockoutResponse) GetMeta() *ResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *GetLockoutResponse) GetStatus() *LockoutStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
+type ResetLockoutRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *RequestMeta           `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Actor         *Actor                 `protobuf:"bytes,2,opt,name=actor,proto3" json:"actor,omitempty"`
+	Reason        string                 `protobuf:"bytes,3,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResetLockoutRequest) Reset() {
+	*x = ResetLockoutRequest{}
+	mi := &file_rgs_v1_identity_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetLockoutRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetLockoutRequest) ProtoMessage() {}
+
+func (x *ResetLockoutRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_identity_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetLockoutRequest.ProtoReflect.Descriptor instead.
+func (*ResetLockoutRequest) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_identity_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *ResetLockoutRequest) GetMeta() *RequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *ResetLockoutRequest) GetActor() *Actor {
+	if x != nil {
+		return x.Actor
+	}
+	return nil
+}
+
+func (x *ResetLockoutRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+type ResetLockoutResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *ResponseMeta          `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Status        *LockoutStatus         `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ResetLockoutResponse) Reset() {
+	*x = ResetLockoutResponse{}
+	mi := &file_rgs_v1_identity_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ResetLockoutResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ResetLockoutResponse) ProtoMessage() {}
+
+func (x *ResetLockoutResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_identity_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ResetLockoutResponse.ProtoReflect.Descriptor instead.
+func (*ResetLockoutResponse) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_identity_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ResetLockoutResponse) GetMeta() *ResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *ResetLockoutResponse) GetStatus() *LockoutStatus {
+	if x != nil {
+		return x.Status
+	}
+	return nil
+}
+
 var File_rgs_v1_identity_proto protoreflect.FileDescriptor
 
 const file_rgs_v1_identity_proto_rawDesc = "" +
@@ -701,12 +1193,47 @@ const file_rgs_v1_identity_proto_rawDesc = "" +
 	"\x06secret\x18\x03 \x01(\tR\x06secret\x12\x16\n" +
 	"\x06reason\x18\x04 \x01(\tR\x06reason\"A\n" +
 	"\x15SetCredentialResponse\x12(\n" +
-	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta2\xa2\x03\n" +
+	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta\"\x80\x01\n" +
+	"\x18DisableCredentialRequest\x12'\n" +
+	"\x04meta\x18\x01 \x01(\v2\x13.rgs.v1.RequestMetaR\x04meta\x12#\n" +
+	"\x05actor\x18\x02 \x01(\v2\r.rgs.v1.ActorR\x05actor\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"E\n" +
+	"\x19DisableCredentialResponse\x12(\n" +
+	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta\"\x7f\n" +
+	"\x17EnableCredentialRequest\x12'\n" +
+	"\x04meta\x18\x01 \x01(\v2\x13.rgs.v1.RequestMetaR\x04meta\x12#\n" +
+	"\x05actor\x18\x02 \x01(\v2\r.rgs.v1.ActorR\x05actor\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"D\n" +
+	"\x18EnableCredentialResponse\x12(\n" +
+	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta\"\x98\x01\n" +
+	"\rLockoutStatus\x12#\n" +
+	"\x05actor\x18\x01 \x01(\v2\r.rgs.v1.ActorR\x05actor\x12'\n" +
+	"\x0ffailed_attempts\x18\x02 \x01(\x05R\x0efailedAttempts\x12\x16\n" +
+	"\x06locked\x18\x03 \x01(\bR\x06locked\x12!\n" +
+	"\flocked_until\x18\x04 \x01(\tR\vlockedUntil\"a\n" +
+	"\x11GetLockoutRequest\x12'\n" +
+	"\x04meta\x18\x01 \x01(\v2\x13.rgs.v1.RequestMetaR\x04meta\x12#\n" +
+	"\x05actor\x18\x02 \x01(\v2\r.rgs.v1.ActorR\x05actor\"m\n" +
+	"\x12GetLockoutResponse\x12(\n" +
+	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta\x12-\n" +
+	"\x06status\x18\x02 \x01(\v2\x15.rgs.v1.LockoutStatusR\x06status\"{\n" +
+	"\x13ResetLockoutRequest\x12'\n" +
+	"\x04meta\x18\x01 \x01(\v2\x13.rgs.v1.RequestMetaR\x04meta\x12#\n" +
+	"\x05actor\x18\x02 \x01(\v2\r.rgs.v1.ActorR\x05actor\x12\x16\n" +
+	"\x06reason\x18\x03 \x01(\tR\x06reason\"o\n" +
+	"\x14ResetLockoutResponse\x12(\n" +
+	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta\x12-\n" +
+	"\x06status\x18\x02 \x01(\v2\x15.rgs.v1.LockoutStatusR\x06status2\x85\a\n" +
 	"\x0fIdentityService\x12S\n" +
 	"\x05Login\x12\x14.rgs.v1.LoginRequest\x1a\x15.rgs.v1.LoginResponse\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/v1/identity/login\x12W\n" +
 	"\x06Logout\x12\x15.rgs.v1.LogoutRequest\x1a\x16.rgs.v1.LogoutResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/v1/identity/logout\x12j\n" +
 	"\fRefreshToken\x12\x1b.rgs.v1.RefreshTokenRequest\x1a\x1c.rgs.v1.RefreshTokenResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/v1/identity/refresh\x12u\n" +
-	"\rSetCredential\x12\x1c.rgs.v1.SetCredentialRequest\x1a\x1d.rgs.v1.SetCredentialResponse\"'\x82\xd3\xe4\x93\x02!:\x01*\"\x1c/v1/identity/credentials:setB\x89\x01\n" +
+	"\rSetCredential\x12\x1c.rgs.v1.SetCredentialRequest\x1a\x1d.rgs.v1.SetCredentialResponse\"'\x82\xd3\xe4\x93\x02!:\x01*\"\x1c/v1/identity/credentials:set\x12\x85\x01\n" +
+	"\x11DisableCredential\x12 .rgs.v1.DisableCredentialRequest\x1a!.rgs.v1.DisableCredentialResponse\"+\x82\xd3\xe4\x93\x02%:\x01*\" /v1/identity/credentials:disable\x12\x81\x01\n" +
+	"\x10EnableCredential\x12\x1f.rgs.v1.EnableCredentialRequest\x1a .rgs.v1.EnableCredentialResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/v1/identity/credentials:enable\x12b\n" +
+	"\n" +
+	"GetLockout\x12\x19.rgs.v1.GetLockoutRequest\x1a\x1a.rgs.v1.GetLockoutResponse\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/v1/identity/lockouts\x12q\n" +
+	"\fResetLockout\x12\x1b.rgs.v1.ResetLockoutRequest\x1a\x1c.rgs.v1.ResetLockoutResponse\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/v1/identity/lockouts:resetB\x89\x01\n" +
 	"\n" +
 	"com.rgs.v1B\rIdentityProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
@@ -722,51 +1249,83 @@ func file_rgs_v1_identity_proto_rawDescGZIP() []byte {
 	return file_rgs_v1_identity_proto_rawDescData
 }
 
-var file_rgs_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_rgs_v1_identity_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_rgs_v1_identity_proto_goTypes = []any{
-	(*PlayerCredentials)(nil),     // 0: rgs.v1.PlayerCredentials
-	(*OperatorCredentials)(nil),   // 1: rgs.v1.OperatorCredentials
-	(*SessionToken)(nil),          // 2: rgs.v1.SessionToken
-	(*LoginRequest)(nil),          // 3: rgs.v1.LoginRequest
-	(*LoginResponse)(nil),         // 4: rgs.v1.LoginResponse
-	(*LogoutRequest)(nil),         // 5: rgs.v1.LogoutRequest
-	(*LogoutResponse)(nil),        // 6: rgs.v1.LogoutResponse
-	(*RefreshTokenRequest)(nil),   // 7: rgs.v1.RefreshTokenRequest
-	(*RefreshTokenResponse)(nil),  // 8: rgs.v1.RefreshTokenResponse
-	(*SetCredentialRequest)(nil),  // 9: rgs.v1.SetCredentialRequest
-	(*SetCredentialResponse)(nil), // 10: rgs.v1.SetCredentialResponse
-	(*Actor)(nil),                 // 11: rgs.v1.Actor
-	(*RequestMeta)(nil),           // 12: rgs.v1.RequestMeta
-	(*ResponseMeta)(nil),          // 13: rgs.v1.ResponseMeta
+	(*PlayerCredentials)(nil),         // 0: rgs.v1.PlayerCredentials
+	(*OperatorCredentials)(nil),       // 1: rgs.v1.OperatorCredentials
+	(*SessionToken)(nil),              // 2: rgs.v1.SessionToken
+	(*LoginRequest)(nil),              // 3: rgs.v1.LoginRequest
+	(*LoginResponse)(nil),             // 4: rgs.v1.LoginResponse
+	(*LogoutRequest)(nil),             // 5: rgs.v1.LogoutRequest
+	(*LogoutResponse)(nil),            // 6: rgs.v1.LogoutResponse
+	(*RefreshTokenRequest)(nil),       // 7: rgs.v1.RefreshTokenRequest
+	(*RefreshTokenResponse)(nil),      // 8: rgs.v1.RefreshTokenResponse
+	(*SetCredentialRequest)(nil),      // 9: rgs.v1.SetCredentialRequest
+	(*SetCredentialResponse)(nil),     // 10: rgs.v1.SetCredentialResponse
+	(*DisableCredentialRequest)(nil),  // 11: rgs.v1.DisableCredentialRequest
+	(*DisableCredentialResponse)(nil), // 12: rgs.v1.DisableCredentialResponse
+	(*EnableCredentialRequest)(nil),   // 13: rgs.v1.EnableCredentialRequest
+	(*EnableCredentialResponse)(nil),  // 14: rgs.v1.EnableCredentialResponse
+	(*LockoutStatus)(nil),             // 15: rgs.v1.LockoutStatus
+	(*GetLockoutRequest)(nil),         // 16: rgs.v1.GetLockoutRequest
+	(*GetLockoutResponse)(nil),        // 17: rgs.v1.GetLockoutResponse
+	(*ResetLockoutRequest)(nil),       // 18: rgs.v1.ResetLockoutRequest
+	(*ResetLockoutResponse)(nil),      // 19: rgs.v1.ResetLockoutResponse
+	(*Actor)(nil),                     // 20: rgs.v1.Actor
+	(*RequestMeta)(nil),               // 21: rgs.v1.RequestMeta
+	(*ResponseMeta)(nil),              // 22: rgs.v1.ResponseMeta
 }
 var file_rgs_v1_identity_proto_depIdxs = []int32{
-	11, // 0: rgs.v1.SessionToken.actor:type_name -> rgs.v1.Actor
-	12, // 1: rgs.v1.LoginRequest.meta:type_name -> rgs.v1.RequestMeta
+	20, // 0: rgs.v1.SessionToken.actor:type_name -> rgs.v1.Actor
+	21, // 1: rgs.v1.LoginRequest.meta:type_name -> rgs.v1.RequestMeta
 	0,  // 2: rgs.v1.LoginRequest.player:type_name -> rgs.v1.PlayerCredentials
 	1,  // 3: rgs.v1.LoginRequest.operator:type_name -> rgs.v1.OperatorCredentials
-	13, // 4: rgs.v1.LoginResponse.meta:type_name -> rgs.v1.ResponseMeta
+	22, // 4: rgs.v1.LoginResponse.meta:type_name -> rgs.v1.ResponseMeta
 	2,  // 5: rgs.v1.LoginResponse.token:type_name -> rgs.v1.SessionToken
-	12, // 6: rgs.v1.LogoutRequest.meta:type_name -> rgs.v1.RequestMeta
-	13, // 7: rgs.v1.LogoutResponse.meta:type_name -> rgs.v1.ResponseMeta
-	12, // 8: rgs.v1.RefreshTokenRequest.meta:type_name -> rgs.v1.RequestMeta
-	13, // 9: rgs.v1.RefreshTokenResponse.meta:type_name -> rgs.v1.ResponseMeta
+	21, // 6: rgs.v1.LogoutRequest.meta:type_name -> rgs.v1.RequestMeta
+	22, // 7: rgs.v1.LogoutResponse.meta:type_name -> rgs.v1.ResponseMeta
+	21, // 8: rgs.v1.RefreshTokenRequest.meta:type_name -> rgs.v1.RequestMeta
+	22, // 9: rgs.v1.RefreshTokenResponse.meta:type_name -> rgs.v1.ResponseMeta
 	2,  // 10: rgs.v1.RefreshTokenResponse.token:type_name -> rgs.v1.SessionToken
-	12, // 11: rgs.v1.SetCredentialRequest.meta:type_name -> rgs.v1.RequestMeta
-	11, // 12: rgs.v1.SetCredentialRequest.actor:type_name -> rgs.v1.Actor
-	13, // 13: rgs.v1.SetCredentialResponse.meta:type_name -> rgs.v1.ResponseMeta
-	3,  // 14: rgs.v1.IdentityService.Login:input_type -> rgs.v1.LoginRequest
-	5,  // 15: rgs.v1.IdentityService.Logout:input_type -> rgs.v1.LogoutRequest
-	7,  // 16: rgs.v1.IdentityService.RefreshToken:input_type -> rgs.v1.RefreshTokenRequest
-	9,  // 17: rgs.v1.IdentityService.SetCredential:input_type -> rgs.v1.SetCredentialRequest
-	4,  // 18: rgs.v1.IdentityService.Login:output_type -> rgs.v1.LoginResponse
-	6,  // 19: rgs.v1.IdentityService.Logout:output_type -> rgs.v1.LogoutResponse
-	8,  // 20: rgs.v1.IdentityService.RefreshToken:output_type -> rgs.v1.RefreshTokenResponse
-	10, // 21: rgs.v1.IdentityService.SetCredential:output_type -> rgs.v1.SetCredentialResponse
-	18, // [18:22] is the sub-list for method output_type
-	14, // [14:18] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	21, // 11: rgs.v1.SetCredentialRequest.meta:type_name -> rgs.v1.RequestMeta
+	20, // 12: rgs.v1.SetCredentialRequest.actor:type_name -> rgs.v1.Actor
+	22, // 13: rgs.v1.SetCredentialResponse.meta:type_name -> rgs.v1.ResponseMeta
+	21, // 14: rgs.v1.DisableCredentialRequest.meta:type_name -> rgs.v1.RequestMeta
+	20, // 15: rgs.v1.DisableCredentialRequest.actor:type_name -> rgs.v1.Actor
+	22, // 16: rgs.v1.DisableCredentialResponse.meta:type_name -> rgs.v1.ResponseMeta
+	21, // 17: rgs.v1.EnableCredentialRequest.meta:type_name -> rgs.v1.RequestMeta
+	20, // 18: rgs.v1.EnableCredentialRequest.actor:type_name -> rgs.v1.Actor
+	22, // 19: rgs.v1.EnableCredentialResponse.meta:type_name -> rgs.v1.ResponseMeta
+	20, // 20: rgs.v1.LockoutStatus.actor:type_name -> rgs.v1.Actor
+	21, // 21: rgs.v1.GetLockoutRequest.meta:type_name -> rgs.v1.RequestMeta
+	20, // 22: rgs.v1.GetLockoutRequest.actor:type_name -> rgs.v1.Actor
+	22, // 23: rgs.v1.GetLockoutResponse.meta:type_name -> rgs.v1.ResponseMeta
+	15, // 24: rgs.v1.GetLockoutResponse.status:type_name -> rgs.v1.LockoutStatus
+	21, // 25: rgs.v1.ResetLockoutRequest.meta:type_name -> rgs.v1.RequestMeta
+	20, // 26: rgs.v1.ResetLockoutRequest.actor:type_name -> rgs.v1.Actor
+	22, // 27: rgs.v1.ResetLockoutResponse.meta:type_name -> rgs.v1.ResponseMeta
+	15, // 28: rgs.v1.ResetLockoutResponse.status:type_name -> rgs.v1.LockoutStatus
+	3,  // 29: rgs.v1.IdentityService.Login:input_type -> rgs.v1.LoginRequest
+	5,  // 30: rgs.v1.IdentityService.Logout:input_type -> rgs.v1.LogoutRequest
+	7,  // 31: rgs.v1.IdentityService.RefreshToken:input_type -> rgs.v1.RefreshTokenRequest
+	9,  // 32: rgs.v1.IdentityService.SetCredential:input_type -> rgs.v1.SetCredentialRequest
+	11, // 33: rgs.v1.IdentityService.DisableCredential:input_type -> rgs.v1.DisableCredentialRequest
+	13, // 34: rgs.v1.IdentityService.EnableCredential:input_type -> rgs.v1.EnableCredentialRequest
+	16, // 35: rgs.v1.IdentityService.GetLockout:input_type -> rgs.v1.GetLockoutRequest
+	18, // 36: rgs.v1.IdentityService.ResetLockout:input_type -> rgs.v1.ResetLockoutRequest
+	4,  // 37: rgs.v1.IdentityService.Login:output_type -> rgs.v1.LoginResponse
+	6,  // 38: rgs.v1.IdentityService.Logout:output_type -> rgs.v1.LogoutResponse
+	8,  // 39: rgs.v1.IdentityService.RefreshToken:output_type -> rgs.v1.RefreshTokenResponse
+	10, // 40: rgs.v1.IdentityService.SetCredential:output_type -> rgs.v1.SetCredentialResponse
+	12, // 41: rgs.v1.IdentityService.DisableCredential:output_type -> rgs.v1.DisableCredentialResponse
+	14, // 42: rgs.v1.IdentityService.EnableCredential:output_type -> rgs.v1.EnableCredentialResponse
+	17, // 43: rgs.v1.IdentityService.GetLockout:output_type -> rgs.v1.GetLockoutResponse
+	19, // 44: rgs.v1.IdentityService.ResetLockout:output_type -> rgs.v1.ResetLockoutResponse
+	37, // [37:45] is the sub-list for method output_type
+	29, // [29:37] is the sub-list for method input_type
+	29, // [29:29] is the sub-list for extension type_name
+	29, // [29:29] is the sub-list for extension extendee
+	0,  // [0:29] is the sub-list for field type_name
 }
 
 func init() { file_rgs_v1_identity_proto_init() }
@@ -785,7 +1344,7 @@ func file_rgs_v1_identity_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rgs_v1_identity_proto_rawDesc), len(file_rgs_v1_identity_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   11,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

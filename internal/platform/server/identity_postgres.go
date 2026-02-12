@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
 )
 
 func (s *IdentityService) HasActiveCredentials(ctx context.Context) (bool, error) {
@@ -20,6 +22,51 @@ WHERE status = 'active'
 		return false, err
 	}
 	return count > 0, nil
+}
+
+func (s *IdentityService) setCredentialStatus(ctx context.Context, actorID string, actorType rgsv1.ActorType, status string) (bool, error) {
+	if s == nil || s.db == nil {
+		return false, errIdentityPersistenceRequired
+	}
+	const q = `
+UPDATE identity_credentials
+SET status = $3, updated_at = NOW()
+WHERE actor_id = $1 AND actor_type = $2
+`
+	res, err := s.db.ExecContext(ctx, q, actorID, actorType.String(), status)
+	if err != nil {
+		return false, err
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+	return rows > 0, nil
+}
+
+func (s *IdentityService) getLockoutStatusDB(ctx context.Context, actorID string, actorType rgsv1.ActorType) (int, *time.Time, error) {
+	if s == nil || s.db == nil {
+		return 0, nil, nil
+	}
+	const q = `
+SELECT failed_attempts, locked_until
+FROM identity_lockouts
+WHERE actor_id = $1 AND actor_type = $2
+`
+	var failed int
+	var locked sql.NullTime
+	err := s.db.QueryRowContext(ctx, q, actorID, actorType.String()).Scan(&failed, &locked)
+	if err == sql.ErrNoRows {
+		return 0, nil, nil
+	}
+	if err != nil {
+		return 0, nil, err
+	}
+	if locked.Valid {
+		t := locked.Time.UTC()
+		return failed, &t, nil
+	}
+	return failed, nil, nil
 }
 
 func (s *IdentityService) storeSession(ctx context.Context, sess *identitySession) error {

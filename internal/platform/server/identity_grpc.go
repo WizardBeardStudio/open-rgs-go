@@ -331,6 +331,17 @@ SET password_hash = EXCLUDED.password_hash,
 	return err
 }
 
+func (s *IdentityService) authorizeIdentityAdmin(ctx context.Context, meta *rgsv1.RequestMeta) (bool, string) {
+	actor, reason := resolveActor(ctx, meta)
+	if reason != "" {
+		return false, reason
+	}
+	if actor.ActorType != rgsv1.ActorType_ACTOR_TYPE_OPERATOR && actor.ActorType != rgsv1.ActorType_ACTOR_TYPE_SERVICE {
+		return false, "unauthorized actor type"
+	}
+	return true, ""
+}
+
 func (s *IdentityService) Login(ctx context.Context, req *rgsv1.LoginRequest) (*rgsv1.LoginResponse, error) {
 	actorID, actorType, reason := s.validateLoginRequest(req)
 	if reason != "" {
@@ -542,12 +553,8 @@ func (s *IdentityService) SetCredential(ctx context.Context, req *rgsv1.SetCrede
 	if req == nil || req.Actor == nil || req.Actor.ActorId == "" || req.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED || req.Secret == "" {
 		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor and secret are required")}, nil
 	}
-	authActor, reason := resolveActor(ctx, req.Meta)
-	if reason != "" {
+	if ok, reason := s.authorizeIdentityAdmin(ctx, req.Meta); !ok {
 		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
-	}
-	if authActor.ActorType != rgsv1.ActorType_ACTOR_TYPE_OPERATOR && authActor.ActorType != rgsv1.ActorType_ACTOR_TYPE_SERVICE {
-		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "unauthorized actor type")}, nil
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(req.Secret), bcrypt.DefaultCost)
@@ -579,4 +586,127 @@ func (s *IdentityService) SetCredential(ctx context.Context, req *rgsv1.SetCrede
 		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
 	return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, "")}, nil
+}
+
+func (s *IdentityService) DisableCredential(ctx context.Context, req *rgsv1.DisableCredentialRequest) (*rgsv1.DisableCredentialResponse, error) {
+	if req == nil || req.Actor == nil || req.Actor.ActorId == "" || req.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED {
+		return &rgsv1.DisableCredentialResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor is required")}, nil
+	}
+	if ok, reason := s.authorizeIdentityAdmin(ctx, req.Meta); !ok {
+		return &rgsv1.DisableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	updated, err := s.setCredentialStatus(ctx, req.Actor.ActorId, req.Actor.ActorType, "disabled")
+	if err != nil {
+		if errors.Is(err, errIdentityPersistenceRequired) {
+			return &rgsv1.DisableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "credential management requires database")}, nil
+		}
+		return &rgsv1.DisableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if !updated {
+		return &rgsv1.DisableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "credential not found")}, nil
+	}
+	if err := s.appendAudit(req.Meta, req.Actor.ActorId, "identity_disable_credential", []byte(`{}`), []byte(`{"status":"disabled"}`), audit.ResultSuccess, req.Reason); err != nil {
+		return &rgsv1.DisableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+	return &rgsv1.DisableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, "")}, nil
+}
+
+func (s *IdentityService) EnableCredential(ctx context.Context, req *rgsv1.EnableCredentialRequest) (*rgsv1.EnableCredentialResponse, error) {
+	if req == nil || req.Actor == nil || req.Actor.ActorId == "" || req.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED {
+		return &rgsv1.EnableCredentialResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor is required")}, nil
+	}
+	if ok, reason := s.authorizeIdentityAdmin(ctx, req.Meta); !ok {
+		return &rgsv1.EnableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	updated, err := s.setCredentialStatus(ctx, req.Actor.ActorId, req.Actor.ActorType, "active")
+	if err != nil {
+		if errors.Is(err, errIdentityPersistenceRequired) {
+			return &rgsv1.EnableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "credential management requires database")}, nil
+		}
+		return &rgsv1.EnableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if !updated {
+		return &rgsv1.EnableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "credential not found")}, nil
+	}
+	if err := s.appendAudit(req.Meta, req.Actor.ActorId, "identity_enable_credential", []byte(`{}`), []byte(`{"status":"active"}`), audit.ResultSuccess, req.Reason); err != nil {
+		return &rgsv1.EnableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+	return &rgsv1.EnableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, "")}, nil
+}
+
+func (s *IdentityService) lockoutStatus(ctx context.Context, actor *rgsv1.Actor) (*rgsv1.LockoutStatus, error) {
+	if actor == nil {
+		return nil, nil
+	}
+	if s.db != nil {
+		failed, lockedUntil, err := s.getLockoutStatusDB(ctx, actor.ActorId, actor.ActorType)
+		if err != nil {
+			return nil, err
+		}
+		out := &rgsv1.LockoutStatus{
+			Actor:          &rgsv1.Actor{ActorId: actor.ActorId, ActorType: actor.ActorType},
+			FailedAttempts: int32(failed),
+			Locked:         lockedUntil != nil && lockedUntil.After(s.now()),
+		}
+		if lockedUntil != nil {
+			out.LockedUntil = lockedUntil.UTC().Format(time.RFC3339Nano)
+		}
+		return out, nil
+	}
+	k := lockKey(actor.ActorId, actor.ActorType)
+	until := s.lockedUntil[k]
+	out := &rgsv1.LockoutStatus{
+		Actor:          &rgsv1.Actor{ActorId: actor.ActorId, ActorType: actor.ActorType},
+		FailedAttempts: int32(s.failedAttempts[k]),
+		Locked:         until.After(s.now()),
+	}
+	if !until.IsZero() {
+		out.LockedUntil = until.UTC().Format(time.RFC3339Nano)
+	}
+	return out, nil
+}
+
+func (s *IdentityService) GetLockout(ctx context.Context, req *rgsv1.GetLockoutRequest) (*rgsv1.GetLockoutResponse, error) {
+	if req == nil || req.Actor == nil || req.Actor.ActorId == "" || req.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED {
+		return &rgsv1.GetLockoutResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor is required")}, nil
+	}
+	if ok, reason := s.authorizeIdentityAdmin(ctx, req.Meta); !ok {
+		return &rgsv1.GetLockoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	status, err := s.lockoutStatus(ctx, req.Actor)
+	if err != nil {
+		return &rgsv1.GetLockoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	return &rgsv1.GetLockoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Status: status}, nil
+}
+
+func (s *IdentityService) ResetLockout(ctx context.Context, req *rgsv1.ResetLockoutRequest) (*rgsv1.ResetLockoutResponse, error) {
+	if req == nil || req.Actor == nil || req.Actor.ActorId == "" || req.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED {
+		return &rgsv1.ResetLockoutResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor is required")}, nil
+	}
+	if ok, reason := s.authorizeIdentityAdmin(ctx, req.Meta); !ok {
+		return &rgsv1.ResetLockoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if err := s.resetFailures(ctx, req.Actor.ActorId, req.Actor.ActorType); err != nil {
+		return &rgsv1.ResetLockoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	status, err := s.lockoutStatus(ctx, req.Actor)
+	if err != nil {
+		return &rgsv1.ResetLockoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	afterJSON, _ := json.Marshal(status)
+	if err := s.appendAudit(req.Meta, req.Actor.ActorId, "identity_reset_lockout", []byte(`{}`), afterJSON, audit.ResultSuccess, req.Reason); err != nil {
+		return &rgsv1.ResetLockoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+	return &rgsv1.ResetLockoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Status: status}, nil
 }

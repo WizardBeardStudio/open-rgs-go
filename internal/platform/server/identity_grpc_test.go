@@ -210,4 +210,98 @@ TRUNCATE TABLE identity_lockouts, identity_credentials RESTART IDENTITY CASCADE
 	if loginResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
 		t.Fatalf("expected login ok, got=%v", loginResp.Meta.GetResultCode())
 	}
+
+	disableResp, err := svc.DisableCredential(ctx, &rgsv1.DisableCredentialRequest{
+		Meta:   meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:  &rgsv1.Actor{ActorId: "player-db-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		Reason: "disable test user",
+	})
+	if err != nil {
+		t.Fatalf("disable credential err: %v", err)
+	}
+	if disableResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected disable ok, got=%v", disableResp.Meta.GetResultCode())
+	}
+	deniedLogin, err := svc.Login(context.Background(), &rgsv1.LoginRequest{
+		Meta: meta("player-db-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Credentials: &rgsv1.LoginRequest_Player{
+			Player: &rgsv1.PlayerCredentials{PlayerId: "player-db-1", Pin: "player-secret"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("login after disable err: %v", err)
+	}
+	if deniedLogin.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied login when disabled, got=%v", deniedLogin.Meta.GetResultCode())
+	}
+
+	enableResp, err := svc.EnableCredential(ctx, &rgsv1.EnableCredentialRequest{
+		Meta:   meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:  &rgsv1.Actor{ActorId: "player-db-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		Reason: "re-enable test user",
+	})
+	if err != nil {
+		t.Fatalf("enable credential err: %v", err)
+	}
+	if enableResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected enable ok, got=%v", enableResp.Meta.GetResultCode())
+	}
+	relogin, err := svc.Login(context.Background(), &rgsv1.LoginRequest{
+		Meta: meta("player-db-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Credentials: &rgsv1.LoginRequest_Player{
+			Player: &rgsv1.PlayerCredentials{PlayerId: "player-db-1", Pin: "player-secret"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("login after enable err: %v", err)
+	}
+	if relogin.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected login ok after enable, got=%v", relogin.Meta.GetResultCode())
+	}
+}
+
+func TestIdentityGetAndResetLockout(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 13, 50, 0, 0, time.UTC)}
+	svc := NewIdentityService(clk, "test-secret", 15*time.Minute, time.Hour)
+	svc.maxFailures = 2
+	svc.lockoutTTL = 5 * time.Minute
+
+	for i := 0; i < 2; i++ {
+		_, _ = svc.Login(context.Background(), &rgsv1.LoginRequest{
+			Meta: meta("player-lock-2", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+			Credentials: &rgsv1.LoginRequest_Player{
+				Player: &rgsv1.PlayerCredentials{PlayerId: "player-lock-2", Pin: "wrong"},
+			},
+		})
+	}
+
+	adminCtx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "op-1", Type: "ACTOR_TYPE_OPERATOR"})
+	statusResp, err := svc.GetLockout(adminCtx, &rgsv1.GetLockoutRequest{
+		Meta:  meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor: &rgsv1.Actor{ActorId: "player-lock-2", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+	})
+	if err != nil {
+		t.Fatalf("get lockout err: %v", err)
+	}
+	if statusResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected get lockout ok, got=%v", statusResp.Meta.GetResultCode())
+	}
+	if !statusResp.Status.GetLocked() {
+		t.Fatalf("expected locked=true after repeated failures")
+	}
+
+	resetResp, err := svc.ResetLockout(adminCtx, &rgsv1.ResetLockoutRequest{
+		Meta:   meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:  &rgsv1.Actor{ActorId: "player-lock-2", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		Reason: "operator unlock",
+	})
+	if err != nil {
+		t.Fatalf("reset lockout err: %v", err)
+	}
+	if resetResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected reset lockout ok, got=%v", resetResp.Meta.GetResultCode())
+	}
+	if resetResp.Status.GetLocked() {
+		t.Fatalf("expected locked=false after reset")
+	}
 }

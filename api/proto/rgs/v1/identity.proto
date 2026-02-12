@@ -53,6 +53,33 @@ service IdentityService {
       body: "*"
     };
   }
+
+  rpc DisableCredential(DisableCredentialRequest) returns (DisableCredentialResponse) {
+    option (google.api.http) = {
+      post: "/v1/identity/credentials:disable"
+      body: "*"
+    };
+  }
+
+  rpc EnableCredential(EnableCredentialRequest) returns (EnableCredentialResponse) {
+    option (google.api.http) = {
+      post: "/v1/identity/credentials:enable"
+      body: "*"
+    };
+  }
+
+  rpc GetLockout(GetLockoutRequest) returns (GetLockoutResponse) {
+    option (google.api.http) = {
+      get: "/v1/identity/lockouts"
+    };
+  }
+
+  rpc ResetLockout(ResetLockoutRequest) returns (ResetLockoutResponse) {
+    option (google.api.http) = {
+      post: "/v1/identity/lockouts:reset"
+      body: "*"
+    };
+  }
 }
 
 message LoginRequest {
@@ -96,4 +123,52 @@ message SetCredentialRequest {
 
 message SetCredentialResponse {
   ResponseMeta meta = 1;
+}
+
+message DisableCredentialRequest {
+  RequestMeta meta = 1;
+  Actor actor = 2;
+  string reason = 3;
+}
+
+message DisableCredentialResponse {
+  ResponseMeta meta = 1;
+}
+
+message EnableCredentialRequest {
+  RequestMeta meta = 1;
+  Actor actor = 2;
+  string reason = 3;
+}
+
+message EnableCredentialResponse {
+  ResponseMeta meta = 1;
+}
+
+message LockoutStatus {
+  Actor actor = 1;
+  int32 failed_attempts = 2;
+  bool locked = 3;
+  string locked_until = 4;
+}
+
+message GetLockoutRequest {
+  RequestMeta meta = 1;
+  Actor actor = 2;
+}
+
+message GetLockoutResponse {
+  ResponseMeta meta = 1;
+  LockoutStatus status = 2;
+}
+
+message ResetLockoutRequest {
+  RequestMeta meta = 1;
+  Actor actor = 2;
+  string reason = 3;
+}
+
+message ResetLockoutResponse {
+  ResponseMeta meta = 1;
+  LockoutStatus status = 2;
 }

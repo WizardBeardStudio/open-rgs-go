@@ -19,10 +19,14 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	IdentityService_Login_FullMethodName         = "/rgs.v1.IdentityService/Login"
-	IdentityService_Logout_FullMethodName        = "/rgs.v1.IdentityService/Logout"
-	IdentityService_RefreshToken_FullMethodName  = "/rgs.v1.IdentityService/RefreshToken"
-	IdentityService_SetCredential_FullMethodName = "/rgs.v1.IdentityService/SetCredential"
+	IdentityService_Login_FullMethodName             = "/rgs.v1.IdentityService/Login"
+	IdentityService_Logout_FullMethodName            = "/rgs.v1.IdentityService/Logout"
+	IdentityService_RefreshToken_FullMethodName      = "/rgs.v1.IdentityService/RefreshToken"
+	IdentityService_SetCredential_FullMethodName     = "/rgs.v1.IdentityService/SetCredential"
+	IdentityService_DisableCredential_FullMethodName = "/rgs.v1.IdentityService/DisableCredential"
+	IdentityService_EnableCredential_FullMethodName  = "/rgs.v1.IdentityService/EnableCredential"
+	IdentityService_GetLockout_FullMethodName        = "/rgs.v1.IdentityService/GetLockout"
+	IdentityService_ResetLockout_FullMethodName      = "/rgs.v1.IdentityService/ResetLockout"
 )
 
 // IdentityServiceClient is the client API for IdentityService service.
@@ -33,6 +37,10 @@ type IdentityServiceClient interface {
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*RefreshTokenResponse, error)
 	SetCredential(ctx context.Context, in *SetCredentialRequest, opts ...grpc.CallOption) (*SetCredentialResponse, error)
+	DisableCredential(ctx context.Context, in *DisableCredentialRequest, opts ...grpc.CallOption) (*DisableCredentialResponse, error)
+	EnableCredential(ctx context.Context, in *EnableCredentialRequest, opts ...grpc.CallOption) (*EnableCredentialResponse, error)
+	GetLockout(ctx context.Context, in *GetLockoutRequest, opts ...grpc.CallOption) (*GetLockoutResponse, error)
+	ResetLockout(ctx context.Context, in *ResetLockoutRequest, opts ...grpc.CallOption) (*ResetLockoutResponse, error)
 }
 
 type identityServiceClient struct {
@@ -83,6 +91,46 @@ func (c *identityServiceClient) SetCredential(ctx context.Context, in *SetCreden
 	return out, nil
 }
 
+func (c *identityServiceClient) DisableCredential(ctx context.Context, in *DisableCredentialRequest, opts ...grpc.CallOption) (*DisableCredentialResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DisableCredentialResponse)
+	err := c.cc.Invoke(ctx, IdentityService_DisableCredential_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) EnableCredential(ctx context.Context, in *EnableCredentialRequest, opts ...grpc.CallOption) (*EnableCredentialResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EnableCredentialResponse)
+	err := c.cc.Invoke(ctx, IdentityService_EnableCredential_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) GetLockout(ctx context.Context, in *GetLockoutRequest, opts ...grpc.CallOption) (*GetLockoutResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetLockoutResponse)
+	err := c.cc.Invoke(ctx, IdentityService_GetLockout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *identityServiceClient) ResetLockout(ctx context.Context, in *ResetLockoutRequest, opts ...grpc.CallOption) (*ResetLockoutResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResetLockoutResponse)
+	err := c.cc.Invoke(ctx, IdentityService_ResetLockout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // IdentityServiceServer is the server API for IdentityService service.
 // All implementations must embed UnimplementedIdentityServiceServer
 // for forward compatibility.
@@ -91,6 +139,10 @@ type IdentityServiceServer interface {
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	RefreshToken(context.Context, *RefreshTokenRequest) (*RefreshTokenResponse, error)
 	SetCredential(context.Context, *SetCredentialRequest) (*SetCredentialResponse, error)
+	DisableCredential(context.Context, *DisableCredentialRequest) (*DisableCredentialResponse, error)
+	EnableCredential(context.Context, *EnableCredentialRequest) (*EnableCredentialResponse, error)
+	GetLockout(context.Context, *GetLockoutRequest) (*GetLockoutResponse, error)
+	ResetLockout(context.Context, *ResetLockoutRequest) (*ResetLockoutResponse, error)
 	mustEmbedUnimplementedIdentityServiceServer()
 }
 
@@ -112,6 +164,18 @@ func (UnimplementedIdentityServiceServer) RefreshToken(context.Context, *Refresh
 }
 func (UnimplementedIdentityServiceServer) SetCredential(context.Context, *SetCredentialRequest) (*SetCredentialResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetCredential not implemented")
+}
+func (UnimplementedIdentityServiceServer) DisableCredential(context.Context, *DisableCredentialRequest) (*DisableCredentialResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DisableCredential not implemented")
+}
+func (UnimplementedIdentityServiceServer) EnableCredential(context.Context, *EnableCredentialRequest) (*EnableCredentialResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EnableCredential not implemented")
+}
+func (UnimplementedIdentityServiceServer) GetLockout(context.Context, *GetLockoutRequest) (*GetLockoutResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetLockout not implemented")
+}
+func (UnimplementedIdentityServiceServer) ResetLockout(context.Context, *ResetLockoutRequest) (*ResetLockoutResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResetLockout not implemented")
 }
 func (UnimplementedIdentityServiceServer) mustEmbedUnimplementedIdentityServiceServer() {}
 func (UnimplementedIdentityServiceServer) testEmbeddedByValue()                         {}
@@ -206,6 +270,78 @@ func _IdentityService_SetCredential_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _IdentityService_DisableCredential_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DisableCredentialRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).DisableCredential(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_DisableCredential_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).DisableCredential(ctx, req.(*DisableCredentialRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_EnableCredential_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnableCredentialRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).EnableCredential(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_EnableCredential_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).EnableCredential(ctx, req.(*EnableCredentialRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_GetLockout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetLockoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).GetLockout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_GetLockout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).GetLockout(ctx, req.(*GetLockoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _IdentityService_ResetLockout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResetLockoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(IdentityServiceServer).ResetLockout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: IdentityService_ResetLockout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(IdentityServiceServer).ResetLockout(ctx, req.(*ResetLockoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // IdentityService_ServiceDesc is the grpc.ServiceDesc for IdentityService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -228,6 +364,22 @@ var IdentityService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetCredential",
 			Handler:    _IdentityService_SetCredential_Handler,
+		},
+		{
+			MethodName: "DisableCredential",
+			Handler:    _IdentityService_DisableCredential_Handler,
+		},
+		{
+			MethodName: "EnableCredential",
+			Handler:    _IdentityService_EnableCredential_Handler,
+		},
+		{
+			MethodName: "GetLockout",
+			Handler:    _IdentityService_GetLockout_Handler,
+		},
+		{
+			MethodName: "ResetLockout",
+			Handler:    _IdentityService_ResetLockout_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
