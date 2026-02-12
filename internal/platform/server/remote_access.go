@@ -121,14 +121,18 @@ func (g *RemoteAccessGuard) appendAudit(path, sourceIP, outcome, reason string) 
 	if g.AuditStore == nil {
 		return
 	}
-	g.nextID++
 	now := g.now()
+	g.mu.Lock()
+	g.nextID++
+	id := g.nextID
+	db := g.db
+	g.mu.Unlock()
 	res := audit.ResultSuccess
 	if outcome != "allowed" {
 		res = audit.ResultDenied
 	}
-	_, _ = g.AuditStore.Append(audit.Event{
-		AuditID:      "remote-access-" + strconv.FormatInt(g.nextID, 10),
+	ev := audit.Event{
+		AuditID:      "remote-access-" + strconv.FormatInt(id, 10),
 		OccurredAt:   now,
 		RecordedAt:   now,
 		ActorID:      sourceIP,
@@ -142,7 +146,11 @@ func (g *RemoteAccessGuard) appendAudit(path, sourceIP, outcome, reason string) 
 		Result:       res,
 		Reason:       reason,
 		PartitionDay: now.Format("2006-01-02"),
-	})
+	}
+	if db != nil {
+		_ = appendAuditEventToDB(context.Background(), db, ev)
+	}
+	_, _ = g.AuditStore.Append(ev)
 }
 
 func (g *RemoteAccessGuard) logActivity(r *http.Request, sourceIP, sourcePort string, allowed bool, reason string) {

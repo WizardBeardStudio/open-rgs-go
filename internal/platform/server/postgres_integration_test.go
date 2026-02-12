@@ -731,6 +731,7 @@ func TestPostgresRemoteAccessActivityPersistenceAcrossRestart(t *testing.T) {
 	}
 	guardB.SetDB(db)
 	auditSvc := NewAuditService(clk, guardB, audit.NewInMemoryStore())
+	auditSvc.SetDB(db)
 	resp, err := auditSvc.ListRemoteAccessActivities(context.Background(), &rgsv1.ListRemoteAccessActivitiesRequest{
 		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
 	})
@@ -742,6 +743,20 @@ func TestPostgresRemoteAccessActivityPersistenceAcrossRestart(t *testing.T) {
 	}
 	if len(resp.Activities) == 0 {
 		t.Fatalf("expected persisted remote access activity row")
+	}
+
+	auditEventsResp, err := auditSvc.ListAuditEvents(context.Background(), &rgsv1.ListAuditEventsRequest{
+		Meta:             meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		ObjectTypeFilter: "remote_access",
+	})
+	if err != nil {
+		t.Fatalf("list remote access audit events err: %v", err)
+	}
+	if auditEventsResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected ok audit events response, got=%v", auditEventsResp.Meta.GetResultCode())
+	}
+	if len(auditEventsResp.Events) == 0 {
+		t.Fatalf("expected persisted remote access audit event row")
 	}
 }
 
