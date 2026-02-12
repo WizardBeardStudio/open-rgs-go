@@ -211,6 +211,7 @@ Additional controls:
 - Protected HTTP/gRPC calls derive actor identity from JWT middleware/interceptor context; request `meta.actor` mismatch with token is denied.
 - Append-only audit chain semantics
 - Fail-closed behavior on critical audit unavailability for state-changing operations
+- Strict production mode fail-closes admin-path access when remote-access logging persistence is unavailable
 - Ingestion buffer exhaustion disables further ingress for affected boundary
 
 Deployment guidance:

@@ -144,7 +144,7 @@ This document maps implemented requirements to standards references, code locati
 - Standard refs: GLI-21 firewall/connection attempt logging expectations
 - Code: `internal/platform/server/remote_access.go`, `docs/deployment/FIREWALL_LOGGING.md`
 - Tests: `internal/platform/server/remote_access_test.go`
-- Status: implemented
+- Status: implemented (DB-backed persistence plus strict-mode fail-closed guard when admin-path logging persistence is unavailable)
 
 ## RGS-0503 Chaos Tests for Loss Handling and Fail-Closed Degradation
 - Standard refs: GLI-13 communication loss and fail-safe behavior expectations

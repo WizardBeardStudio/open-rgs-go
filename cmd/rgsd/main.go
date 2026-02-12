@@ -279,6 +279,7 @@ func main() {
 		guard.SetDB(db)
 	}
 	guard.SetDisableInMemoryActivityCache(strictProductionMode)
+	guard.SetFailClosedOnLogPersistenceFailure(strictProductionMode)
 	auditSvc := server.NewAuditService(
 		clk,
 		guard,

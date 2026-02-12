@@ -37,6 +37,7 @@ type RemoteAccessGuard struct {
 	nextID               int64
 	db                   *sql.DB
 	disableInMemoryCache bool
+	failClosedLogPersist bool
 }
 
 func NewRemoteAccessGuard(clk clock.Clock, store *audit.InMemoryStore, cidrs []string) (*RemoteAccessGuard, error) {
@@ -84,6 +85,15 @@ func (g *RemoteAccessGuard) SetDisableInMemoryActivityCache(disable bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.disableInMemoryCache = disable
+}
+
+func (g *RemoteAccessGuard) SetFailClosedOnLogPersistenceFailure(enable bool) {
+	if g == nil {
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.failClosedLogPersist = enable
 }
 
 func (g *RemoteAccessGuard) isAdminPath(path string) bool {
@@ -153,7 +163,7 @@ func (g *RemoteAccessGuard) appendAudit(path, sourceIP, outcome, reason string) 
 	_, _ = g.AuditStore.Append(ev)
 }
 
-func (g *RemoteAccessGuard) logActivity(r *http.Request, sourceIP, sourcePort string, allowed bool, reason string) {
+func (g *RemoteAccessGuard) logActivity(r *http.Request, sourceIP, sourcePort string, allowed bool, reason string) error {
 	host, port, err := net.SplitHostPort(r.Host)
 	if err != nil {
 		host = r.Host
@@ -177,8 +187,11 @@ func (g *RemoteAccessGuard) logActivity(r *http.Request, sourceIP, sourcePort st
 	db := g.db
 	g.mu.Unlock()
 	if db != nil {
-		g.persistActivity(context.Background(), db, entry)
+		if err := g.persistActivity(context.Background(), db, entry); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (g *RemoteAccessGuard) Activities() []RemoteAccessActivity {
@@ -200,7 +213,7 @@ func (g *RemoteAccessGuard) Activities() []RemoteAccessActivity {
 	return out
 }
 
-func (g *RemoteAccessGuard) persistActivity(ctx context.Context, db *sql.DB, activity RemoteAccessActivity) {
+func (g *RemoteAccessGuard) persistActivity(ctx context.Context, db *sql.DB, activity RemoteAccessActivity) error {
 	const q = `
 INSERT INTO remote_access_activity (
   occurred_at, source_ip, source_port, destination_host, destination_port, path, method, allowed, reason
@@ -209,7 +222,7 @@ VALUES (
   $1::timestamptz, $2, $3, $4, $5, $6, $7, $8, $9
 )
 `
-	_, _ = db.ExecContext(ctx, q,
+	_, err := db.ExecContext(ctx, q,
 		activity.Timestamp,
 		activity.SourceIP,
 		activity.SourcePort,
@@ -220,6 +233,7 @@ VALUES (
 		activity.Allowed,
 		activity.Reason,
 	)
+	return err
 }
 
 func (g *RemoteAccessGuard) activitiesFromDB(ctx context.Context, db *sql.DB) ([]RemoteAccessActivity, error) {
@@ -268,13 +282,29 @@ func (g *RemoteAccessGuard) Wrap(next http.Handler) http.Handler {
 
 		sourceIP, sourcePort := g.extractSourceIP(r)
 		if !g.isTrusted(sourceIP) {
-			g.logActivity(r, sourceIP, sourcePort, false, "source ip outside trusted network")
+			if err := g.logActivity(r, sourceIP, sourcePort, false, "source ip outside trusted network"); err != nil {
+				g.mu.Lock()
+				failClosed := g.failClosedLogPersist
+				g.mu.Unlock()
+				if failClosed {
+					http.Error(w, "remote access logging unavailable", http.StatusServiceUnavailable)
+					return
+				}
+			}
 			g.appendAudit(r.URL.Path, sourceIP, "denied", "source ip outside trusted network")
 			http.Error(w, "remote access denied", http.StatusForbidden)
 			return
 		}
 
-		g.logActivity(r, sourceIP, sourcePort, true, "")
+		if err := g.logActivity(r, sourceIP, sourcePort, true, ""); err != nil {
+			g.mu.Lock()
+			failClosed := g.failClosedLogPersist
+			g.mu.Unlock()
+			if failClosed {
+				http.Error(w, "remote access logging unavailable", http.StatusServiceUnavailable)
+				return
+			}
+		}
 		g.appendAudit(r.URL.Path, sourceIP, "allowed", "")
 		next.ServeHTTP(w, r)
 	})
