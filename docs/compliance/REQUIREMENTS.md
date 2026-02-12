@@ -211,3 +211,39 @@ This document maps implemented requirements to standards references, code locati
 - Code: `api/proto/rgs/v1/identity.proto`, `internal/platform/server/identity_grpc.go`, `cmd/credhash/main.go`, `README.md`
 - Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/postgres_integration_test.go`
 - Status: implemented (`SetCredential` accepts bcrypt `credential_hash` only, rejects non-bcrypt and low-cost hashes, and does not accept plaintext secrets)
+
+## RGS-0701 Wagering Lifecycle API Surface and Idempotency
+- Standard refs: GLI-13 event/state traceability objectives and AGENTS wagering scope requirements
+- Code: `api/proto/rgs/v1/wagering.proto`, `internal/platform/server/wagering_grpc.go`, `cmd/rgsd/main.go`
+- Tests: `internal/platform/server/wagering_grpc_test.go`
+- Status: implemented (place/settle/cancel with actor authorization, idempotency, and audit records)
+
+## RGS-0702 Strict Production Runtime Guardrails
+- Standard refs: GLI-21 secure deployment and access-channel hardening expectations
+- Code: `cmd/rgsd/main.go`, `cmd/rgsd/main_test.go`, `README.md`
+- Tests: `cmd/rgsd/main_test.go`
+- Status: implemented (`RGS_STRICT_PRODUCTION_MODE` requires DB + TLS + non-default JWT signing setup)
+
+## RGS-0703 Account Transaction Statement Reporting
+- Standard refs: GLI-16 account/transaction statement and regulator reporting expectations
+- Code: `api/proto/rgs/v1/reporting.proto`, `internal/platform/server/reporting_grpc.go`, `internal/platform/server/reporting_postgres.go`, `docs/compliance/REPORT_CATALOG.md`
+- Tests: `internal/platform/server/reporting_grpc_test.go`
+- Status: implemented (DTD/MTD/YTD/LTD and JSON/CSV support)
+
+## RGS-0704 Durable Remote Access Activity Retention
+- Standard refs: GLI-21 connection-attempt logging and remote access review expectations
+- Code: `internal/platform/server/remote_access.go`, `internal/platform/server/audit_grpc.go`, `migrations/000008_remote_access_activity.up.sql`, `cmd/rgsd/main.go`
+- Tests: `internal/platform/server/remote_access_test.go`, `internal/platform/server/postgres_integration_test.go`
+- Status: implemented (DB-backed remote access activity retrieval in PostgreSQL mode)
+
+## RGS-0705 Bonusing/Promotions/UI Overlay Recall Scaffolds
+- Standard refs: GLI-13/GLI-28/GLI-16 scaffold requirements from AGENTS for bonus/promotional meters and system-window recall
+- Code: `api/proto/rgs/v1/extensions.proto`, `migrations/000009_bonus_ui_scaffolds.up.sql`, `docs/deployment/WIRELESS_ONBOARDING.md`, `README.md`
+- Tests: `internal/platform/server/postgres_integration_test.go` (schema reset includes scaffold tables)
+- Status: scaffolded (contracts and schema present; full runtime services pending)
+
+## RGS-0706 Production Evidence Packet Index
+- Standard refs: GLI-13/GLI-21 evidence and auditability expectations
+- Code: `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`, `docs/compliance/PRODUCTION_READINESS_ROUNDS.md`
+- Tests: `go test ./...` release-gate execution
+- Status: implemented (release evidence checklist defined and linked)

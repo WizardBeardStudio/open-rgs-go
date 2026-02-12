@@ -8,6 +8,7 @@ This checklist tracks the remaining production-readiness work identified against
 
 ## Round 2: Wagering Domain APIs and Service
 - Goal: implement canonical wagering API surface and runtime behavior.
+- Status: implemented
 - Acceptance:
   - Add `WageringService` proto with `PlaceWager`, `SettleWager`, `CancelWager`.
   - Enforce actor authorization and idempotency for state-changing operations.
@@ -16,6 +17,7 @@ This checklist tracks the remaining production-readiness work identified against
 
 ## Round 3: Production Durability Enforcement
 - Goal: prevent accidental non-durable production deployments.
+- Status: implemented
 - Acceptance:
   - Add startup policy checks for strict production mode.
   - Require PostgreSQL in strict production mode.
@@ -24,6 +26,7 @@ This checklist tracks the remaining production-readiness work identified against
 
 ## Round 4: Reporting Scope Expansion
 - Goal: increase regulator-facing reporting coverage.
+- Status: implemented
 - Acceptance:
   - Add account transaction statement report type.
   - Support DTD/MTD/YTD/LTD and JSON/CSV output.
@@ -32,6 +35,7 @@ This checklist tracks the remaining production-readiness work identified against
 
 ## Round 5: Durable Remote Access Activity Retention
 - Goal: persist remote access activity logs in DB-backed deployments.
+- Status: implemented
 - Acceptance:
   - Add migration for remote access activity table.
   - Persist allow/deny activity records when DB is configured.
@@ -40,6 +44,7 @@ This checklist tracks the remaining production-readiness work identified against
 
 ## Round 6: Required Scaffolds (Bonusing/Promotions/Wireless/UI Overlay Recall)
 - Goal: establish canonical contracts and storage hooks for AGENTS-required scaffolds.
+- Status: implemented (scaffold level)
 - Acceptance:
   - Add protobuf scaffolds for promotions/bonusing and UI system window event recall.
   - Add DB schema scaffold for system-window recall events.
@@ -47,6 +52,7 @@ This checklist tracks the remaining production-readiness work identified against
 
 ## Round 7: Production Evidence Pack and Consistency Sweep
 - Goal: provide regulator/operator-ready evidence index and eliminate documentation drift.
+- Status: implemented
 - Acceptance:
   - Add production evidence checklist (security, DR, chaos, perf, traceability).
   - Align README known-limitations with implemented identity/JWT behavior.

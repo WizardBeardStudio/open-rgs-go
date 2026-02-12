@@ -259,15 +259,17 @@ Chaos tests:
 - Threat model: `docs/compliance/THREAT_MODEL.md`
 - Report catalog: `docs/compliance/REPORT_CATALOG.md`
 - Production readiness rounds: `docs/compliance/PRODUCTION_READINESS_ROUNDS.md`
+- Production evidence checklist: `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
 
 ## 13. Known Limitations and Next Work
 
 Current limitations:
-- Some stateful behavior is still partially in-memory (for example local idempotency response caches), with PostgreSQL used as the durable source where wired.
-- JWT issuance/refresh/rotation endpoints are not yet implemented (authorization relies on actor metadata + middleware scaffolding).
-- Remote access activity retrieval is implemented, but activity history is in-memory unless backed by persistent sinks.
+- Some stateful behavior is still partially in-memory (for example wagering state and local idempotency response caches), with PostgreSQL used as the durable source where wired.
+- JWT issuance/refresh/rotation is implemented, but production secret lifecycle still needs KMS/HSM-backed key management and rotation automation.
+- Promotions/bonusing/UI overlay contracts are currently scaffold-only and not yet backed by full runtime service implementations.
 
 Recommended next steps:
 - Add service-level SLO/error-budget alerting for gRPC/REST result-code failure rates and latency percentiles.
-- Add full identity/authN service with JWT issuance, refresh, and key rotation policy.
-- Persist remote access activity streams to durable storage and expose retention-managed query/report endpoints.
+- Add durable repository implementations for wagering and scaffolded promotions/UI services.
+- Implement KMS/HSM-backed signing key management and automated rotation runbooks.
+- Add antifraud/rate-limiting controls and signed package verification for download library activation.

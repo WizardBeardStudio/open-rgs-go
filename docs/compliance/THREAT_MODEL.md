@@ -23,6 +23,7 @@
   - `internal/platform/auth/jwt.go`
 - Actor-type authorization in stateful services
   - `internal/platform/server/ledger_grpc.go`
+  - `internal/platform/server/wagering_grpc.go`
   - `internal/platform/server/registry_grpc.go`
   - `internal/platform/server/events_grpc.go`
   - `internal/platform/server/reporting_grpc.go`
@@ -44,6 +45,12 @@
   - `internal/platform/server/remote_access.go`
   - `cmd/rgsd/main.go`
   - `docs/deployment/FIREWALL_LOGGING.md`
+- DB-backed remote access activity retention path
+  - `internal/platform/server/remote_access.go`
+  - `migrations/000008_remote_access_activity.up.sql`
+- Strict production startup guardrails (DB+TLS+non-default signing configuration)
+  - `cmd/rgsd/main.go`
+  - `cmd/rgsd/main_test.go`
 - Explicit audit retrieval API (audit events + remote access activity)
   - `api/proto/rgs/v1/audit.proto`
   - `internal/platform/server/audit_grpc.go`
@@ -53,10 +60,14 @@
 - Optional PostgreSQL-backed persistence path for config/download controls
   - `internal/platform/server/config_postgres.go`
   - `cmd/rgsd/main.go`
+- Scaffold contracts for promotions/bonusing/UI system-window recall
+  - `api/proto/rgs/v1/extensions.proto`
+  - `migrations/000009_bonus_ui_scaffolds.up.sql`
+  - `docs/deployment/WIRELESS_ONBOARDING.md`
 
 ## Residual Risks / Follow-up
 - Integrate persistent DB-backed service repositories (replace in-memory stores)
-- Add key rotation and KMS-backed secret material for production
+- Add KMS/HSM-backed key management and rotation automation for production
 - Add explicit rate-limiting, session lockout, and antifraud controls
 - Add signed package verification pipeline for download library entries
-- Add remote access session duration/activity report endpoints
+- Implement runtime services for promotions/bonusing/UI scaffold APIs
