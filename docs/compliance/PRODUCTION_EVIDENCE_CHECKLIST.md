@@ -2,6 +2,9 @@
 
 Use this checklist to assemble a regulator/operator-ready release packet.
 
+Release gate companion:
+- `docs/compliance/GO_LIVE_CHECKLIST.md`
+
 ## 1. Build and Release Integrity
 - Immutable source revision and signed artifact references.
 - `go test ./...` results attached for release commit.

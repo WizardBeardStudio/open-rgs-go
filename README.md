@@ -278,6 +278,7 @@ Chaos tests:
 - Report catalog: `docs/compliance/REPORT_CATALOG.md`
 - Production readiness rounds: `docs/compliance/PRODUCTION_READINESS_ROUNDS.md`
 - Production evidence checklist: `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
+- Go-live release gates: `docs/compliance/GO_LIVE_CHECKLIST.md`
 
 ## 13. Known Limitations and Next Work
 
