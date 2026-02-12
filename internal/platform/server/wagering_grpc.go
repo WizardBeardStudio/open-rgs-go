@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"strconv"
 	"sync"
@@ -26,9 +27,14 @@ type WageringService struct {
 	cancelByIdempotency map[string]*rgsv1.CancelWagerResponse
 	nextWagerID         int64
 	nextAuditID         int64
+	db                  *sql.DB
 }
 
-func NewWageringService(clk clock.Clock) *WageringService {
+func NewWageringService(clk clock.Clock, db ...*sql.DB) *WageringService {
+	var handle *sql.DB
+	if len(db) > 0 {
+		handle = db[0]
+	}
 	return &WageringService{
 		Clock:               clk,
 		AuditStore:          audit.NewInMemoryStore(),
@@ -36,6 +42,7 @@ func NewWageringService(clk clock.Clock) *WageringService {
 		placeByIdempotency:  make(map[string]*rgsv1.PlaceWagerResponse),
 		settleByIdempotency: make(map[string]*rgsv1.SettleWagerResponse),
 		cancelByIdempotency: make(map[string]*rgsv1.CancelWagerResponse),
+		db:                  handle,
 	}
 }
 
@@ -57,7 +64,7 @@ func (s *WageringService) responseMeta(meta *rgsv1.RequestMeta, code rgsv1.Resul
 
 func (s *WageringService) nextWagerIDLocked() string {
 	s.nextWagerID++
-	return "wager-" + strconv.FormatInt(s.nextWagerID, 10)
+	return "wager-" + strconv.FormatInt(time.Now().UTC().UnixNano(), 10) + "-" + strconv.FormatInt(s.nextWagerID, 10)
 }
 
 func (s *WageringService) nextAuditIDLocked() string {
@@ -172,9 +179,28 @@ func (s *WageringService) PlaceWager(ctx context.Context, req *rgsv1.PlaceWagerR
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	idemKey := req.PlayerId + "|place|" + idempotency(req.Meta)
+	idem := idempotency(req.Meta)
+	idemKey := req.PlayerId + "|place|" + idem
+	requestHash := hashWageringRequest("place", req.PlayerId, req.GameId, req.Stake.GetCurrency(), strconv.FormatInt(req.Stake.GetAmountMinor(), 10))
 	if prev := s.placeByIdempotency[idemKey]; prev != nil {
 		return clonePlaceResponse(prev), nil
+	}
+	if s.dbEnabled() {
+		var replay rgsv1.PlaceWagerResponse
+		found, err := s.loadIdempotencyResponse(ctx, "place", req.PlayerId, idem, requestHash, &replay)
+		if err == errIdempotencyRequestMismatch {
+			return &rgsv1.PlaceWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "idempotency_key reused with different request")}, nil
+		}
+		if err != nil {
+			return &rgsv1.PlaceWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if found {
+			s.placeByIdempotency[idemKey] = clonePlaceResponse(&replay)
+			if replay.Wager != nil {
+				s.wagers[replay.Wager.WagerId] = cloneWager(replay.Wager)
+			}
+			return &replay, nil
+		}
 	}
 
 	now := s.now().Format(time.RFC3339Nano)
@@ -194,6 +220,12 @@ func (s *WageringService) PlaceWager(ctx context.Context, req *rgsv1.PlaceWagerR
 		Wager: cloneWager(wager),
 	}
 	s.placeByIdempotency[idemKey] = clonePlaceResponse(resp)
+	if err := s.persistWager(ctx, wager); err != nil {
+		return &rgsv1.PlaceWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if err := s.persistIdempotencyResponse(ctx, "place", req.PlayerId, idem, requestHash, resp); err != nil {
+		return &rgsv1.PlaceWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 	after, _ := json.Marshal(wager)
 	if err := s.appendAudit(req.Meta, wager.WagerId, "place_wager", []byte(`{}`), after, audit.ResultSuccess, ""); err != nil {
 		return &rgsv1.PlaceWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
@@ -216,12 +248,41 @@ func (s *WageringService) SettleWager(ctx context.Context, req *rgsv1.SettleWage
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	idemKey := req.WagerId + "|settle|" + idempotency(req.Meta)
+	idem := idempotency(req.Meta)
+	idemKey := req.WagerId + "|settle|" + idem
+	requestHash := hashWageringRequest("settle", req.WagerId, req.Payout.GetCurrency(), strconv.FormatInt(req.Payout.GetAmountMinor(), 10), req.OutcomeRef)
 	if prev := s.settleByIdempotency[idemKey]; prev != nil {
 		return cloneSettleResponse(prev), nil
 	}
+	if s.dbEnabled() {
+		var replay rgsv1.SettleWagerResponse
+		found, err := s.loadIdempotencyResponse(ctx, "settle", req.WagerId, idem, requestHash, &replay)
+		if err == errIdempotencyRequestMismatch {
+			return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "idempotency_key reused with different request")}, nil
+		}
+		if err != nil {
+			return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if found {
+			s.settleByIdempotency[idemKey] = cloneSettleResponse(&replay)
+			if replay.Wager != nil {
+				s.wagers[replay.Wager.WagerId] = cloneWager(replay.Wager)
+			}
+			return &replay, nil
+		}
+	}
 
 	wager := s.wagers[req.WagerId]
+	if wager == nil && s.dbEnabled() {
+		var err error
+		wager, err = s.getWager(ctx, req.WagerId)
+		if err != nil {
+			return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if wager != nil {
+			s.wagers[wager.WagerId] = cloneWager(wager)
+		}
+	}
 	if wager == nil {
 		return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "wager not found")}, nil
 	}
@@ -239,6 +300,12 @@ func (s *WageringService) SettleWager(ctx context.Context, req *rgsv1.SettleWage
 		Wager: cloneWager(wager),
 	}
 	s.settleByIdempotency[idemKey] = cloneSettleResponse(resp)
+	if err := s.persistWager(ctx, wager); err != nil {
+		return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if err := s.persistIdempotencyResponse(ctx, "settle", req.WagerId, idem, requestHash, resp); err != nil {
+		return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 	if err := s.appendAudit(req.Meta, req.WagerId, "settle_wager", before, after, audit.ResultSuccess, ""); err != nil {
 		return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
@@ -260,11 +327,41 @@ func (s *WageringService) CancelWager(ctx context.Context, req *rgsv1.CancelWage
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	idemKey := req.WagerId + "|cancel|" + idempotency(req.Meta)
+	idem := idempotency(req.Meta)
+	idemKey := req.WagerId + "|cancel|" + idem
+	requestHash := hashWageringRequest("cancel", req.WagerId, req.Reason)
 	if prev := s.cancelByIdempotency[idemKey]; prev != nil {
 		return cloneCancelResponse(prev), nil
 	}
+	if s.dbEnabled() {
+		var replay rgsv1.CancelWagerResponse
+		found, err := s.loadIdempotencyResponse(ctx, "cancel", req.WagerId, idem, requestHash, &replay)
+		if err == errIdempotencyRequestMismatch {
+			return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "idempotency_key reused with different request")}, nil
+		}
+		if err != nil {
+			return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if found {
+			s.cancelByIdempotency[idemKey] = cloneCancelResponse(&replay)
+			if replay.Wager != nil {
+				s.wagers[replay.Wager.WagerId] = cloneWager(replay.Wager)
+			}
+			return &replay, nil
+		}
+	}
+
 	wager := s.wagers[req.WagerId]
+	if wager == nil && s.dbEnabled() {
+		var err error
+		wager, err = s.getWager(ctx, req.WagerId)
+		if err != nil {
+			return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		if wager != nil {
+			s.wagers[wager.WagerId] = cloneWager(wager)
+		}
+	}
 	if wager == nil {
 		return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "wager not found")}, nil
 	}
@@ -281,6 +378,12 @@ func (s *WageringService) CancelWager(ctx context.Context, req *rgsv1.CancelWage
 		Wager: cloneWager(wager),
 	}
 	s.cancelByIdempotency[idemKey] = cloneCancelResponse(resp)
+	if err := s.persistWager(ctx, wager); err != nil {
+		return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if err := s.persistIdempotencyResponse(ctx, "cancel", req.WagerId, idem, requestHash, resp); err != nil {
+		return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 	if err := s.appendAudit(req.Meta, req.WagerId, "cancel_wager", before, after, audit.ResultSuccess, ""); err != nil {
 		return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}

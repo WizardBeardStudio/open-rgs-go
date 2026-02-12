@@ -151,7 +151,7 @@ func main() {
 		}
 	})
 	rgsv1.RegisterLedgerServiceServer(grpcServer, ledgerSvc)
-	wageringSvc := server.NewWageringService(clk)
+	wageringSvc := server.NewWageringService(clk, db)
 	rgsv1.RegisterWageringServiceServer(grpcServer, wageringSvc)
 	registrySvc := server.NewRegistryService(clk, db)
 	rgsv1.RegisterRegistryServiceServer(grpcServer, registrySvc)

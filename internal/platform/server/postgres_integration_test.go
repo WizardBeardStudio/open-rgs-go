@@ -38,6 +38,8 @@ func resetPostgresIntegrationState(t *testing.T, db *sql.DB) {
 	t.Helper()
 	const q = `
 TRUNCATE TABLE
+  wagering_idempotency_keys,
+  wagers,
   cashless_unresolved_transfers,
   ledger_postings,
   ledger_transactions,
@@ -490,5 +492,60 @@ func TestPostgresRemoteAccessActivityPersistenceAcrossRestart(t *testing.T) {
 	}
 	if len(resp.Activities) == 0 {
 		t.Fatalf("expected persisted remote access activity row")
+	}
+}
+
+func TestPostgresWageringPersistenceAcrossRestart(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 13, 0, 0, 0, time.UTC)}
+	ctx := context.Background()
+
+	svcA := NewWageringService(clk, db)
+	placeReq := &rgsv1.PlaceWagerRequest{
+		Meta:     meta("player-w-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-pg-wager-place-1"),
+		PlayerId: "player-w-1",
+		GameId:   "game-1",
+		Stake:    &rgsv1.Money{AmountMinor: 250, Currency: "USD"},
+	}
+	placedA, err := svcA.PlaceWager(ctx, placeReq)
+	if err != nil {
+		t.Fatalf("place wager err: %v", err)
+	}
+	if placedA.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected place wager ok, got=%v", placedA.Meta.GetResultCode())
+	}
+
+	svcB := NewWageringService(clk, db)
+	placedB, err := svcB.PlaceWager(ctx, placeReq)
+	if err != nil {
+		t.Fatalf("replay place wager err: %v", err)
+	}
+	if placedA.Wager.GetWagerId() != placedB.Wager.GetWagerId() {
+		t.Fatalf("expected idempotent wager id across restart, got=%s vs %s", placedA.Wager.GetWagerId(), placedB.Wager.GetWagerId())
+	}
+
+	settleReq := &rgsv1.SettleWagerRequest{
+		Meta:       meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, "idem-pg-wager-settle-1"),
+		WagerId:    placedA.Wager.GetWagerId(),
+		Payout:     &rgsv1.Money{AmountMinor: 400, Currency: "USD"},
+		OutcomeRef: "outcome-pg-1",
+	}
+	settled, err := svcB.SettleWager(ctx, settleReq)
+	if err != nil {
+		t.Fatalf("settle wager err: %v", err)
+	}
+	if settled.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected settle wager ok, got=%v", settled.Meta.GetResultCode())
+	}
+
+	svcC := NewWageringService(clk, db)
+	replayedSettle, err := svcC.SettleWager(ctx, settleReq)
+	if err != nil {
+		t.Fatalf("replay settle wager err: %v", err)
+	}
+	if replayedSettle.Wager.GetStatus() != rgsv1.WagerStatus_WAGER_STATUS_SETTLED {
+		t.Fatalf("expected settled status after replay, got=%v", replayedSettle.Wager.GetStatus())
 	}
 }

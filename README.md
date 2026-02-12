@@ -21,7 +21,7 @@ Implemented and wired:
 
 Current persistence model:
 - Runtime services support optional PostgreSQL-backed paths when `RGS_DATABASE_URL` is configured.
-- DB-backed paths currently include ledger reads/writes and idempotency replay, registry reads/writes, events/meters reads/writes, reporting run persistence and report payload sourcing, and config/download change-control reads/writes.
+- DB-backed paths currently include ledger reads/writes and idempotency replay, wagering state and idempotency replay, registry reads/writes, events/meters reads/writes, reporting run persistence and report payload sourcing, config/download change-control reads/writes, and remote access activity retention.
 - Identity credential verification and lockout state use PostgreSQL tables when configured (`identity_credentials`, `identity_lockouts`).
 - In-memory behavior remains available as a fallback for local/dev execution without PostgreSQL.
 
@@ -108,6 +108,7 @@ Schema files are ordered and additive:
 - `000007_identity_sessions.*` refresh-session persistence and cleanup
 - `000008_remote_access_activity.*` remote access activity persistence
 - `000009_bonus_ui_scaffolds.*` bonusing/promotions/UI overlay recall scaffolds
+- `000010_wagering_persistence.*` wagering durability and idempotency persistence
 
 Apply migrations with your preferred migration runner in numeric order.
 

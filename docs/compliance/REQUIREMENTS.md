@@ -214,9 +214,9 @@ This document maps implemented requirements to standards references, code locati
 
 ## RGS-0701 Wagering Lifecycle API Surface and Idempotency
 - Standard refs: GLI-13 event/state traceability objectives and AGENTS wagering scope requirements
-- Code: `api/proto/rgs/v1/wagering.proto`, `internal/platform/server/wagering_grpc.go`, `cmd/rgsd/main.go`
-- Tests: `internal/platform/server/wagering_grpc_test.go`
-- Status: implemented (place/settle/cancel with actor authorization, idempotency, and audit records)
+- Code: `api/proto/rgs/v1/wagering.proto`, `internal/platform/server/wagering_grpc.go`, `internal/platform/server/wagering_postgres.go`, `migrations/000010_wagering_persistence.up.sql`, `cmd/rgsd/main.go`
+- Tests: `internal/platform/server/wagering_grpc_test.go`, `internal/platform/server/postgres_integration_test.go`
+- Status: implemented (place/settle/cancel with actor authorization, idempotency, audit records, and DB-backed replay/durability in PostgreSQL mode)
 
 ## RGS-0702 Strict Production Runtime Guardrails
 - Standard refs: GLI-21 secure deployment and access-channel hardening expectations
