@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package rgs.v1;
+
+option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+
+import "google/api/annotations.proto";
+import "rgs/v1/common.proto";
+
+message PlayerCredentials {
+  string player_id = 1;
+  string pin = 2;
+}
+
+message OperatorCredentials {
+  string operator_id = 1;
+  string password = 2;
+}
+
+message SessionToken {
+  string access_token = 1;
+  string refresh_token = 2;
+  string token_type = 3;
+  string expires_at = 4;
+  Actor actor = 5;
+}
+
+service IdentityService {
+  rpc Login(LoginRequest) returns (LoginResponse) {
+    option (google.api.http) = {
+      post: "/v1/identity/login"
+      body: "*"
+    };
+  }
+
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {
+    option (google.api.http) = {
+      post: "/v1/identity/logout"
+      body: "*"
+    };
+  }
+
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse) {
+    option (google.api.http) = {
+      post: "/v1/identity/refresh"
+      body: "*"
+    };
+  }
+}
+
+message LoginRequest {
+  RequestMeta meta = 1;
+  oneof credentials {
+    PlayerCredentials player = 2;
+    OperatorCredentials operator = 3;
+  }
+}
+
+message LoginResponse {
+  ResponseMeta meta = 1;
+  SessionToken token = 2;
+}
+
+message LogoutRequest {
+  RequestMeta meta = 1;
+  string refresh_token = 2;
+}
+
+message LogoutResponse {
+  ResponseMeta meta = 1;
+}
+
+message RefreshTokenRequest {
+  RequestMeta meta = 1;
+  string refresh_token = 2;
+}
+
+message RefreshTokenResponse {
+  ResponseMeta meta = 1;
+  SessionToken token = 2;
+}

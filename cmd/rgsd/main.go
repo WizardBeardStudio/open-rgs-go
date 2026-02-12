@@ -38,6 +38,9 @@ func main() {
 	httpAddr := envOr("RGS_HTTP_ADDR", ":8080")
 	trustedCIDRs := strings.Split(envOr("RGS_TRUSTED_CIDRS", "127.0.0.1/32,::1/128"), ",")
 	databaseURL := envOr("RGS_DATABASE_URL", "")
+	jwtSigningSecret := envOr("RGS_JWT_SIGNING_SECRET", "dev-insecure-change-me")
+	jwtAccessTTL := mustParseDurationEnv("RGS_JWT_ACCESS_TTL", "15m")
+	jwtRefreshTTL := mustParseDurationEnv("RGS_JWT_REFRESH_TTL", "24h")
 	idempotencyTTL := mustParseDurationEnv("RGS_LEDGER_IDEMPOTENCY_TTL", "24h")
 	idempotencyCleanupInterval := mustParseDurationEnv("RGS_LEDGER_IDEMPOTENCY_CLEANUP_INTERVAL", "15m")
 	idempotencyCleanupBatch := mustParseIntEnv("RGS_LEDGER_IDEMPOTENCY_CLEANUP_BATCH", 500)
@@ -78,6 +81,8 @@ func main() {
 	healthv1.RegisterHealthServer(grpcServer, hs)
 	systemSvc := server.SystemService{StartedAt: startedAt, Clock: clk, Version: version}
 	rgsv1.RegisterSystemServiceServer(grpcServer, systemSvc)
+	identitySvc := server.NewIdentityService(clk, jwtSigningSecret, jwtAccessTTL, jwtRefreshTTL)
+	rgsv1.RegisterIdentityServiceServer(grpcServer, identitySvc)
 	ledgerSvc := server.NewLedgerService(clk, db)
 	metrics := server.NewMetrics()
 	if db != nil {
@@ -127,6 +132,9 @@ func main() {
 	if err := rgsv1.RegisterSystemServiceHandlerServer(ctx, gwMux, systemSvc); err != nil {
 		log.Fatalf("register gateway handlers: %v", err)
 	}
+	if err := rgsv1.RegisterIdentityServiceHandlerServer(ctx, gwMux, identitySvc); err != nil {
+		log.Fatalf("register identity gateway handlers: %v", err)
+	}
 	if err := rgsv1.RegisterLedgerServiceHandlerServer(ctx, gwMux, ledgerSvc); err != nil {
 		log.Fatalf("register ledger gateway handlers: %v", err)
 	}
@@ -155,6 +163,7 @@ func main() {
 		eventsSvc.AuditStore,
 		reportingSvc.AuditStore,
 		configSvc.AuditStore,
+		identitySvc.AuditStore,
 		remoteAccessAuditStore,
 	)
 	rgsv1.RegisterAuditServiceServer(grpcServer, auditSvc)

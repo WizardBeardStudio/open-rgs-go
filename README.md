@@ -8,6 +8,7 @@ This manual covers build, deployment, operations, security controls, and runbook
 
 Implemented and wired:
 - `SystemService`
+- `IdentityService` (player/operator login, refresh, logout)
 - `LedgerService` (cashless semantics, idempotency, invariants)
 - `RegistryService` (equipment registry)
 - `EventsService` (significant events/meters with buffering semantics)
@@ -102,6 +103,9 @@ Environment variables:
 - `RGS_HTTP_ADDR` (default: `:8080`)
 - `RGS_TRUSTED_CIDRS` (default: `127.0.0.1/32,::1/128`)
 - `RGS_DATABASE_URL` (optional PostgreSQL DSN for config/download persistence)
+- `RGS_JWT_SIGNING_SECRET` (default: `dev-insecure-change-me`; HMAC key for identity access tokens)
+- `RGS_JWT_ACCESS_TTL` (default: `15m`)
+- `RGS_JWT_REFRESH_TTL` (default: `24h`)
 - `RGS_TEST_DATABASE_URL` (optional PostgreSQL DSN for env-gated integration tests)
 - `RGS_LEDGER_IDEMPOTENCY_TTL` (default: `24h`; retention window for idempotency envelopes)
 - `RGS_LEDGER_IDEMPOTENCY_CLEANUP_INTERVAL` (default: `15m`; cleanup worker cadence)
@@ -178,6 +182,7 @@ Deployment guidance:
 
 Services and methods are defined in:
 - `api/proto/rgs/v1/system.proto`
+- `api/proto/rgs/v1/identity.proto`
 - `api/proto/rgs/v1/ledger.proto`
 - `api/proto/rgs/v1/registry.proto`
 - `api/proto/rgs/v1/events.proto`
