@@ -11,6 +11,7 @@ func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 	cases := []struct {
 		name          string
 		strict        bool
+		strictExt     bool
 		databaseURL   string
 		tlsEnabled    bool
 		jwtSecret     string
@@ -21,6 +22,7 @@ func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 		{
 			name:          "non-strict allows dev defaults",
 			strict:        false,
+			strictExt:     false,
 			databaseURL:   "",
 			tlsEnabled:    false,
 			jwtSecret:     "dev-insecure-change-me",
@@ -30,6 +32,7 @@ func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 		{
 			name:          "strict requires database",
 			strict:        true,
+			strictExt:     false,
 			databaseURL:   "",
 			tlsEnabled:    true,
 			jwtSecret:     "prod-secret",
@@ -39,6 +42,7 @@ func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 		{
 			name:          "strict requires tls",
 			strict:        true,
+			strictExt:     false,
 			databaseURL:   "postgres://x",
 			tlsEnabled:    false,
 			jwtSecret:     "prod-secret",
@@ -48,6 +52,7 @@ func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 		{
 			name:          "strict rejects default jwt secret without keyset",
 			strict:        true,
+			strictExt:     false,
 			databaseURL:   "postgres://x",
 			tlsEnabled:    true,
 			jwtSecret:     "dev-insecure-change-me",
@@ -57,6 +62,7 @@ func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 		{
 			name:          "strict allows keyset with default single secret value",
 			strict:        true,
+			strictExt:     false,
 			databaseURL:   "postgres://x",
 			tlsEnabled:    true,
 			jwtSecret:     "dev-insecure-change-me",
@@ -66,6 +72,7 @@ func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 		{
 			name:          "strict valid config",
 			strict:        true,
+			strictExt:     false,
 			databaseURL:   "postgres://x",
 			tlsEnabled:    true,
 			jwtSecret:     "prod-secret",
@@ -75,6 +82,7 @@ func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 		{
 			name:          "strict allows keyset file with default secret",
 			strict:        true,
+			strictExt:     false,
 			databaseURL:   "postgres://x",
 			tlsEnabled:    true,
 			jwtSecret:     "dev-insecure-change-me",
@@ -82,11 +90,35 @@ func TestValidateProductionRuntimeStrictRequirements(t *testing.T) {
 			jwtKeysetFile: "/etc/rgs/jwt-keyset.json",
 			wantErr:       false,
 		},
+		{
+			name:          "strict external keyset requires file or command",
+			strict:        true,
+			strictExt:     true,
+			databaseURL:   "postgres://x",
+			tlsEnabled:    true,
+			jwtSecret:     "prod-secret",
+			jwtKeysetSpec: "k1:secret",
+			wantErr:       true,
+		},
+		{
+			name:          "strict external keyset allows command source",
+			strict:        true,
+			strictExt:     true,
+			databaseURL:   "postgres://x",
+			tlsEnabled:    true,
+			jwtSecret:     "prod-secret",
+			jwtKeysetSpec: "",
+			wantErr:       false,
+		},
 	}
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			err := validateProductionRuntime(tc.strict, tc.databaseURL, tc.tlsEnabled, tc.jwtSecret, tc.jwtKeysetSpec, tc.jwtKeysetFile, "")
+			jwtKeysetCommand := ""
+			if tc.name == "strict external keyset allows command source" {
+				jwtKeysetCommand = "kms-client get-jwt-keyset --format json"
+			}
+			err := validateProductionRuntime(tc.strict, tc.strictExt, tc.databaseURL, tc.tlsEnabled, tc.jwtSecret, tc.jwtKeysetSpec, tc.jwtKeysetFile, jwtKeysetCommand)
 			if (err != nil) != tc.wantErr {
 				t.Fatalf("validateProductionRuntime() err=%v wantErr=%v", err, tc.wantErr)
 			}

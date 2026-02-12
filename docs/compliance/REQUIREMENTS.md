@@ -258,7 +258,7 @@ This document maps implemented requirements to standards references, code locati
 - Standard refs: GLI-21 secure remote access/authentication controls and key lifecycle hardening expectations
 - Code: `internal/platform/auth/jwt.go`, `internal/platform/auth/keyset_source.go`, `cmd/rgsd/main.go`, `docs/deployment/KEY_MANAGEMENT.md`
 - Tests: `internal/platform/auth/jwt_test.go`, `internal/platform/auth/keyset_source_test.go`, `cmd/rgsd/main_test.go`
-- Status: implemented (file-backed keyset loading and in-process signer/verifier hot reload with periodic refresh)
+- Status: implemented (file/command-backed keyset loading and in-process signer/verifier hot reload with periodic refresh; strict mode can require external keyset sources)
 
 ## RGS-0709 Identity Rate Limiting and EFT Fraud Lockout Controls
 - Standard refs: GLI-21 unauthorized access prevention and GLI-16 EFT fraud lockout guidance

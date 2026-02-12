@@ -39,5 +39,6 @@ File format:
 ## Operational Notes
 
 - In strict production mode (`RGS_STRICT_PRODUCTION_MODE=true`), default insecure secret is rejected unless external keyset config is provided.
+- `RGS_STRICT_EXTERNAL_JWT_KEYSET` defaults to `true` when strict production mode is enabled; this requires `RGS_JWT_KEYSET_FILE` or `RGS_JWT_KEYSET_COMMAND` and prevents inline key material usage.
 - On reload failures, server keeps last-known-good keyset and logs refresh errors.
 - Keep keyset file permissions restricted to runtime user (`0600`).

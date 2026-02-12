@@ -67,7 +67,8 @@ func main() {
 	tlsEnabled := envOr("RGS_TLS_ENABLED", "false") == "true"
 	tlsRequireClientCert := envOr("RGS_TLS_REQUIRE_CLIENT_CERT", "false") == "true"
 	strictProductionMode := mustParseBoolEnv("RGS_STRICT_PRODUCTION_MODE", version != "dev")
-	if err := validateProductionRuntime(strictProductionMode, databaseURL, tlsEnabled, jwtSigningSecret, jwtKeysetSpec, jwtKeysetFile, jwtKeysetCommand); err != nil {
+	strictExternalJWTKeyset := mustParseBoolEnv("RGS_STRICT_EXTERNAL_JWT_KEYSET", strictProductionMode)
+	if err := validateProductionRuntime(strictProductionMode, strictExternalJWTKeyset, databaseURL, tlsEnabled, jwtSigningSecret, jwtKeysetSpec, jwtKeysetFile, jwtKeysetCommand); err != nil {
 		log.Fatalf("invalid production runtime configuration: %v", err)
 	}
 	tlsCfg, err := server.BuildTLSConfig(server.TLSConfig{
@@ -364,7 +365,7 @@ func mustParseBoolEnv(key string, def bool) bool {
 	}
 }
 
-func validateProductionRuntime(strict bool, databaseURL string, tlsEnabled bool, jwtSigningSecret string, jwtKeysetSpec string, jwtKeysetFile string, jwtKeysetCommand string) error {
+func validateProductionRuntime(strict bool, strictExternalJWTKeyset bool, databaseURL string, tlsEnabled bool, jwtSigningSecret string, jwtKeysetSpec string, jwtKeysetFile string, jwtKeysetCommand string) error {
 	if !strict {
 		return nil
 	}
@@ -376,6 +377,9 @@ func validateProductionRuntime(strict bool, databaseURL string, tlsEnabled bool,
 	}
 	if strings.TrimSpace(jwtKeysetSpec) == "" && strings.TrimSpace(jwtKeysetFile) == "" && strings.TrimSpace(jwtKeysetCommand) == "" && jwtSigningSecret == "dev-insecure-change-me" {
 		return fmt.Errorf("default JWT signing secret is not allowed when RGS_STRICT_PRODUCTION_MODE=true")
+	}
+	if strictExternalJWTKeyset && strings.TrimSpace(jwtKeysetFile) == "" && strings.TrimSpace(jwtKeysetCommand) == "" {
+		return fmt.Errorf("RGS_JWT_KEYSET_FILE or RGS_JWT_KEYSET_COMMAND is required when RGS_STRICT_EXTERNAL_JWT_KEYSET=true")
 	}
 	return nil
 }
