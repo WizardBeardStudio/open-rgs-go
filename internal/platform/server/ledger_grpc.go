@@ -136,6 +136,16 @@ func (s *LedgerService) useInMemoryIdempotencyCache() bool {
 	return true
 }
 
+func (s *LedgerService) useInMemoryStateMirror() bool {
+	if s == nil {
+		return false
+	}
+	if s.dbEnabled() && s.disableInMemIdemCache {
+		return false
+	}
+	return true
+}
+
 func (s *LedgerService) now() time.Time {
 	if s.Clock == nil {
 		return time.Now().UTC()
@@ -193,8 +203,28 @@ func (s *LedgerService) getOrCreateAccount(accountID string, currency string) *l
 		return acct
 	}
 	acct := &ledgerAccount{id: accountID, currency: currency}
-	s.accounts[accountID] = acct
+	if s.useInMemoryStateMirror() {
+		s.accounts[accountID] = acct
+	}
 	return acct
+}
+
+func (s *LedgerService) mutationAccountState(ctx context.Context, accountID, defaultCurrency string) (*ledgerAccount, error) {
+	if s.dbEnabled() {
+		available, pending, currency, ok, err := s.getBalanceFromDB(ctx, accountID)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			currency = defaultCurrency
+		}
+		acct := &ledgerAccount{id: accountID, currency: currency, available: available, pending: pending}
+		if s.useInMemoryStateMirror() {
+			s.accounts[accountID] = acct
+		}
+		return acct, nil
+	}
+	return s.getOrCreateAccount(accountID, defaultCurrency), nil
 }
 
 func transactionCopy(in *rgsv1.LedgerTransaction) *rgsv1.LedgerTransaction {
@@ -206,10 +236,16 @@ func transactionCopy(in *rgsv1.LedgerTransaction) *rgsv1.LedgerTransaction {
 }
 
 func (s *LedgerService) appendTransaction(tx *rgsv1.LedgerTransaction) {
+	if !s.useInMemoryStateMirror() {
+		return
+	}
 	s.transactionsByAcct[tx.AccountId] = append(s.transactionsByAcct[tx.AccountId], transactionCopy(tx))
 }
 
 func (s *LedgerService) rollbackLastTransaction(accountID string) {
+	if !s.useInMemoryStateMirror() {
+		return
+	}
 	txs := s.transactionsByAcct[accountID]
 	if len(txs) == 0 {
 		return
@@ -236,7 +272,9 @@ func (s *LedgerService) addPostings(txID string, postings []ledgerPosting) bool 
 	if !isBalanced(postings) {
 		return false
 	}
-	s.postingsByTx[txID] = append(s.postingsByTx[txID], postings...)
+	if s.useInMemoryStateMirror() {
+		s.postingsByTx[txID] = append(s.postingsByTx[txID], postings...)
+	}
 	return true
 }
 
@@ -507,7 +545,10 @@ func (s *LedgerService) Deposit(ctx context.Context, req *rgsv1.DepositRequest) 
 		}
 	}
 
-	acct := s.getOrCreateAccount(req.AccountId, req.Amount.Currency)
+	acct, err := s.mutationAccountState(ctx, req.AccountId, req.Amount.Currency)
+	if err != nil {
+		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 	if acct.currency != req.Amount.Currency {
 		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "currency mismatch for account")}, nil
 	}
@@ -641,7 +682,10 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 		}
 	}
 
-	acct := s.getOrCreateAccount(req.AccountId, req.Amount.Currency)
+	acct, err := s.mutationAccountState(ctx, req.AccountId, req.Amount.Currency)
+	if err != nil {
+		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 	if acct.currency != req.Amount.Currency {
 		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "currency mismatch for account")}, nil
 	}
@@ -767,7 +811,10 @@ func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.Transfe
 		}
 	}
 
-	acct := s.getOrCreateAccount(req.AccountId, req.RequestedAmount.Currency)
+	acct, err := s.mutationAccountState(ctx, req.AccountId, req.RequestedAmount.Currency)
+	if err != nil {
+		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 	if acct.currency != req.RequestedAmount.Currency {
 		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "currency mismatch for account")}, nil
 	}
@@ -932,7 +979,10 @@ func (s *LedgerService) TransferToAccount(ctx context.Context, req *rgsv1.Transf
 		}
 	}
 
-	acct := s.getOrCreateAccount(req.AccountId, req.Amount.Currency)
+	acct, err := s.mutationAccountState(ctx, req.AccountId, req.Amount.Currency)
+	if err != nil {
+		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
 	if acct.currency != req.Amount.Currency {
 		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "currency mismatch for account")}, nil
 	}

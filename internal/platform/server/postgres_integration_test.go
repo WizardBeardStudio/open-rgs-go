@@ -136,6 +136,40 @@ func TestPostgresLedgerIdempotencyReplayAcrossRestart(t *testing.T) {
 	}
 }
 
+func TestPostgresLedgerMutationAfterRestartUsesDurableBalance(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 10, 15, 0, 0, time.UTC)}
+	ctx := context.Background()
+
+	svcA := NewLedgerService(clk, db)
+	_, err := svcA.Deposit(ctx, &rgsv1.DepositRequest{
+		Meta:      meta("acct-pg-mutate", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-pg-mut-dep-1"),
+		AccountId: "acct-pg-mutate",
+		Amount:    &rgsv1.Money{AmountMinor: 1000, Currency: "USD"},
+	})
+	if err != nil {
+		t.Fatalf("seed deposit err: %v", err)
+	}
+
+	svcB := NewLedgerService(clk, db)
+	withdraw, err := svcB.Withdraw(ctx, &rgsv1.WithdrawRequest{
+		Meta:      meta("acct-pg-mutate", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-pg-mut-wd-1"),
+		AccountId: "acct-pg-mutate",
+		Amount:    &rgsv1.Money{AmountMinor: 250, Currency: "USD"},
+	})
+	if err != nil {
+		t.Fatalf("withdraw after restart err: %v", err)
+	}
+	if withdraw.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected successful withdraw after restart, got=%v reason=%q", withdraw.Meta.GetResultCode(), withdraw.Meta.GetDenialReason())
+	}
+	if withdraw.AvailableBalance.GetAmountMinor() != 750 {
+		t.Fatalf("expected remaining balance 750, got=%d", withdraw.AvailableBalance.GetAmountMinor())
+	}
+}
+
 func TestPostgresLedgerIdempotencyRejectsMismatchedPayload(t *testing.T) {
 	db := openPostgresIntegrationDB(t)
 	resetPostgresIntegrationState(t, db)
