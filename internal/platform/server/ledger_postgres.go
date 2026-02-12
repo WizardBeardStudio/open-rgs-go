@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 
@@ -399,11 +398,5 @@ func ledgerTxTypeFromDB(v string) rgsv1.LedgerTransactionType {
 		return rgsv1.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_MANUAL_ADJUSTMENT
 	default:
 		return rgsv1.LedgerTransactionType_LEDGER_TRANSACTION_TYPE_UNSPECIFIED
-	}
-}
-
-func must(err error) {
-	if err != nil {
-		panic(fmt.Sprintf("ledger postgres internal error: %v", err))
 	}
 }
