@@ -301,3 +301,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `scripts/keyset_rotation_evidence.sh`, `docs/deployment/KEY_MANAGEMENT.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
 - Tests: `go test ./...` release-gate execution
 - Status: implemented (scripted keyset snapshot/fingerprint evidence with active-kid rotation-state capture)
+
+## RGS-0716 Sustained Load/Soak Qualification Evidence
+- Standard refs: GLI-13 deterministic operation and operational resilience evidence expectations
+- Code: `internal/platform/server/ledger_benchmark_test.go`, `internal/platform/server/wagering_benchmark_test.go`, `scripts/load_soak_check.sh`, `docs/deployment/LOAD_SOAK_QUALIFICATION.md`, `Makefile`
+- Tests: `go test ./internal/platform/server -run '^$' -bench '^(BenchmarkLedgerDeposit|BenchmarkWageringPlaceWager)$' -benchmem`
+- Status: implemented (multi-run soak benchmarks with optional threshold gating and release evidence artifacts)

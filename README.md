@@ -218,6 +218,7 @@ Deployment guidance:
 - `docs/deployment/DR_DRILLS.md`
 - `docs/deployment/PERFORMANCE_QUALIFICATION.md`
 - `docs/deployment/FAILOVER_DRILLS.md`
+- `docs/deployment/LOAD_SOAK_QUALIFICATION.md`
 
 ## 10. API Surface (Current)
 
@@ -286,4 +287,4 @@ Current limitations:
 - Promotions/UI services are implemented at baseline CRUD/reportability level, but advanced campaign policy engines and full device-side interaction workflows are still pending.
 
 Recommended next steps:
-- Expand performance qualification from microbenchmarks to sustained load/soak scenarios aligned to full service-level SLOs.
+- Extend soak coverage to DB-backed distributed scenarios with target-concurrency profiles per jurisdiction/operator class.

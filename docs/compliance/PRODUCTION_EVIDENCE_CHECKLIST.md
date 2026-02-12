@@ -35,6 +35,7 @@ Use this checklist to assemble a regulator/operator-ready release packet.
 - `make failover-evidence` snapshot (`snapshot.json`) with RTO/RPO thresholds and pass/fail result.
 - Alerting rules and dashboard screenshots for key risk indicators.
 - `make perf-qual` artifact pack (`benchmark_output.txt`, `summary.txt`) with accepted threshold references.
+- `make soak-qual` artifact pack (`benchmark_output.txt`, `summary.json`) for sustained multi-run threshold-gated checks.
 
 ## 6. Compliance Traceability Evidence
 - `docs/compliance/REQUIREMENTS.md` with code/test links current to release.

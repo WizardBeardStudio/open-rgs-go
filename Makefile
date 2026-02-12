@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: all fmt test test-integration-postgres lint proto generate-tools dr-drill perf-qual failover-evidence keyset-evidence
+.PHONY: all fmt test test-integration-postgres lint proto generate-tools dr-drill perf-qual failover-evidence keyset-evidence soak-qual
 
 all: fmt test
 
@@ -44,3 +44,10 @@ keyset-evidence:
 	RGS_KEYSET_EVENT_ID=$${RGS_KEYSET_EVENT_ID:-} \
 	RGS_KEYSET_PREVIOUS_SUMMARY_FILE=$${RGS_KEYSET_PREVIOUS_SUMMARY_FILE:-} \
 	./scripts/keyset_rotation_evidence.sh
+
+soak-qual:
+	RGS_SOAK_RUNS=$${RGS_SOAK_RUNS:-3} \
+	RGS_SOAK_BENCHTIME=$${RGS_SOAK_BENCHTIME:-30s} \
+	RGS_SOAK_LEDGER_DEPOSIT_NS_OP_MAX=$${RGS_SOAK_LEDGER_DEPOSIT_NS_OP_MAX:-} \
+	RGS_SOAK_WAGER_PLACE_NS_OP_MAX=$${RGS_SOAK_WAGER_PLACE_NS_OP_MAX:-} \
+	./scripts/load_soak_check.sh
