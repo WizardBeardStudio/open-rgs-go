@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: all fmt test test-integration-postgres lint proto generate-tools
+.PHONY: all fmt test test-integration-postgres lint proto generate-tools dr-drill
 
 all: fmt test
 
@@ -19,3 +19,8 @@ lint:
 proto:
 	buf lint
 	buf generate
+
+dr-drill:
+	RGS_DATABASE_URL=$${RGS_DATABASE_URL:?set RGS_DATABASE_URL} \
+	RGS_DRILL_RESTORE_URL=$${RGS_DRILL_RESTORE_URL:-} \
+	./scripts/dr_backup_restore_check.sh

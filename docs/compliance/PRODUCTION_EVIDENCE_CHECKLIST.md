@@ -29,6 +29,7 @@ Use this checklist to assemble a regulator/operator-ready release packet.
 ## 5. Operational Resilience Evidence
 - Chaos test outputs (communication loss, fail-closed paths).
 - Backup/restore drill runbook and last successful drill date.
+- `make dr-drill` artifact pack (`open_rgs_go.backup`, `manifest.txt`, `critical_table_counts.csv`, `restore_status.txt`).
 - DB failover/partition scenario validation report.
 - Alerting rules and dashboard screenshots for key risk indicators.
 

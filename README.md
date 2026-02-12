@@ -214,6 +214,7 @@ Deployment guidance:
 - `docs/deployment/WIRELESS_ONBOARDING.md`
 - `docs/deployment/KEY_MANAGEMENT.md`
 - `docs/deployment/PACKAGE_SIGNING.md`
+- `docs/deployment/DR_DRILLS.md`
 
 ## 10. API Surface (Current)
 
@@ -283,5 +284,5 @@ Current limitations:
 
 Recommended next steps:
 - Implement KMS/HSM-backed signing key management and automated rotation runbooks.
-- Add DR automation for backup/restore verification and periodic failover evidence capture.
+- Add automated failover/partition drills with published RTO/RPO evidence snapshots.
 - Expand production performance qualification (load/soak with SLO acceptance thresholds) and attach release evidence artifacts.

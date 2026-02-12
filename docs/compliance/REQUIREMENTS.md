@@ -277,3 +277,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `internal/platform/server/metrics.go`, `cmd/rgsd/main.go`, `docs/deployment/METRICS_ALERTING.md`
 - Tests: `internal/platform/server/metrics_observability_test.go`
 - Status: implemented (gRPC and REST request outcome/latency metrics with baseline failure-rate and latency alert guidance)
+
+## RGS-0712 Backup/Restore Drill Evidence Automation
+- Standard refs: GLI-13 critical data retention/recovery and operational resilience expectations
+- Code: `scripts/dr_backup_restore_check.sh`, `docs/deployment/DR_DRILLS.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
+- Tests: `go test ./...` release-gate execution
+- Status: implemented (repeatable script-driven backup hash/count artifact pack with optional drill restore target)
