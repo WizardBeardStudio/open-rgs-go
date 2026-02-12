@@ -16,7 +16,7 @@ Implemented and wired:
 - `ReportingService` (DTD/MTD/YTD/LTD, JSON/CSV)
 - `ConfigService` (propose/approve/apply workflow + download-library logs)
 - `AuditService` (audit event retrieval + remote-access activity retrieval)
-- `PromotionsService` (bonus transactions + promotional award capture)
+- `PromotionsService` (bonus transactions + promotional award capture/listing)
 - `UISystemOverlayService` (system-window open/close recall event ingestion and listing)
 
 Current persistence model:

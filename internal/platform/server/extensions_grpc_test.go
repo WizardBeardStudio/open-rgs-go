@@ -120,6 +120,88 @@ func TestPromotionsDisableInMemoryCacheSkipsBonusMirror(t *testing.T) {
 	}
 }
 
+func TestPromotionsListPromotionalAwardsPagination(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 0, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	for i := 0; i < 3; i++ {
+		_, err := svc.RecordPromotionalAward(ctx, &rgsv1.RecordPromotionalAwardRequest{
+			Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+			Award: &rgsv1.PromotionalAward{
+				PlayerId:   "player-1",
+				CampaignId: "camp-1",
+				AwardType:  rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_FREEPLAY,
+				Amount:     &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+				OccurredAt: clk.now.Add(time.Duration(i) * time.Second).Format(time.RFC3339Nano),
+			},
+		})
+		if err != nil {
+			t.Fatalf("record promotional award err: %v", err)
+		}
+	}
+
+	first, err := svc.ListPromotionalAwards(ctx, &rgsv1.ListPromotionalAwardsRequest{
+		Meta:       meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PlayerId:   "player-1",
+		CampaignId: "camp-1",
+		PageSize:   2,
+	})
+	if err != nil {
+		t.Fatalf("list awards err: %v", err)
+	}
+	if len(first.Awards) != 2 {
+		t.Fatalf("expected first page size 2, got=%d", len(first.Awards))
+	}
+	if first.NextPageToken == "" {
+		t.Fatalf("expected non-empty next page token")
+	}
+
+	second, err := svc.ListPromotionalAwards(ctx, &rgsv1.ListPromotionalAwardsRequest{
+		Meta:       meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PlayerId:   "player-1",
+		CampaignId: "camp-1",
+		PageSize:   2,
+		PageToken:  first.NextPageToken,
+	})
+	if err != nil {
+		t.Fatalf("list awards page 2 err: %v", err)
+	}
+	if len(second.Awards) != 1 {
+		t.Fatalf("expected second page size 1, got=%d", len(second.Awards))
+	}
+}
+
+func TestPromotionsDisableInMemoryCacheSkipsAwardMirror(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 30, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	svc.SetDisableInMemoryCache(true)
+	ctx := context.Background()
+
+	_, err := svc.RecordPromotionalAward(ctx, &rgsv1.RecordPromotionalAwardRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Award: &rgsv1.PromotionalAward{
+			PlayerId:   "player-1",
+			CampaignId: "camp-1",
+			AwardType:  rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_FREEPLAY,
+			Amount:     &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("record promotional award err: %v", err)
+	}
+
+	list, err := svc.ListPromotionalAwards(ctx, &rgsv1.ListPromotionalAwardsRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+	})
+	if err != nil {
+		t.Fatalf("list awards err: %v", err)
+	}
+	if len(list.Awards) != 0 {
+		t.Fatalf("expected no in-memory awards when cache disabled, got=%d", len(list.Awards))
+	}
+}
+
 func TestUISystemOverlayDisableInMemoryCacheSkipsEventMirror(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 30, 0, 0, time.UTC)}
 	svc := NewUISystemOverlayService(clk)

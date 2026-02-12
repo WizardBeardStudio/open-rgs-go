@@ -720,6 +720,142 @@ func (x *RecordPromotionalAwardResponse) GetAward() *PromotionalAward {
 	return nil
 }
 
+type ListPromotionalAwardsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *RequestMeta           `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	PlayerId      string                 `protobuf:"bytes,2,opt,name=player_id,json=playerId,proto3" json:"player_id,omitempty"`
+	CampaignId    string                 `protobuf:"bytes,3,opt,name=campaign_id,json=campaignId,proto3" json:"campaign_id,omitempty"`
+	PageSize      int32                  `protobuf:"varint,4,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
+	PageToken     string                 `protobuf:"bytes,5,opt,name=page_token,json=pageToken,proto3" json:"page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPromotionalAwardsRequest) Reset() {
+	*x = ListPromotionalAwardsRequest{}
+	mi := &file_rgs_v1_extensions_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPromotionalAwardsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPromotionalAwardsRequest) ProtoMessage() {}
+
+func (x *ListPromotionalAwardsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_extensions_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPromotionalAwardsRequest.ProtoReflect.Descriptor instead.
+func (*ListPromotionalAwardsRequest) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_extensions_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ListPromotionalAwardsRequest) GetMeta() *RequestMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *ListPromotionalAwardsRequest) GetPlayerId() string {
+	if x != nil {
+		return x.PlayerId
+	}
+	return ""
+}
+
+func (x *ListPromotionalAwardsRequest) GetCampaignId() string {
+	if x != nil {
+		return x.CampaignId
+	}
+	return ""
+}
+
+func (x *ListPromotionalAwardsRequest) GetPageSize() int32 {
+	if x != nil {
+		return x.PageSize
+	}
+	return 0
+}
+
+func (x *ListPromotionalAwardsRequest) GetPageToken() string {
+	if x != nil {
+		return x.PageToken
+	}
+	return ""
+}
+
+type ListPromotionalAwardsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Meta          *ResponseMeta          `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Awards        []*PromotionalAward    `protobuf:"bytes,2,rep,name=awards,proto3" json:"awards,omitempty"`
+	NextPageToken string                 `protobuf:"bytes,3,opt,name=next_page_token,json=nextPageToken,proto3" json:"next_page_token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPromotionalAwardsResponse) Reset() {
+	*x = ListPromotionalAwardsResponse{}
+	mi := &file_rgs_v1_extensions_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPromotionalAwardsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPromotionalAwardsResponse) ProtoMessage() {}
+
+func (x *ListPromotionalAwardsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_rgs_v1_extensions_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPromotionalAwardsResponse.ProtoReflect.Descriptor instead.
+func (*ListPromotionalAwardsResponse) Descriptor() ([]byte, []int) {
+	return file_rgs_v1_extensions_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ListPromotionalAwardsResponse) GetMeta() *ResponseMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *ListPromotionalAwardsResponse) GetAwards() []*PromotionalAward {
+	if x != nil {
+		return x.Awards
+	}
+	return nil
+}
+
+func (x *ListPromotionalAwardsResponse) GetNextPageToken() string {
+	if x != nil {
+		return x.NextPageToken
+	}
+	return ""
+}
+
 type SubmitSystemWindowEventRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Meta          *RequestMeta           `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
@@ -730,7 +866,7 @@ type SubmitSystemWindowEventRequest struct {
 
 func (x *SubmitSystemWindowEventRequest) Reset() {
 	*x = SubmitSystemWindowEventRequest{}
-	mi := &file_rgs_v1_extensions_proto_msgTypes[9]
+	mi := &file_rgs_v1_extensions_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -742,7 +878,7 @@ func (x *SubmitSystemWindowEventRequest) String() string {
 func (*SubmitSystemWindowEventRequest) ProtoMessage() {}
 
 func (x *SubmitSystemWindowEventRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_rgs_v1_extensions_proto_msgTypes[9]
+	mi := &file_rgs_v1_extensions_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -755,7 +891,7 @@ func (x *SubmitSystemWindowEventRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitSystemWindowEventRequest.ProtoReflect.Descriptor instead.
 func (*SubmitSystemWindowEventRequest) Descriptor() ([]byte, []int) {
-	return file_rgs_v1_extensions_proto_rawDescGZIP(), []int{9}
+	return file_rgs_v1_extensions_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *SubmitSystemWindowEventRequest) GetMeta() *RequestMeta {
@@ -782,7 +918,7 @@ type SubmitSystemWindowEventResponse struct {
 
 func (x *SubmitSystemWindowEventResponse) Reset() {
 	*x = SubmitSystemWindowEventResponse{}
-	mi := &file_rgs_v1_extensions_proto_msgTypes[10]
+	mi := &file_rgs_v1_extensions_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -794,7 +930,7 @@ func (x *SubmitSystemWindowEventResponse) String() string {
 func (*SubmitSystemWindowEventResponse) ProtoMessage() {}
 
 func (x *SubmitSystemWindowEventResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_rgs_v1_extensions_proto_msgTypes[10]
+	mi := &file_rgs_v1_extensions_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -807,7 +943,7 @@ func (x *SubmitSystemWindowEventResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitSystemWindowEventResponse.ProtoReflect.Descriptor instead.
 func (*SubmitSystemWindowEventResponse) Descriptor() ([]byte, []int) {
-	return file_rgs_v1_extensions_proto_rawDescGZIP(), []int{10}
+	return file_rgs_v1_extensions_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SubmitSystemWindowEventResponse) GetMeta() *ResponseMeta {
@@ -838,7 +974,7 @@ type ListSystemWindowEventsRequest struct {
 
 func (x *ListSystemWindowEventsRequest) Reset() {
 	*x = ListSystemWindowEventsRequest{}
-	mi := &file_rgs_v1_extensions_proto_msgTypes[11]
+	mi := &file_rgs_v1_extensions_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -850,7 +986,7 @@ func (x *ListSystemWindowEventsRequest) String() string {
 func (*ListSystemWindowEventsRequest) ProtoMessage() {}
 
 func (x *ListSystemWindowEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_rgs_v1_extensions_proto_msgTypes[11]
+	mi := &file_rgs_v1_extensions_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -863,7 +999,7 @@ func (x *ListSystemWindowEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSystemWindowEventsRequest.ProtoReflect.Descriptor instead.
 func (*ListSystemWindowEventsRequest) Descriptor() ([]byte, []int) {
-	return file_rgs_v1_extensions_proto_rawDescGZIP(), []int{11}
+	return file_rgs_v1_extensions_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *ListSystemWindowEventsRequest) GetMeta() *RequestMeta {
@@ -919,7 +1055,7 @@ type ListSystemWindowEventsResponse struct {
 
 func (x *ListSystemWindowEventsResponse) Reset() {
 	*x = ListSystemWindowEventsResponse{}
-	mi := &file_rgs_v1_extensions_proto_msgTypes[12]
+	mi := &file_rgs_v1_extensions_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -931,7 +1067,7 @@ func (x *ListSystemWindowEventsResponse) String() string {
 func (*ListSystemWindowEventsResponse) ProtoMessage() {}
 
 func (x *ListSystemWindowEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_rgs_v1_extensions_proto_msgTypes[12]
+	mi := &file_rgs_v1_extensions_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -944,7 +1080,7 @@ func (x *ListSystemWindowEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSystemWindowEventsResponse.ProtoReflect.Descriptor instead.
 func (*ListSystemWindowEventsResponse) Descriptor() ([]byte, []int) {
-	return file_rgs_v1_extensions_proto_rawDescGZIP(), []int{12}
+	return file_rgs_v1_extensions_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *ListSystemWindowEventsResponse) GetMeta() *ResponseMeta {
@@ -1022,7 +1158,19 @@ const file_rgs_v1_extensions_proto_rawDesc = "" +
 	"\x05award\x18\x02 \x01(\v2\x18.rgs.v1.PromotionalAwardR\x05award\"z\n" +
 	"\x1eRecordPromotionalAwardResponse\x12(\n" +
 	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta\x12.\n" +
-	"\x05award\x18\x02 \x01(\v2\x18.rgs.v1.PromotionalAwardR\x05award\"z\n" +
+	"\x05award\x18\x02 \x01(\v2\x18.rgs.v1.PromotionalAwardR\x05award\"\xc1\x01\n" +
+	"\x1cListPromotionalAwardsRequest\x12'\n" +
+	"\x04meta\x18\x01 \x01(\v2\x13.rgs.v1.RequestMetaR\x04meta\x12\x1b\n" +
+	"\tplayer_id\x18\x02 \x01(\tR\bplayerId\x12\x1f\n" +
+	"\vcampaign_id\x18\x03 \x01(\tR\n" +
+	"campaignId\x12\x1b\n" +
+	"\tpage_size\x18\x04 \x01(\x05R\bpageSize\x12\x1d\n" +
+	"\n" +
+	"page_token\x18\x05 \x01(\tR\tpageToken\"\xa3\x01\n" +
+	"\x1dListPromotionalAwardsResponse\x12(\n" +
+	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta\x120\n" +
+	"\x06awards\x18\x02 \x03(\v2\x18.rgs.v1.PromotionalAwardR\x06awards\x12&\n" +
+	"\x0fnext_page_token\x18\x03 \x01(\tR\rnextPageToken\"z\n" +
 	"\x1eSubmitSystemWindowEventRequest\x12'\n" +
 	"\x04meta\x18\x01 \x01(\v2\x13.rgs.v1.RequestMetaR\x04meta\x12/\n" +
 	"\x05event\x18\x02 \x01(\v2\x19.rgs.v1.SystemWindowEventR\x05event\"|\n" +
@@ -1052,11 +1200,12 @@ const file_rgs_v1_extensions_proto_rawDesc = "" +
 	"\x1fSYSTEM_WINDOW_EVENT_TYPE_OPENED\x10\x01\x12#\n" +
 	"\x1fSYSTEM_WINDOW_EVENT_TYPE_CLOSED\x10\x02\x12%\n" +
 	"!SYSTEM_WINDOW_EVENT_TYPE_DECLINED\x10\x03\x12&\n" +
-	"\"SYSTEM_WINDOW_EVENT_TYPE_TIMED_OUT\x10\x042\xdb\x03\n" +
+	"\"SYSTEM_WINDOW_EVENT_TYPE_TIMED_OUT\x10\x042\xe1\x04\n" +
 	"\x11PromotionsService\x12\x95\x01\n" +
 	"\x16RecordBonusTransaction\x12%.rgs.v1.RecordBonusTransactionRequest\x1a&.rgs.v1.RecordBonusTransactionResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/v1/promotions/bonus-transactions\x12\xa1\x01\n" +
 	"\x1bListRecentBonusTransactions\x12*.rgs.v1.ListRecentBonusTransactionsRequest\x1a+.rgs.v1.ListRecentBonusTransactionsResponse\")\x82\xd3\xe4\x93\x02#\x12!/v1/promotions/bonus-transactions\x12\x89\x01\n" +
-	"\x16RecordPromotionalAward\x12%.rgs.v1.RecordPromotionalAwardRequest\x1a&.rgs.v1.RecordPromotionalAwardResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/v1/promotions/awards2\xbc\x02\n" +
+	"\x16RecordPromotionalAward\x12%.rgs.v1.RecordPromotionalAwardRequest\x1a&.rgs.v1.RecordPromotionalAwardResponse\" \x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/v1/promotions/awards\x12\x83\x01\n" +
+	"\x15ListPromotionalAwards\x12$.rgs.v1.ListPromotionalAwardsRequest\x1a%.rgs.v1.ListPromotionalAwardsResponse\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/v1/promotions/awards2\xbc\x02\n" +
 	"\x16UISystemOverlayService\x12\x92\x01\n" +
 	"\x17SubmitSystemWindowEvent\x12&.rgs.v1.SubmitSystemWindowEventRequest\x1a'.rgs.v1.SubmitSystemWindowEventResponse\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/v1/ui/system-window-events\x12\x8c\x01\n" +
 	"\x16ListSystemWindowEvents\x12%.rgs.v1.ListSystemWindowEventsRequest\x1a&.rgs.v1.ListSystemWindowEventsResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/v1/ui/system-window-eventsB\x8b\x01\n" +
@@ -1076,7 +1225,7 @@ func file_rgs_v1_extensions_proto_rawDescGZIP() []byte {
 }
 
 var file_rgs_v1_extensions_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_rgs_v1_extensions_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_rgs_v1_extensions_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_rgs_v1_extensions_proto_goTypes = []any{
 	(PromotionalAwardType)(0),                   // 0: rgs.v1.PromotionalAwardType
 	(SystemWindowEventType)(0),                  // 1: rgs.v1.SystemWindowEventType
@@ -1089,52 +1238,59 @@ var file_rgs_v1_extensions_proto_goTypes = []any{
 	(*ListRecentBonusTransactionsResponse)(nil), // 8: rgs.v1.ListRecentBonusTransactionsResponse
 	(*RecordPromotionalAwardRequest)(nil),       // 9: rgs.v1.RecordPromotionalAwardRequest
 	(*RecordPromotionalAwardResponse)(nil),      // 10: rgs.v1.RecordPromotionalAwardResponse
-	(*SubmitSystemWindowEventRequest)(nil),      // 11: rgs.v1.SubmitSystemWindowEventRequest
-	(*SubmitSystemWindowEventResponse)(nil),     // 12: rgs.v1.SubmitSystemWindowEventResponse
-	(*ListSystemWindowEventsRequest)(nil),       // 13: rgs.v1.ListSystemWindowEventsRequest
-	(*ListSystemWindowEventsResponse)(nil),      // 14: rgs.v1.ListSystemWindowEventsResponse
-	(*Money)(nil),                               // 15: rgs.v1.Money
-	(*RequestMeta)(nil),                         // 16: rgs.v1.RequestMeta
-	(*ResponseMeta)(nil),                        // 17: rgs.v1.ResponseMeta
+	(*ListPromotionalAwardsRequest)(nil),        // 11: rgs.v1.ListPromotionalAwardsRequest
+	(*ListPromotionalAwardsResponse)(nil),       // 12: rgs.v1.ListPromotionalAwardsResponse
+	(*SubmitSystemWindowEventRequest)(nil),      // 13: rgs.v1.SubmitSystemWindowEventRequest
+	(*SubmitSystemWindowEventResponse)(nil),     // 14: rgs.v1.SubmitSystemWindowEventResponse
+	(*ListSystemWindowEventsRequest)(nil),       // 15: rgs.v1.ListSystemWindowEventsRequest
+	(*ListSystemWindowEventsResponse)(nil),      // 16: rgs.v1.ListSystemWindowEventsResponse
+	(*Money)(nil),                               // 17: rgs.v1.Money
+	(*RequestMeta)(nil),                         // 18: rgs.v1.RequestMeta
+	(*ResponseMeta)(nil),                        // 19: rgs.v1.ResponseMeta
 }
 var file_rgs_v1_extensions_proto_depIdxs = []int32{
-	15, // 0: rgs.v1.BonusTransaction.amount:type_name -> rgs.v1.Money
+	17, // 0: rgs.v1.BonusTransaction.amount:type_name -> rgs.v1.Money
 	0,  // 1: rgs.v1.PromotionalAward.award_type:type_name -> rgs.v1.PromotionalAwardType
-	15, // 2: rgs.v1.PromotionalAward.amount:type_name -> rgs.v1.Money
+	17, // 2: rgs.v1.PromotionalAward.amount:type_name -> rgs.v1.Money
 	1,  // 3: rgs.v1.SystemWindowEvent.event_type:type_name -> rgs.v1.SystemWindowEventType
-	16, // 4: rgs.v1.RecordBonusTransactionRequest.meta:type_name -> rgs.v1.RequestMeta
+	18, // 4: rgs.v1.RecordBonusTransactionRequest.meta:type_name -> rgs.v1.RequestMeta
 	2,  // 5: rgs.v1.RecordBonusTransactionRequest.transaction:type_name -> rgs.v1.BonusTransaction
-	17, // 6: rgs.v1.RecordBonusTransactionResponse.meta:type_name -> rgs.v1.ResponseMeta
+	19, // 6: rgs.v1.RecordBonusTransactionResponse.meta:type_name -> rgs.v1.ResponseMeta
 	2,  // 7: rgs.v1.RecordBonusTransactionResponse.transaction:type_name -> rgs.v1.BonusTransaction
-	16, // 8: rgs.v1.ListRecentBonusTransactionsRequest.meta:type_name -> rgs.v1.RequestMeta
-	17, // 9: rgs.v1.ListRecentBonusTransactionsResponse.meta:type_name -> rgs.v1.ResponseMeta
+	18, // 8: rgs.v1.ListRecentBonusTransactionsRequest.meta:type_name -> rgs.v1.RequestMeta
+	19, // 9: rgs.v1.ListRecentBonusTransactionsResponse.meta:type_name -> rgs.v1.ResponseMeta
 	2,  // 10: rgs.v1.ListRecentBonusTransactionsResponse.transactions:type_name -> rgs.v1.BonusTransaction
-	16, // 11: rgs.v1.RecordPromotionalAwardRequest.meta:type_name -> rgs.v1.RequestMeta
+	18, // 11: rgs.v1.RecordPromotionalAwardRequest.meta:type_name -> rgs.v1.RequestMeta
 	3,  // 12: rgs.v1.RecordPromotionalAwardRequest.award:type_name -> rgs.v1.PromotionalAward
-	17, // 13: rgs.v1.RecordPromotionalAwardResponse.meta:type_name -> rgs.v1.ResponseMeta
+	19, // 13: rgs.v1.RecordPromotionalAwardResponse.meta:type_name -> rgs.v1.ResponseMeta
 	3,  // 14: rgs.v1.RecordPromotionalAwardResponse.award:type_name -> rgs.v1.PromotionalAward
-	16, // 15: rgs.v1.SubmitSystemWindowEventRequest.meta:type_name -> rgs.v1.RequestMeta
-	4,  // 16: rgs.v1.SubmitSystemWindowEventRequest.event:type_name -> rgs.v1.SystemWindowEvent
-	17, // 17: rgs.v1.SubmitSystemWindowEventResponse.meta:type_name -> rgs.v1.ResponseMeta
-	4,  // 18: rgs.v1.SubmitSystemWindowEventResponse.event:type_name -> rgs.v1.SystemWindowEvent
-	16, // 19: rgs.v1.ListSystemWindowEventsRequest.meta:type_name -> rgs.v1.RequestMeta
-	17, // 20: rgs.v1.ListSystemWindowEventsResponse.meta:type_name -> rgs.v1.ResponseMeta
-	4,  // 21: rgs.v1.ListSystemWindowEventsResponse.events:type_name -> rgs.v1.SystemWindowEvent
-	5,  // 22: rgs.v1.PromotionsService.RecordBonusTransaction:input_type -> rgs.v1.RecordBonusTransactionRequest
-	7,  // 23: rgs.v1.PromotionsService.ListRecentBonusTransactions:input_type -> rgs.v1.ListRecentBonusTransactionsRequest
-	9,  // 24: rgs.v1.PromotionsService.RecordPromotionalAward:input_type -> rgs.v1.RecordPromotionalAwardRequest
-	11, // 25: rgs.v1.UISystemOverlayService.SubmitSystemWindowEvent:input_type -> rgs.v1.SubmitSystemWindowEventRequest
-	13, // 26: rgs.v1.UISystemOverlayService.ListSystemWindowEvents:input_type -> rgs.v1.ListSystemWindowEventsRequest
-	6,  // 27: rgs.v1.PromotionsService.RecordBonusTransaction:output_type -> rgs.v1.RecordBonusTransactionResponse
-	8,  // 28: rgs.v1.PromotionsService.ListRecentBonusTransactions:output_type -> rgs.v1.ListRecentBonusTransactionsResponse
-	10, // 29: rgs.v1.PromotionsService.RecordPromotionalAward:output_type -> rgs.v1.RecordPromotionalAwardResponse
-	12, // 30: rgs.v1.UISystemOverlayService.SubmitSystemWindowEvent:output_type -> rgs.v1.SubmitSystemWindowEventResponse
-	14, // 31: rgs.v1.UISystemOverlayService.ListSystemWindowEvents:output_type -> rgs.v1.ListSystemWindowEventsResponse
-	27, // [27:32] is the sub-list for method output_type
-	22, // [22:27] is the sub-list for method input_type
-	22, // [22:22] is the sub-list for extension type_name
-	22, // [22:22] is the sub-list for extension extendee
-	0,  // [0:22] is the sub-list for field type_name
+	18, // 15: rgs.v1.ListPromotionalAwardsRequest.meta:type_name -> rgs.v1.RequestMeta
+	19, // 16: rgs.v1.ListPromotionalAwardsResponse.meta:type_name -> rgs.v1.ResponseMeta
+	3,  // 17: rgs.v1.ListPromotionalAwardsResponse.awards:type_name -> rgs.v1.PromotionalAward
+	18, // 18: rgs.v1.SubmitSystemWindowEventRequest.meta:type_name -> rgs.v1.RequestMeta
+	4,  // 19: rgs.v1.SubmitSystemWindowEventRequest.event:type_name -> rgs.v1.SystemWindowEvent
+	19, // 20: rgs.v1.SubmitSystemWindowEventResponse.meta:type_name -> rgs.v1.ResponseMeta
+	4,  // 21: rgs.v1.SubmitSystemWindowEventResponse.event:type_name -> rgs.v1.SystemWindowEvent
+	18, // 22: rgs.v1.ListSystemWindowEventsRequest.meta:type_name -> rgs.v1.RequestMeta
+	19, // 23: rgs.v1.ListSystemWindowEventsResponse.meta:type_name -> rgs.v1.ResponseMeta
+	4,  // 24: rgs.v1.ListSystemWindowEventsResponse.events:type_name -> rgs.v1.SystemWindowEvent
+	5,  // 25: rgs.v1.PromotionsService.RecordBonusTransaction:input_type -> rgs.v1.RecordBonusTransactionRequest
+	7,  // 26: rgs.v1.PromotionsService.ListRecentBonusTransactions:input_type -> rgs.v1.ListRecentBonusTransactionsRequest
+	9,  // 27: rgs.v1.PromotionsService.RecordPromotionalAward:input_type -> rgs.v1.RecordPromotionalAwardRequest
+	11, // 28: rgs.v1.PromotionsService.ListPromotionalAwards:input_type -> rgs.v1.ListPromotionalAwardsRequest
+	13, // 29: rgs.v1.UISystemOverlayService.SubmitSystemWindowEvent:input_type -> rgs.v1.SubmitSystemWindowEventRequest
+	15, // 30: rgs.v1.UISystemOverlayService.ListSystemWindowEvents:input_type -> rgs.v1.ListSystemWindowEventsRequest
+	6,  // 31: rgs.v1.PromotionsService.RecordBonusTransaction:output_type -> rgs.v1.RecordBonusTransactionResponse
+	8,  // 32: rgs.v1.PromotionsService.ListRecentBonusTransactions:output_type -> rgs.v1.ListRecentBonusTransactionsResponse
+	10, // 33: rgs.v1.PromotionsService.RecordPromotionalAward:output_type -> rgs.v1.RecordPromotionalAwardResponse
+	12, // 34: rgs.v1.PromotionsService.ListPromotionalAwards:output_type -> rgs.v1.ListPromotionalAwardsResponse
+	14, // 35: rgs.v1.UISystemOverlayService.SubmitSystemWindowEvent:output_type -> rgs.v1.SubmitSystemWindowEventResponse
+	16, // 36: rgs.v1.UISystemOverlayService.ListSystemWindowEvents:output_type -> rgs.v1.ListSystemWindowEventsResponse
+	31, // [31:37] is the sub-list for method output_type
+	25, // [25:31] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_rgs_v1_extensions_proto_init() }
@@ -1150,7 +1306,7 @@ func file_rgs_v1_extensions_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_rgs_v1_extensions_proto_rawDesc), len(file_rgs_v1_extensions_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   13,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

@@ -112,6 +112,60 @@ ON CONFLICT (promotional_award_id) DO UPDATE SET
 	return err
 }
 
+func (s *PromotionsService) listPromotionalAwardsFromDB(ctx context.Context, playerID, campaignID string, limit, offset int) ([]*rgsv1.PromotionalAward, string, error) {
+	if s == nil || s.db == nil {
+		return nil, "", nil
+	}
+	const q = `
+SELECT promotional_award_id, player_id, award_type, campaign_id, amount_minor, currency_code, occurred_at
+FROM promotional_awards
+WHERE ($1 = '' OR player_id = $1)
+  AND ($2 = '' OR campaign_id = $2)
+ORDER BY occurred_at DESC, promotional_award_id DESC
+LIMIT $3 OFFSET $4
+`
+	rows, err := s.db.QueryContext(ctx, q, playerID, campaignID, limit, offset)
+	if err != nil {
+		return nil, "", err
+	}
+	defer rows.Close()
+
+	out := make([]*rgsv1.PromotionalAward, 0, limit)
+	for rows.Next() {
+		var (
+			awardTypeRaw string
+			occurredAt   time.Time
+			award        rgsv1.PromotionalAward
+			amount       int64
+			currency     string
+		)
+		if err := rows.Scan(
+			&award.PromotionalAwardId,
+			&award.PlayerId,
+			&awardTypeRaw,
+			&award.CampaignId,
+			&amount,
+			&currency,
+			&occurredAt,
+		); err != nil {
+			return nil, "", err
+		}
+		awardTypeInt, _ := strconv.Atoi(awardTypeRaw)
+		award.AwardType = rgsv1.PromotionalAwardType(awardTypeInt)
+		award.Amount = &rgsv1.Money{AmountMinor: amount, Currency: currency}
+		award.OccurredAt = occurredAt.UTC().Format(time.RFC3339Nano)
+		out = append(out, &award)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, "", err
+	}
+	next := ""
+	if len(out) == limit {
+		next = strconv.Itoa(offset + len(out))
+	}
+	return out, next, nil
+}
+
 func (s *UISystemOverlayService) persistSystemWindowEvent(ctx context.Context, ev *rgsv1.SystemWindowEvent) error {
 	if s == nil || s.db == nil || ev == nil {
 		return nil

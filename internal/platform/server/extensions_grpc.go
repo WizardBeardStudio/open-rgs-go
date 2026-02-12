@@ -24,6 +24,7 @@ type PromotionsService struct {
 	bonusTx              map[string]*rgsv1.BonusTransaction
 	bonusOrder           []string
 	awards               map[string]*rgsv1.PromotionalAward
+	awardOrder           []string
 	nextBonusID          int64
 	nextAwardID          int64
 	nextAuditID          int64
@@ -240,6 +241,7 @@ func (s *PromotionsService) RecordPromotionalAward(ctx context.Context, req *rgs
 	}
 	if !s.disableInMemoryCache {
 		s.awards[award.PromotionalAwardId] = cloneAward(award)
+		s.awardOrder = append(s.awardOrder, award.PromotionalAwardId)
 	}
 	if err := s.persistPromotionalAward(ctx, award); err != nil {
 		return &rgsv1.RecordPromotionalAwardResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
@@ -249,6 +251,70 @@ func (s *PromotionsService) RecordPromotionalAward(ctx context.Context, req *rgs
 		return &rgsv1.RecordPromotionalAwardResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
 	return &rgsv1.RecordPromotionalAwardResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Award: award}, nil
+}
+
+func (s *PromotionsService) ListPromotionalAwards(ctx context.Context, req *rgsv1.ListPromotionalAwardsRequest) (*rgsv1.ListPromotionalAwardsResponse, error) {
+	if req == nil {
+		req = &rgsv1.ListPromotionalAwardsRequest{}
+	}
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
+		return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	size := int(req.PageSize)
+	if size <= 0 {
+		size = 25
+	}
+	if size > 100 {
+		size = 100
+	}
+	start := 0
+	if req.PageToken != "" {
+		n, err := strconv.Atoi(req.PageToken)
+		if err != nil || n < 0 {
+			return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_token")}, nil
+		}
+		start = n
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.db != nil {
+		rows, next, err := s.listPromotionalAwardsFromDB(ctx, req.PlayerId, req.CampaignId, size, start)
+		if err != nil {
+			return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+		return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Awards: rows, NextPageToken: next}, nil
+	}
+	if s.disableInMemoryCache {
+		return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Awards: nil}, nil
+	}
+
+	items := make([]*rgsv1.PromotionalAward, 0, len(s.awardOrder))
+	for i := len(s.awardOrder) - 1; i >= 0; i-- {
+		aw := s.awards[s.awardOrder[i]]
+		if aw == nil {
+			continue
+		}
+		if req.PlayerId != "" && aw.PlayerId != req.PlayerId {
+			continue
+		}
+		if req.CampaignId != "" && aw.CampaignId != req.CampaignId {
+			continue
+		}
+		items = append(items, cloneAward(aw))
+	}
+	if start > len(items) {
+		start = len(items)
+	}
+	end := start + size
+	if end > len(items) {
+		end = len(items)
+	}
+	next := ""
+	if end < len(items) {
+		next = strconv.Itoa(end)
+	}
+	return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Awards: items[start:end], NextPageToken: next}, nil
 }
 
 type UISystemOverlayService struct {

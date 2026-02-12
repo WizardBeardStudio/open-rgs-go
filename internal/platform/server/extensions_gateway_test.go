@@ -62,6 +62,43 @@ func TestExtensionsGatewayParity_Workflow(t *testing.T) {
 		t.Fatalf("expected 1 bonus transaction, got=%d", len(listBonusResp.Transactions))
 	}
 
+	awardReq := &rgsv1.RecordPromotionalAwardRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Award: &rgsv1.PromotionalAward{
+			PlayerId:   "player-1",
+			CampaignId: "camp-1",
+			AwardType:  rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_FREEPLAY,
+			Amount:     &rgsv1.Money{AmountMinor: 50, Currency: "USD"},
+			OccurredAt: clk.now.Format(time.RFC3339Nano),
+		},
+	}
+	awardBody, _ := protojson.Marshal(awardReq)
+	awardHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/promotions/awards", bytes.NewReader(awardBody))
+	awardHTTPReq.Header.Set("Content-Type", "application/json")
+	awardRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(awardRec, awardHTTPReq)
+	if awardRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("award record status: got=%d body=%s", awardRec.Result().StatusCode, awardRec.Body.String())
+	}
+
+	qAwards := make(url.Values)
+	qAwards.Set("meta.actor.actorId", "op-1")
+	qAwards.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qAwards.Set("player_id", "player-1")
+	listAwardsReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/awards?"+qAwards.Encode(), nil)
+	listAwardsRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(listAwardsRec, listAwardsReq)
+	if listAwardsRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("award list status: got=%d body=%s", listAwardsRec.Result().StatusCode, listAwardsRec.Body.String())
+	}
+	var listAwardsResp rgsv1.ListPromotionalAwardsResponse
+	if err := protojson.Unmarshal(listAwardsRec.Body.Bytes(), &listAwardsResp); err != nil {
+		t.Fatalf("unmarshal award list response: %v", err)
+	}
+	if len(listAwardsResp.Awards) != 1 {
+		t.Fatalf("expected 1 promotional award, got=%d", len(listAwardsResp.Awards))
+	}
+
 	uiReq := &rgsv1.SubmitSystemWindowEventRequest{
 		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
 		Event: &rgsv1.SystemWindowEvent{

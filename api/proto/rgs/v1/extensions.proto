@@ -73,6 +73,12 @@ service PromotionsService {
       body: "*"
     };
   }
+
+  rpc ListPromotionalAwards(ListPromotionalAwardsRequest) returns (ListPromotionalAwardsResponse) {
+    option (google.api.http) = {
+      get: "/v1/promotions/awards"
+    };
+  }
 }
 
 service UISystemOverlayService {
@@ -119,6 +125,20 @@ message RecordPromotionalAwardRequest {
 message RecordPromotionalAwardResponse {
   ResponseMeta meta = 1;
   PromotionalAward award = 2;
+}
+
+message ListPromotionalAwardsRequest {
+  RequestMeta meta = 1;
+  string player_id = 2;
+  string campaign_id = 3;
+  int32 page_size = 4;
+  string page_token = 5;
+}
+
+message ListPromotionalAwardsResponse {
+  ResponseMeta meta = 1;
+  repeated PromotionalAward awards = 2;
+  string next_page_token = 3;
 }
 
 message SubmitSystemWindowEventRequest {

@@ -22,6 +22,7 @@ const (
 	PromotionsService_RecordBonusTransaction_FullMethodName      = "/rgs.v1.PromotionsService/RecordBonusTransaction"
 	PromotionsService_ListRecentBonusTransactions_FullMethodName = "/rgs.v1.PromotionsService/ListRecentBonusTransactions"
 	PromotionsService_RecordPromotionalAward_FullMethodName      = "/rgs.v1.PromotionsService/RecordPromotionalAward"
+	PromotionsService_ListPromotionalAwards_FullMethodName       = "/rgs.v1.PromotionsService/ListPromotionalAwards"
 )
 
 // PromotionsServiceClient is the client API for PromotionsService service.
@@ -31,6 +32,7 @@ type PromotionsServiceClient interface {
 	RecordBonusTransaction(ctx context.Context, in *RecordBonusTransactionRequest, opts ...grpc.CallOption) (*RecordBonusTransactionResponse, error)
 	ListRecentBonusTransactions(ctx context.Context, in *ListRecentBonusTransactionsRequest, opts ...grpc.CallOption) (*ListRecentBonusTransactionsResponse, error)
 	RecordPromotionalAward(ctx context.Context, in *RecordPromotionalAwardRequest, opts ...grpc.CallOption) (*RecordPromotionalAwardResponse, error)
+	ListPromotionalAwards(ctx context.Context, in *ListPromotionalAwardsRequest, opts ...grpc.CallOption) (*ListPromotionalAwardsResponse, error)
 }
 
 type promotionsServiceClient struct {
@@ -71,6 +73,16 @@ func (c *promotionsServiceClient) RecordPromotionalAward(ctx context.Context, in
 	return out, nil
 }
 
+func (c *promotionsServiceClient) ListPromotionalAwards(ctx context.Context, in *ListPromotionalAwardsRequest, opts ...grpc.CallOption) (*ListPromotionalAwardsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPromotionalAwardsResponse)
+	err := c.cc.Invoke(ctx, PromotionsService_ListPromotionalAwards_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PromotionsServiceServer is the server API for PromotionsService service.
 // All implementations must embed UnimplementedPromotionsServiceServer
 // for forward compatibility.
@@ -78,6 +90,7 @@ type PromotionsServiceServer interface {
 	RecordBonusTransaction(context.Context, *RecordBonusTransactionRequest) (*RecordBonusTransactionResponse, error)
 	ListRecentBonusTransactions(context.Context, *ListRecentBonusTransactionsRequest) (*ListRecentBonusTransactionsResponse, error)
 	RecordPromotionalAward(context.Context, *RecordPromotionalAwardRequest) (*RecordPromotionalAwardResponse, error)
+	ListPromotionalAwards(context.Context, *ListPromotionalAwardsRequest) (*ListPromotionalAwardsResponse, error)
 	mustEmbedUnimplementedPromotionsServiceServer()
 }
 
@@ -96,6 +109,9 @@ func (UnimplementedPromotionsServiceServer) ListRecentBonusTransactions(context.
 }
 func (UnimplementedPromotionsServiceServer) RecordPromotionalAward(context.Context, *RecordPromotionalAwardRequest) (*RecordPromotionalAwardResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RecordPromotionalAward not implemented")
+}
+func (UnimplementedPromotionsServiceServer) ListPromotionalAwards(context.Context, *ListPromotionalAwardsRequest) (*ListPromotionalAwardsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPromotionalAwards not implemented")
 }
 func (UnimplementedPromotionsServiceServer) mustEmbedUnimplementedPromotionsServiceServer() {}
 func (UnimplementedPromotionsServiceServer) testEmbeddedByValue()                           {}
@@ -172,6 +188,24 @@ func _PromotionsService_RecordPromotionalAward_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PromotionsService_ListPromotionalAwards_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPromotionalAwardsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PromotionsServiceServer).ListPromotionalAwards(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PromotionsService_ListPromotionalAwards_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PromotionsServiceServer).ListPromotionalAwards(ctx, req.(*ListPromotionalAwardsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PromotionsService_ServiceDesc is the grpc.ServiceDesc for PromotionsService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -190,6 +224,10 @@ var PromotionsService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RecordPromotionalAward",
 			Handler:    _PromotionsService_RecordPromotionalAward_Handler,
+		},
+		{
+			MethodName: "ListPromotionalAwards",
+			Handler:    _PromotionsService_ListPromotionalAwards_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
