@@ -330,10 +330,10 @@ func TestPostgresIdentitySessionPersistenceAcrossRestart(t *testing.T) {
 
 	svcSeed := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 15, 0, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour, db)
 	respSet, err := svcSeed.SetCredential(context.Background(), &rgsv1.SetCredentialRequest{
-		Meta:   meta("op-seed", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
-		Actor:  &rgsv1.Actor{ActorId: "player-sess-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
-		Secret: "player-secret",
-		Reason: "seed session user",
+		Meta:           meta("op-seed", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:          &rgsv1.Actor{ActorId: "player-sess-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		CredentialHash: mustBcryptHash(t, "player-secret"),
+		Reason:         "seed session user",
 	})
 	if err != nil {
 		t.Fatalf("set credential err: %v", err)

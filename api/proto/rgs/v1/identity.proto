@@ -117,7 +117,7 @@ message RefreshTokenResponse {
 message SetCredentialRequest {
   RequestMeta meta = 1;
   Actor actor = 2;
-  string secret = 3;
+  string credential_hash = 3;
   string reason = 4;
 }
 

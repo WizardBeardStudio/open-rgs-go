@@ -545,13 +545,13 @@ func (x *RefreshTokenResponse) GetToken() *SessionToken {
 }
 
 type SetCredentialRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Meta          *RequestMeta           `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
-	Actor         *Actor                 `protobuf:"bytes,2,opt,name=actor,proto3" json:"actor,omitempty"`
-	Secret        string                 `protobuf:"bytes,3,opt,name=secret,proto3" json:"secret,omitempty"`
-	Reason        string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Meta           *RequestMeta           `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	Actor          *Actor                 `protobuf:"bytes,2,opt,name=actor,proto3" json:"actor,omitempty"`
+	CredentialHash string                 `protobuf:"bytes,3,opt,name=credential_hash,json=credentialHash,proto3" json:"credential_hash,omitempty"`
+	Reason         string                 `protobuf:"bytes,4,opt,name=reason,proto3" json:"reason,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *SetCredentialRequest) Reset() {
@@ -598,9 +598,9 @@ func (x *SetCredentialRequest) GetActor() *Actor {
 	return nil
 }
 
-func (x *SetCredentialRequest) GetSecret() string {
+func (x *SetCredentialRequest) GetCredentialHash() string {
 	if x != nil {
-		return x.Secret
+		return x.CredentialHash
 	}
 	return ""
 }
@@ -1186,11 +1186,11 @@ const file_rgs_v1_identity_proto_rawDesc = "" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\"l\n" +
 	"\x14RefreshTokenResponse\x12(\n" +
 	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta\x12*\n" +
-	"\x05token\x18\x02 \x01(\v2\x14.rgs.v1.SessionTokenR\x05token\"\x94\x01\n" +
+	"\x05token\x18\x02 \x01(\v2\x14.rgs.v1.SessionTokenR\x05token\"\xa5\x01\n" +
 	"\x14SetCredentialRequest\x12'\n" +
 	"\x04meta\x18\x01 \x01(\v2\x13.rgs.v1.RequestMetaR\x04meta\x12#\n" +
-	"\x05actor\x18\x02 \x01(\v2\r.rgs.v1.ActorR\x05actor\x12\x16\n" +
-	"\x06secret\x18\x03 \x01(\tR\x06secret\x12\x16\n" +
+	"\x05actor\x18\x02 \x01(\v2\r.rgs.v1.ActorR\x05actor\x12'\n" +
+	"\x0fcredential_hash\x18\x03 \x01(\tR\x0ecredentialHash\x12\x16\n" +
 	"\x06reason\x18\x04 \x01(\tR\x06reason\"A\n" +
 	"\x15SetCredentialResponse\x12(\n" +
 	"\x04meta\x18\x01 \x01(\v2\x14.rgs.v1.ResponseMetaR\x04meta\"\x80\x01\n" +

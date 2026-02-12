@@ -10,6 +10,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
 	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestIdentityPlayerLoginRefreshLogout(t *testing.T) {
@@ -154,10 +155,10 @@ func TestIdentitySetCredentialRequiresDatabase(t *testing.T) {
 	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 13, 30, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour)
 	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "op-1", Type: "ACTOR_TYPE_OPERATOR"})
 	resp, err := svc.SetCredential(ctx, &rgsv1.SetCredentialRequest{
-		Meta:   meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
-		Actor:  &rgsv1.Actor{ActorId: "player-new", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
-		Secret: "new-pin",
-		Reason: "bootstrap",
+		Meta:           meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:          &rgsv1.Actor{ActorId: "player-new", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		CredentialHash: mustBcryptHash(t, "new-pin"),
+		Reason:         "bootstrap",
 	})
 	if err != nil {
 		t.Fatalf("set credential err: %v", err)
@@ -186,10 +187,10 @@ TRUNCATE TABLE identity_lockouts, identity_credentials RESTART IDENTITY CASCADE
 	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 13, 40, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour, db)
 	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "op-1", Type: "ACTOR_TYPE_OPERATOR"})
 	setResp, err := svc.SetCredential(ctx, &rgsv1.SetCredentialRequest{
-		Meta:   meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
-		Actor:  &rgsv1.Actor{ActorId: "player-db-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
-		Secret: "player-secret",
-		Reason: "seed test user",
+		Meta:           meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:          &rgsv1.Actor{ActorId: "player-db-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		CredentialHash: mustBcryptHash(t, "player-secret"),
+		Reason:         "seed test user",
 	})
 	if err != nil {
 		t.Fatalf("set credential err: %v", err)
@@ -258,6 +259,15 @@ TRUNCATE TABLE identity_lockouts, identity_credentials RESTART IDENTITY CASCADE
 	if relogin.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
 		t.Fatalf("expected login ok after enable, got=%v", relogin.Meta.GetResultCode())
 	}
+}
+
+func mustBcryptHash(t *testing.T, secret string) string {
+	t.Helper()
+	hash, err := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatalf("generate bcrypt hash: %v", err)
+	}
+	return string(hash)
 }
 
 func TestIdentityGetAndResetLockout(t *testing.T) {

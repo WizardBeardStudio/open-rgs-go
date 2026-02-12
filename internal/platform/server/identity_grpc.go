@@ -611,22 +611,25 @@ func (s *IdentityService) RefreshToken(ctx context.Context, req *rgsv1.RefreshTo
 }
 
 func (s *IdentityService) SetCredential(ctx context.Context, req *rgsv1.SetCredentialRequest) (*rgsv1.SetCredentialResponse, error) {
-	if req == nil || req.Actor == nil || req.Actor.ActorId == "" || req.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED || req.Secret == "" {
-		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor and secret are required")}, nil
+	if req == nil || req.Actor == nil || req.Actor.ActorId == "" || req.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED || req.CredentialHash == "" {
+		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor and credential hash are required")}, nil
 	}
 	if ok, reason := s.authorizeIdentityAdmin(ctx, req.Meta); !ok {
 		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(req.Secret), bcrypt.DefaultCost)
+	cost, err := bcrypt.Cost([]byte(req.CredentialHash))
 	if err != nil {
-		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "failed to hash secret")}, nil
+		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "credential hash must be bcrypt")}, nil
+	}
+	if cost < bcrypt.DefaultCost {
+		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "credential hash cost too low")}, nil
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if err := s.setCredentialHash(ctx, req.Actor.ActorId, req.Actor.ActorType, string(hash)); err != nil {
+	if err := s.setCredentialHash(ctx, req.Actor.ActorId, req.Actor.ActorType, req.CredentialHash); err != nil {
 		if errors.Is(err, errIdentityPersistenceRequired) {
 			return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "credential management requires database")}, nil
 		}
