@@ -6,6 +6,22 @@ import (
 	"time"
 )
 
+func (s *IdentityService) HasActiveCredentials(ctx context.Context) (bool, error) {
+	if s == nil || s.db == nil {
+		return false, nil
+	}
+	const q = `
+SELECT COUNT(*)
+FROM identity_credentials
+WHERE status = 'active'
+`
+	var count int64
+	if err := s.db.QueryRowContext(ctx, q).Scan(&count); err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func (s *IdentityService) storeSession(ctx context.Context, sess *identitySession) error {
 	if s == nil || s.db == nil || sess == nil {
 		return nil

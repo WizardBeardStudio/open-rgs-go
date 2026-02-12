@@ -105,6 +105,15 @@ func main() {
 	identitySvc.SetJWTSigner(jwtSigner)
 	identitySvc.SetLockoutPolicy(identityLockoutMaxFailures, identityLockoutTTL)
 	identitySvc.StartSessionCleanupWorker(ctx, identitySessionCleanupInterval, identitySessionCleanupBatch, log.Printf)
+	if db != nil {
+		ok, err := identitySvc.HasActiveCredentials(ctx)
+		if err != nil {
+			log.Fatalf("verify bootstrap identity credentials: %v", err)
+		}
+		if !ok {
+			log.Fatalf("no active identity credentials found; seed identity_credentials before startup")
+		}
+	}
 	rgsv1.RegisterIdentityServiceServer(grpcServer, identitySvc)
 	ledgerSvc := server.NewLedgerService(clk, db)
 	metrics := server.NewMetrics()

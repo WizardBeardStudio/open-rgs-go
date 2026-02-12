@@ -213,6 +213,7 @@ Cross-cutting request/response metadata is in `api/proto/rgs/v1/common.proto`.
 Identity admin flow:
 - `IdentityService/SetCredential` is restricted to operator/service actors and requires DB persistence.
 - Use it to create/rotate player and operator credentials.
+- When `RGS_DATABASE_URL` is configured, startup fails if no active rows exist in `identity_credentials`.
 
 ## 11. Operations Runbook
 
@@ -227,6 +228,7 @@ Identity admin flow:
 - Generate a bcrypt hash:
   - `go run ./cmd/credhash "initial-password"`
 - Insert bootstrap credentials directly (one-time) or call `POST /v1/identity/credentials:set` as an authenticated operator/service.
+- In DB-backed mode, legacy fallback credentials are not used.
 
 ### Post-Deploy Validation
 - `go test ./...` in CI is green.

@@ -415,3 +415,31 @@ VALUES
 		t.Fatalf("expected 1 deleted session, got=%d", deleted)
 	}
 }
+
+func TestPostgresIdentityHasActiveCredentials(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 15, 30, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour, db)
+	ok, err := svc.HasActiveCredentials(context.Background())
+	if err != nil {
+		t.Fatalf("has active credentials err: %v", err)
+	}
+	if ok {
+		t.Fatalf("expected no active credentials in clean database")
+	}
+
+	if _, err := db.Exec(`
+INSERT INTO identity_credentials (actor_id, actor_type, password_hash, status)
+VALUES ('op-bootstrap-1', 'ACTOR_TYPE_OPERATOR', '$2a$10$7jvnYQ5lzu4iAfDdc0AGJOhQJu1WDVYj1WFJsbgx5caX5/C/PObbW', 'active')
+`); err != nil {
+		t.Fatalf("seed bootstrap credential: %v", err)
+	}
+	ok, err = svc.HasActiveCredentials(context.Background())
+	if err != nil {
+		t.Fatalf("has active credentials after seed err: %v", err)
+	}
+	if !ok {
+		t.Fatalf("expected active credentials after seed")
+	}
+}
