@@ -264,9 +264,33 @@ func loginRateKey(actorID string, actorType rgsv1.ActorType) string {
 	return "login_rate|" + lockKey(actorID, actorType)
 }
 
-func (s *IdentityService) rateLimitExceeded(actorID string, actorType rgsv1.ActorType) bool {
+func (s *IdentityService) rateLimitExceeded(ctx context.Context, actorID string, actorType rgsv1.ActorType) (bool, error) {
 	if s.loginRateMax <= 0 {
-		return false
+		return false, nil
+	}
+	if s.db != nil {
+		const q = `
+INSERT INTO identity_login_rate_limits (actor_id, actor_type, window_start, attempt_count, updated_at)
+VALUES ($1, $2, NOW(), 1, NOW())
+ON CONFLICT (actor_id, actor_type) DO UPDATE
+SET window_start = CASE
+      WHEN identity_login_rate_limits.window_start <= NOW() - ($3 || ' seconds')::interval
+      THEN NOW()
+      ELSE identity_login_rate_limits.window_start
+    END,
+    attempt_count = CASE
+      WHEN identity_login_rate_limits.window_start <= NOW() - ($3 || ' seconds')::interval
+      THEN 1
+      ELSE identity_login_rate_limits.attempt_count + 1
+    END,
+    updated_at = NOW()
+RETURNING attempt_count
+`
+		var attempts int
+		if err := s.db.QueryRowContext(ctx, q, actorID, actorType.String(), int(s.loginRateWindow.Seconds())).Scan(&attempts); err != nil {
+			return false, err
+		}
+		return attempts > s.loginRateMax, nil
 	}
 	key := loginRateKey(actorID, actorType)
 	now := s.now()
@@ -276,7 +300,7 @@ func (s *IdentityService) rateLimitExceeded(actorID string, actorType rgsv1.Acto
 	}
 	window.count++
 	s.loginRates[key] = window
-	return window.count > s.loginRateMax
+	return window.count > s.loginRateMax, nil
 }
 
 func (s *IdentityService) checkLocked(ctx context.Context, actorID string, actorType rgsv1.ActorType) (bool, error) {
@@ -437,7 +461,14 @@ func (s *IdentityService) Login(ctx context.Context, req *rgsv1.LoginRequest) (*
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if s.rateLimitExceeded(actorID, actorType) {
+	exceeded, err := s.rateLimitExceeded(ctx, actorID, actorType)
+	if err != nil {
+		if s.onLogin != nil {
+			s.onLogin(rgsv1.ResultCode_RESULT_CODE_ERROR, actorType)
+		}
+		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if exceeded {
 		s.auditDenied(req.Meta, "", "identity_login", "rate limit exceeded")
 		if s.onLogin != nil {
 			s.onLogin(rgsv1.ResultCode_RESULT_CODE_DENIED, actorType)

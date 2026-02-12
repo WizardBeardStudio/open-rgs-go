@@ -55,6 +55,7 @@ TRUNCATE TABLE
   config_changes,
   download_library_changes,
   identity_sessions,
+  identity_login_rate_limits,
   identity_lockouts,
   identity_credentials,
   remote_access_activity,
@@ -450,6 +451,62 @@ VALUES ('op-bootstrap-1', 'ACTOR_TYPE_OPERATOR', '$2a$10$7jvnYQ5lzu4iAfDdc0AGJOh
 	}
 	if !ok {
 		t.Fatalf("expected active credentials after seed")
+	}
+}
+
+func TestPostgresIdentityLoginRateLimitAcrossRestart(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	svcSeed := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 15, 40, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour, db)
+	respSet, err := svcSeed.SetCredential(context.Background(), &rgsv1.SetCredentialRequest{
+		Meta:           meta("op-seed", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:          &rgsv1.Actor{ActorId: "player-rate-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		CredentialHash: mustBcryptHash(t, "player-secret"),
+		Reason:         "seed rate limit user",
+	})
+	if err != nil {
+		t.Fatalf("set credential err: %v", err)
+	}
+	if respSet.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected set credential ok, got=%v", respSet.Meta.GetResultCode())
+	}
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 15, 41, 0, 0, time.UTC)}
+	svcA := NewIdentityService(clk, "test-secret", 15*time.Minute, time.Hour, db)
+	svcA.SetLoginRateLimit(2, time.Minute)
+
+	for i := 0; i < 3; i++ {
+		resp, err := svcA.Login(context.Background(), &rgsv1.LoginRequest{
+			Meta: meta("player-rate-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+			Credentials: &rgsv1.LoginRequest_Player{
+				Player: &rgsv1.PlayerCredentials{PlayerId: "player-rate-1", Pin: "wrong-secret"},
+			},
+		})
+		if err != nil {
+			t.Fatalf("login attempt %d err: %v", i+1, err)
+		}
+		if i < 2 && resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+			t.Fatalf("expected denied credentials on attempt %d, got=%v", i+1, resp.Meta.GetResultCode())
+		}
+		if i == 2 && resp.Meta.GetDenialReason() != "rate limit exceeded" {
+			t.Fatalf("expected rate limit exceeded on third attempt, got=%q", resp.Meta.GetDenialReason())
+		}
+	}
+
+	svcB := NewIdentityService(clk, "test-secret", 15*time.Minute, time.Hour, db)
+	svcB.SetLoginRateLimit(2, time.Minute)
+	resp, err := svcB.Login(context.Background(), &rgsv1.LoginRequest{
+		Meta: meta("player-rate-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Credentials: &rgsv1.LoginRequest_Player{
+			Player: &rgsv1.PlayerCredentials{PlayerId: "player-rate-1", Pin: "wrong-secret"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("login after restart err: %v", err)
+	}
+	if resp.Meta.GetDenialReason() != "rate limit exceeded" {
+		t.Fatalf("expected persisted rate limit denial after restart, got=%q", resp.Meta.GetDenialReason())
 	}
 }
 

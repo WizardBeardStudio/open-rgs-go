@@ -110,6 +110,7 @@ Schema files are ordered and additive:
 - `000009_bonus_ui_scaffolds.*` bonusing/promotions/UI overlay recall scaffolds
 - `000010_wagering_persistence.*` wagering durability and idempotency persistence
 - `000011_download_signature_verification.*` signed download activation verification fields/indexes
+- `000012_identity_login_rate_limits.*` DB-backed login rate limiting state
 
 Apply migrations with your preferred migration runner in numeric order.
 
