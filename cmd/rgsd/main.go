@@ -282,6 +282,7 @@ func main() {
 	guard.SetDisableInMemoryActivityCache(strictProductionMode)
 	guard.SetFailClosedOnLogPersistenceFailure(strictProductionMode)
 	guard.SetInMemoryActivityLogCap(remoteAccessActivityLogCap)
+	guard.SetDecisionObserver(metrics.ObserveRemoteAccessDecision)
 	auditSvc := server.NewAuditService(
 		clk,
 		guard,

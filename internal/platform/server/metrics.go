@@ -26,6 +26,7 @@ type Metrics struct {
 	identitySessionsActive  prometheus.Gauge
 	identitySessionsRevoked prometheus.Gauge
 	identitySessionsExpired prometheus.Gauge
+	remoteAccessDecisions   *prometheus.CounterVec
 	rpcRequestsTotal        *prometheus.CounterVec
 	rpcRequestLatency       *prometheus.HistogramVec
 	httpRequestsTotal       *prometheus.CounterVec
@@ -124,6 +125,15 @@ func NewMetrics() *Metrics {
 				Name:      "sessions_expired",
 				Help:      "Current count of expired identity sessions.",
 			},
+		),
+		remoteAccessDecisions: promauto.NewCounterVec(
+			prometheus.CounterOpts{
+				Namespace: "open_rgs",
+				Subsystem: "remote_access",
+				Name:      "decisions_total",
+				Help:      "Total remote admin boundary decisions by outcome.",
+			},
+			[]string{"outcome"},
 		),
 		rpcRequestsTotal: promauto.NewCounterVec(
 			prometheus.CounterOpts{
@@ -224,6 +234,16 @@ func (m *Metrics) ObserveIdentityLockoutActivation(actorType rgsv1.ActorType) {
 		return
 	}
 	m.lockoutActivations.WithLabelValues(actorType.String()).Inc()
+}
+
+func (m *Metrics) ObserveRemoteAccessDecision(outcome string) {
+	if m == nil {
+		return
+	}
+	if outcome == "" {
+		outcome = "unknown"
+	}
+	m.remoteAccessDecisions.WithLabelValues(outcome).Inc()
 }
 
 func (m *Metrics) RefreshIdentitySessionCounts(ctx context.Context, db *sql.DB) {

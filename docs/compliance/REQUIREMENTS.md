@@ -142,7 +142,7 @@ This document maps implemented requirements to standards references, code locati
 
 ## RGS-0502 Remote Access Activity Logging Semantics
 - Standard refs: GLI-21 firewall/connection attempt logging expectations
-- Code: `internal/platform/server/remote_access.go`, `cmd/rgsd/main.go`, `docs/deployment/FIREWALL_LOGGING.md`
+- Code: `internal/platform/server/remote_access.go`, `internal/platform/server/metrics.go`, `cmd/rgsd/main.go`, `docs/deployment/FIREWALL_LOGGING.md`, `docs/deployment/METRICS_ALERTING.md`
 - Tests: `internal/platform/server/remote_access_test.go`
 - Status: implemented (DB-backed persistence plus strict-mode fail-closed guard when admin-path logging persistence is unavailable or in-memory activity log cap is exhausted)
 

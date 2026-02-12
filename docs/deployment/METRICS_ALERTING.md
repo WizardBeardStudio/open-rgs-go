@@ -17,6 +17,7 @@ From `GET /metrics`:
 - `open_rgs_identity_sessions_active`
 - `open_rgs_identity_sessions_revoked`
 - `open_rgs_identity_sessions_expired`
+- `open_rgs_remote_access_decisions_total{outcome}`
 - `open_rgs_rpc_requests_total{transport,method,result}`
 - `open_rgs_rpc_request_duration_seconds_bucket{transport,method,le}`
 - `open_rgs_http_requests_total{method,path,status}`
@@ -116,7 +117,17 @@ clamp_min(sum(increase(open_rgs_rpc_requests_total[15m])), 1)
 
 Suggested severity: `warning` (raise to `critical` if sustained and above your error budget).
 
-### 9) gRPC/REST latency SLO breach
+### 9) Remote-access logging unavailable events
+
+Trigger when admin-boundary decisions fail-closed due to logging unavailability:
+
+```promql
+increase(open_rgs_remote_access_decisions_total{outcome="logging_unavailable"}[15m]) > 0
+```
+
+Suggested severity: `critical`.
+
+### 10) gRPC/REST latency SLO breach
 
 Trigger when p95 latency exceeds objective:
 
@@ -140,8 +151,9 @@ Suggested severity: `warning` (set threshold per endpoint SLOs).
   - identity login outcomes (`ok` / `denied` / `invalid` / `error`)
   - lockout activation rate
   - active/revoked/expired session gauges
-  - per-method gRPC/REST request rate and non-OK ratio
-  - per-method gRPC/REST p95 latency
+- per-method gRPC/REST request rate and non-OK ratio
+- per-method gRPC/REST p95 latency
+- remote-access decision outcomes (`allowed` / `denied` / `logging_unavailable`)
 
 ## Rule Group Example (YAML)
 

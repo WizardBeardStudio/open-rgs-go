@@ -40,6 +40,7 @@ type RemoteAccessGuard struct {
 	disableInMemoryCache bool
 	failClosedLogPersist bool
 	inMemoryLogCap       int
+	onDecision           func(outcome string)
 }
 
 var errRemoteAccessLogCapacityExceeded = errors.New("remote access activity log capacity exceeded")
@@ -110,6 +111,15 @@ func (g *RemoteAccessGuard) SetInMemoryActivityLogCap(cap int) {
 		cap = 0
 	}
 	g.inMemoryLogCap = cap
+}
+
+func (g *RemoteAccessGuard) SetDecisionObserver(observer func(outcome string)) {
+	if g == nil {
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.onDecision = observer
 }
 
 func (g *RemoteAccessGuard) isAdminPath(path string) bool {
@@ -305,11 +315,21 @@ func (g *RemoteAccessGuard) Wrap(next http.Handler) http.Handler {
 			if err := g.logActivity(r, sourceIP, sourcePort, false, "source ip outside trusted network"); err != nil {
 				g.mu.Lock()
 				failClosed := g.failClosedLogPersist
+				observer := g.onDecision
 				g.mu.Unlock()
 				if failClosed {
+					if observer != nil {
+						observer("logging_unavailable")
+					}
 					http.Error(w, "remote access logging unavailable", http.StatusServiceUnavailable)
 					return
 				}
+			}
+			g.mu.Lock()
+			observer := g.onDecision
+			g.mu.Unlock()
+			if observer != nil {
+				observer("denied")
 			}
 			g.appendAudit(r.URL.Path, sourceIP, "denied", "source ip outside trusted network")
 			http.Error(w, "remote access denied", http.StatusForbidden)
@@ -319,11 +339,21 @@ func (g *RemoteAccessGuard) Wrap(next http.Handler) http.Handler {
 		if err := g.logActivity(r, sourceIP, sourcePort, true, ""); err != nil {
 			g.mu.Lock()
 			failClosed := g.failClosedLogPersist
+			observer := g.onDecision
 			g.mu.Unlock()
 			if failClosed {
+				if observer != nil {
+					observer("logging_unavailable")
+				}
 				http.Error(w, "remote access logging unavailable", http.StatusServiceUnavailable)
 				return
 			}
+		}
+		g.mu.Lock()
+		observer := g.onDecision
+		g.mu.Unlock()
+		if observer != nil {
+			observer("allowed")
 		}
 		g.appendAudit(r.URL.Path, sourceIP, "allowed", "")
 		next.ServeHTTP(w, r)

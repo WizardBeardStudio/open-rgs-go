@@ -194,3 +194,38 @@ func TestRemoteAccessGuardCapExceededDoesNotFailClosedWhenDisabled(t *testing.T)
 		t.Fatalf("expected second request to pass when fail-closed is disabled, got=%d", secondRec.Result().StatusCode)
 	}
 }
+
+func TestRemoteAccessGuardDecisionObserver(t *testing.T) {
+	guard, err := NewRemoteAccessGuard(ledgerFixedClock{now: time.Date(2026, 2, 12, 18, 0, 0, 0, time.UTC)}, nil, []string{"127.0.0.1/32"})
+	if err != nil {
+		t.Fatalf("new guard err: %v", err)
+	}
+	var outcomes []string
+	guard.SetDecisionObserver(func(outcome string) {
+		outcomes = append(outcomes, outcome)
+	})
+
+	h := guard.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	allowedReq := httptest.NewRequest(http.MethodGet, "/v1/reporting/runs", nil)
+	allowedReq.RemoteAddr = "127.0.0.1:44000"
+	allowedRec := httptest.NewRecorder()
+	h.ServeHTTP(allowedRec, allowedReq)
+	if allowedRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected allowed request to pass, got=%d", allowedRec.Result().StatusCode)
+	}
+
+	deniedReq := httptest.NewRequest(http.MethodGet, "/v1/reporting/runs", nil)
+	deniedReq.RemoteAddr = "203.0.113.8:45000"
+	deniedRec := httptest.NewRecorder()
+	h.ServeHTTP(deniedRec, deniedReq)
+	if deniedRec.Result().StatusCode != http.StatusForbidden {
+		t.Fatalf("expected denied request to be forbidden, got=%d", deniedRec.Result().StatusCode)
+	}
+
+	if len(outcomes) != 2 || outcomes[0] != "allowed" || outcomes[1] != "denied" {
+		t.Fatalf("unexpected observer outcomes: %v", outcomes)
+	}
+}
