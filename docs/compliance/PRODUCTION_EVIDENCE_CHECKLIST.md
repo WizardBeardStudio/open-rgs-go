@@ -31,6 +31,7 @@ Use this checklist to assemble a regulator/operator-ready release packet.
 - Backup/restore drill runbook and last successful drill date.
 - `make dr-drill` artifact pack (`open_rgs_go.backup`, `manifest.txt`, `critical_table_counts.csv`, `restore_status.txt`).
 - DB failover/partition scenario validation report.
+- `make failover-evidence` snapshot (`snapshot.json`) with RTO/RPO thresholds and pass/fail result.
 - Alerting rules and dashboard screenshots for key risk indicators.
 - `make perf-qual` artifact pack (`benchmark_output.txt`, `summary.txt`) with accepted threshold references.
 

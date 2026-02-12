@@ -289,3 +289,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `internal/platform/server/ledger_benchmark_test.go`, `scripts/perf_slo_check.sh`, `docs/deployment/PERFORMANCE_QUALIFICATION.md`, `Makefile`
 - Tests: `go test ./internal/platform/server -run '^$' -bench '^BenchmarkLedgerDeposit$' -benchmem`
 - Status: implemented (repeatable ledger benchmark artifacts with optional threshold gate for release evidence)
+
+## RGS-0714 Failover/Partition RTO-RPO Evidence Snapshots
+- Standard refs: GLI-13 communication loss/recovery and critical data resilience expectations
+- Code: `scripts/failover_evidence_snapshot.sh`, `docs/deployment/FAILOVER_DRILLS.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
+- Tests: `go test ./...` release-gate execution
+- Status: implemented (scripted failover snapshot capture with explicit RTO/RPO computation and threshold pass/fail gate)
