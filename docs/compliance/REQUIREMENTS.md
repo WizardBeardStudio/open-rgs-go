@@ -205,3 +205,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `internal/platform/server/metrics.go`, `cmd/rgsd/main.go`, `docs/deployment/METRICS_ALERTING.md`
 - Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/postgres_integration_test.go`
 - Status: implemented (login outcome counters, lockout activation counters, session-state gauges, and baseline alert rules)
+
+## RGS-0609 No Plaintext Credential Material Over Identity Admin API
+- Standard refs: GLI-21 secure communications/authentication handling, GLI-13 secure protocol-boundary controls
+- Code: `api/proto/rgs/v1/identity.proto`, `internal/platform/server/identity_grpc.go`, `cmd/credhash/main.go`, `README.md`
+- Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/postgres_integration_test.go`
+- Status: implemented (`SetCredential` accepts bcrypt `credential_hash` only, rejects non-bcrypt and low-cost hashes, and does not accept plaintext secrets)
