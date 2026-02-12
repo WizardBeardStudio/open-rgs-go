@@ -102,6 +102,7 @@ Schema files are ordered and additive:
 - `000004_reporting_runs.*` report persistence
 - `000005_config_change_control.*` config/download change-control
 - `000006_identity_auth.*` identity credentials and lockout tracking
+- `000007_identity_sessions.*` refresh-session persistence and cleanup
 
 Apply migrations with your preferred migration runner in numeric order.
 
@@ -120,6 +121,8 @@ Environment variables:
 - `RGS_JWT_REFRESH_TTL` (default: `24h`)
 - `RGS_IDENTITY_LOCKOUT_MAX_FAILURES` (default: `5`)
 - `RGS_IDENTITY_LOCKOUT_TTL` (default: `15m`)
+- `RGS_IDENTITY_SESSION_CLEANUP_INTERVAL` (default: `15m`)
+- `RGS_IDENTITY_SESSION_CLEANUP_BATCH` (default: `500`)
 - `RGS_TEST_DATABASE_URL` (optional PostgreSQL DSN for env-gated integration tests)
 - `RGS_LEDGER_IDEMPOTENCY_TTL` (default: `24h`; retention window for idempotency envelopes)
 - `RGS_LEDGER_IDEMPOTENCY_CLEANUP_INTERVAL` (default: `15m`; cleanup worker cadence)

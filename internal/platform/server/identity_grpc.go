@@ -384,14 +384,25 @@ func (s *IdentityService) Login(ctx context.Context, req *rgsv1.LoginRequest) (*
 	}
 
 	expiresAt := s.now().Add(s.refreshTTL)
-	s.refreshSessions[refreshToken] = &identitySession{
+	sess := &identitySession{
 		refreshToken: refreshToken,
 		actorID:      actorID,
 		actorType:    actorType,
 		expiresAt:    expiresAt,
 	}
+	if s.db != nil {
+		if err := s.storeSession(ctx, sess); err != nil {
+			return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+	} else {
+		s.refreshSessions[refreshToken] = sess
+	}
 	if err := s.appendAudit(req.Meta, refreshToken, "identity_login", []byte(`{}`), sessionSnapshot(refreshToken, actorID, actorType, expiresAt, false), audit.ResultSuccess, ""); err != nil {
-		delete(s.refreshSessions, refreshToken)
+		if s.db != nil {
+			_ = s.revokeSession(ctx, refreshToken)
+		} else {
+			delete(s.refreshSessions, refreshToken)
+		}
 		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
 
@@ -407,7 +418,7 @@ func (s *IdentityService) Login(ctx context.Context, req *rgsv1.LoginRequest) (*
 	}, nil
 }
 
-func (s *IdentityService) Logout(_ context.Context, req *rgsv1.LogoutRequest) (*rgsv1.LogoutResponse, error) {
+func (s *IdentityService) Logout(ctx context.Context, req *rgsv1.LogoutRequest) (*rgsv1.LogoutResponse, error) {
 	if req == nil || req.RefreshToken == "" {
 		return &rgsv1.LogoutResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "refresh_token is required")}, nil
 	}
@@ -418,7 +429,16 @@ func (s *IdentityService) Logout(_ context.Context, req *rgsv1.LogoutRequest) (*
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	sess := s.refreshSessions[req.RefreshToken]
+	var sess *identitySession
+	if s.db != nil {
+		var err error
+		sess, err = s.getSession(ctx, req.RefreshToken)
+		if err != nil {
+			return &rgsv1.LogoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+	} else {
+		sess = s.refreshSessions[req.RefreshToken]
+	}
 	if sess == nil {
 		return &rgsv1.LogoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "refresh token not found")}, nil
 	}
@@ -429,7 +449,13 @@ func (s *IdentityService) Logout(_ context.Context, req *rgsv1.LogoutRequest) (*
 
 	before := sessionSnapshot(sess.refreshToken, sess.actorID, sess.actorType, sess.expiresAt, sess.revoked)
 	sess.revoked = true
-	delete(s.refreshSessions, req.RefreshToken)
+	if s.db != nil {
+		if err := s.revokeSession(ctx, req.RefreshToken); err != nil {
+			return &rgsv1.LogoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+	} else {
+		delete(s.refreshSessions, req.RefreshToken)
+	}
 	after := sessionSnapshot(sess.refreshToken, sess.actorID, sess.actorType, sess.expiresAt, true)
 	if err := s.appendAudit(req.Meta, req.RefreshToken, "identity_logout", before, after, audit.ResultSuccess, ""); err != nil {
 		return &rgsv1.LogoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
@@ -437,7 +463,7 @@ func (s *IdentityService) Logout(_ context.Context, req *rgsv1.LogoutRequest) (*
 	return &rgsv1.LogoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, "")}, nil
 }
 
-func (s *IdentityService) RefreshToken(_ context.Context, req *rgsv1.RefreshTokenRequest) (*rgsv1.RefreshTokenResponse, error) {
+func (s *IdentityService) RefreshToken(ctx context.Context, req *rgsv1.RefreshTokenRequest) (*rgsv1.RefreshTokenResponse, error) {
 	if req == nil || req.RefreshToken == "" {
 		return &rgsv1.RefreshTokenResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "refresh_token is required")}, nil
 	}
@@ -448,7 +474,16 @@ func (s *IdentityService) RefreshToken(_ context.Context, req *rgsv1.RefreshToke
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	sess := s.refreshSessions[req.RefreshToken]
+	var sess *identitySession
+	if s.db != nil {
+		var err error
+		sess, err = s.getSession(ctx, req.RefreshToken)
+		if err != nil {
+			return &rgsv1.RefreshTokenResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+	} else {
+		sess = s.refreshSessions[req.RefreshToken]
+	}
 	if sess == nil || sess.revoked || !sess.expiresAt.After(s.now()) {
 		s.auditDenied(req.Meta, req.RefreshToken, "identity_refresh", "invalid refresh token")
 		return &rgsv1.RefreshTokenResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "invalid refresh token")}, nil
@@ -468,17 +503,26 @@ func (s *IdentityService) RefreshToken(_ context.Context, req *rgsv1.RefreshToke
 	}
 
 	before := sessionSnapshot(sess.refreshToken, sess.actorID, sess.actorType, sess.expiresAt, sess.revoked)
-	delete(s.refreshSessions, req.RefreshToken)
 	newExpiry := s.now().Add(s.refreshTTL)
-	s.refreshSessions[newRefreshToken] = &identitySession{
+	next := &identitySession{
 		refreshToken: newRefreshToken,
 		actorID:      sess.actorID,
 		actorType:    sess.actorType,
 		expiresAt:    newExpiry,
 	}
+	if s.db != nil {
+		if err := s.rotateSession(ctx, req.RefreshToken, next); err != nil {
+			return &rgsv1.RefreshTokenResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+		}
+	} else {
+		delete(s.refreshSessions, req.RefreshToken)
+		s.refreshSessions[newRefreshToken] = next
+	}
 	after := sessionSnapshot(newRefreshToken, sess.actorID, sess.actorType, newExpiry, false)
 	if err := s.appendAudit(req.Meta, newRefreshToken, "identity_refresh", before, after, audit.ResultSuccess, ""); err != nil {
-		delete(s.refreshSessions, newRefreshToken)
+		if s.db == nil {
+			delete(s.refreshSessions, newRefreshToken)
+		}
 		return &rgsv1.RefreshTokenResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
 	}
 

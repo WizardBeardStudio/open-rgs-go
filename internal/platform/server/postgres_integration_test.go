@@ -49,6 +49,7 @@ TRUNCATE TABLE
   config_current_values,
   config_changes,
   download_library_changes,
+  identity_sessions,
   identity_lockouts,
   identity_credentials,
   audit_events
@@ -320,5 +321,97 @@ VALUES ('acct-pg-rpt-1', 'acct-pg-rpt-1', 'player_cashless', 'active', 'USD', 90
 	}
 	if cashlessPayload.TotalAvailable != 900 || cashlessPayload.TotalPending != 100 {
 		t.Fatalf("unexpected cashless totals: available=%d pending=%d", cashlessPayload.TotalAvailable, cashlessPayload.TotalPending)
+	}
+}
+
+func TestPostgresIdentitySessionPersistenceAcrossRestart(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	svcSeed := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 15, 0, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour, db)
+	respSet, err := svcSeed.SetCredential(context.Background(), &rgsv1.SetCredentialRequest{
+		Meta:   meta("op-seed", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:  &rgsv1.Actor{ActorId: "player-sess-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		Secret: "player-secret",
+		Reason: "seed session user",
+	})
+	if err != nil {
+		t.Fatalf("set credential err: %v", err)
+	}
+	if respSet.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected set credential ok, got=%v", respSet.Meta.GetResultCode())
+	}
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 15, 10, 0, 0, time.UTC)}
+	svcA := NewIdentityService(clk, "test-secret", 15*time.Minute, time.Hour, db)
+	login, err := svcA.Login(context.Background(), &rgsv1.LoginRequest{
+		Meta: meta("player-sess-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Credentials: &rgsv1.LoginRequest_Player{
+			Player: &rgsv1.PlayerCredentials{PlayerId: "player-sess-1", Pin: "player-secret"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("login err: %v", err)
+	}
+	if login.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected login ok, got=%v", login.Meta.GetResultCode())
+	}
+
+	svcB := NewIdentityService(clk, "test-secret", 15*time.Minute, time.Hour, db)
+	refreshed, err := svcB.RefreshToken(context.Background(), &rgsv1.RefreshTokenRequest{
+		Meta:         meta("player-sess-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		RefreshToken: login.Token.GetRefreshToken(),
+	})
+	if err != nil {
+		t.Fatalf("refresh err: %v", err)
+	}
+	if refreshed.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected refresh ok, got=%v", refreshed.Meta.GetResultCode())
+	}
+
+	svcC := NewIdentityService(clk, "test-secret", 15*time.Minute, time.Hour, db)
+	logout, err := svcC.Logout(context.Background(), &rgsv1.LogoutRequest{
+		Meta:         meta("player-sess-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		RefreshToken: refreshed.Token.GetRefreshToken(),
+	})
+	if err != nil {
+		t.Fatalf("logout err: %v", err)
+	}
+	if logout.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected logout ok, got=%v", logout.Meta.GetResultCode())
+	}
+
+	denied, err := svcC.RefreshToken(context.Background(), &rgsv1.RefreshTokenRequest{
+		Meta:         meta("player-sess-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		RefreshToken: refreshed.Token.GetRefreshToken(),
+	})
+	if err != nil {
+		t.Fatalf("refresh after logout err: %v", err)
+	}
+	if denied.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied refresh after logout, got=%v", denied.Meta.GetResultCode())
+	}
+}
+
+func TestPostgresIdentitySessionCleanupExpiredRows(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	if _, err := db.Exec(`
+INSERT INTO identity_sessions (refresh_token, actor_id, actor_type, expires_at, revoked)
+VALUES
+  ('sess-expired', 'player-1', 'ACTOR_TYPE_PLAYER', NOW() - INTERVAL '1 hour', FALSE),
+  ('sess-active', 'player-1', 'ACTOR_TYPE_PLAYER', NOW() + INTERVAL '1 hour', FALSE)
+`); err != nil {
+		t.Fatalf("seed identity sessions: %v", err)
+	}
+
+	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 15, 20, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour, db)
+	deleted, err := svc.CleanupExpiredSessions(context.Background(), 100)
+	if err != nil {
+		t.Fatalf("cleanup expired sessions err: %v", err)
+	}
+	if deleted != 1 {
+		t.Fatalf("expected 1 deleted session, got=%d", deleted)
 	}
 }
