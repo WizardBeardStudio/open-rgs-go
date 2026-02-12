@@ -23,6 +23,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
 	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
+	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 	"github.com/wizardbeard/open-rgs-go/internal/platform/clock"
 	"github.com/wizardbeard/open-rgs-go/internal/platform/server"
 )
@@ -41,6 +42,8 @@ func main() {
 	jwtSigningSecret := envOr("RGS_JWT_SIGNING_SECRET", "dev-insecure-change-me")
 	jwtAccessTTL := mustParseDurationEnv("RGS_JWT_ACCESS_TTL", "15m")
 	jwtRefreshTTL := mustParseDurationEnv("RGS_JWT_REFRESH_TTL", "24h")
+	identityLockoutTTL := mustParseDurationEnv("RGS_IDENTITY_LOCKOUT_TTL", "15m")
+	identityLockoutMaxFailures := mustParseIntEnv("RGS_IDENTITY_LOCKOUT_MAX_FAILURES", 5)
 	idempotencyTTL := mustParseDurationEnv("RGS_LEDGER_IDEMPOTENCY_TTL", "24h")
 	idempotencyCleanupInterval := mustParseDurationEnv("RGS_LEDGER_IDEMPOTENCY_CLEANUP_INTERVAL", "15m")
 	idempotencyCleanupBatch := mustParseIntEnv("RGS_LEDGER_IDEMPOTENCY_CLEANUP_BATCH", 500)
@@ -59,7 +62,15 @@ func main() {
 		log.Fatalf("configure tls: %v", err)
 	}
 
-	grpcOpts := make([]grpc.ServerOption, 0)
+	jwtVerifier := platformauth.NewJWTVerifier(jwtSigningSecret)
+	grpcOpts := []grpc.ServerOption{
+		grpc.UnaryInterceptor(platformauth.UnaryJWTInterceptor(jwtVerifier, []string{
+			"/rgs.v1.SystemService/GetSystemStatus",
+			"/rgs.v1.IdentityService/Login",
+			"/rgs.v1.IdentityService/RefreshToken",
+			"/grpc.health.v1.Health/Check",
+		})),
+	}
 	if tlsCfg != nil {
 		grpcOpts = append(grpcOpts, grpc.Creds(credentials.NewTLS(tlsCfg)))
 	}
@@ -81,7 +92,8 @@ func main() {
 	healthv1.RegisterHealthServer(grpcServer, hs)
 	systemSvc := server.SystemService{StartedAt: startedAt, Clock: clk, Version: version}
 	rgsv1.RegisterSystemServiceServer(grpcServer, systemSvc)
-	identitySvc := server.NewIdentityService(clk, jwtSigningSecret, jwtAccessTTL, jwtRefreshTTL)
+	identitySvc := server.NewIdentityService(clk, jwtSigningSecret, jwtAccessTTL, jwtRefreshTTL, db)
+	identitySvc.SetLockoutPolicy(identityLockoutMaxFailures, identityLockoutTTL)
 	rgsv1.RegisterIdentityServiceServer(grpcServer, identitySvc)
 	ledgerSvc := server.NewLedgerService(clk, db)
 	metrics := server.NewMetrics()
@@ -170,7 +182,12 @@ func main() {
 	if err := rgsv1.RegisterAuditServiceHandlerServer(ctx, gwMux, auditSvc); err != nil {
 		log.Fatalf("register audit gateway handlers: %v", err)
 	}
-	mux.Handle("/", guard.Wrap(gwMux))
+	authenticatedGateway := platformauth.HTTPJWTMiddlewareWithSkips(jwtVerifier, gwMux, []string{
+		"/v1/system/status",
+		"/v1/identity/login",
+		"/v1/identity/refresh",
+	})
+	mux.Handle("/", guard.Wrap(authenticatedGateway))
 	httpServer := &http.Server{Addr: httpAddr, Handler: mux, TLSConfig: tlsCfg}
 
 	go func() {

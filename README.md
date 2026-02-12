@@ -19,6 +19,7 @@ Implemented and wired:
 Current persistence model:
 - Runtime services support optional PostgreSQL-backed paths when `RGS_DATABASE_URL` is configured.
 - DB-backed paths currently include ledger reads/writes and idempotency replay, registry reads/writes, events/meters reads/writes, reporting run persistence and report payload sourcing, and config/download change-control reads/writes.
+- Identity credential verification and lockout state use PostgreSQL tables when configured (`identity_credentials`, `identity_lockouts`).
 - In-memory behavior remains available as a fallback for local/dev execution without PostgreSQL.
 
 ## 2. Repository Layout
@@ -92,6 +93,7 @@ Schema files are ordered and additive:
 - `000003_registry_events_meters.*` registry/events/meters/buffering
 - `000004_reporting_runs.*` report persistence
 - `000005_config_change_control.*` config/download change-control
+- `000006_identity_auth.*` identity credentials and lockout tracking
 
 Apply migrations with your preferred migration runner in numeric order.
 
@@ -106,6 +108,8 @@ Environment variables:
 - `RGS_JWT_SIGNING_SECRET` (default: `dev-insecure-change-me`; HMAC key for identity access tokens)
 - `RGS_JWT_ACCESS_TTL` (default: `15m`)
 - `RGS_JWT_REFRESH_TTL` (default: `24h`)
+- `RGS_IDENTITY_LOCKOUT_MAX_FAILURES` (default: `5`)
+- `RGS_IDENTITY_LOCKOUT_TTL` (default: `15m`)
 - `RGS_TEST_DATABASE_URL` (optional PostgreSQL DSN for env-gated integration tests)
 - `RGS_LEDGER_IDEMPOTENCY_TTL` (default: `24h`; retention window for idempotency envelopes)
 - `RGS_LEDGER_IDEMPOTENCY_CLEANUP_INTERVAL` (default: `15m`; cleanup worker cadence)
@@ -170,6 +174,7 @@ Remote admin boundary:
 
 Additional controls:
 - Actor-bound authZ checks in services (`player`, `operator`, `service`)
+- Protected HTTP/gRPC calls derive actor identity from JWT middleware/interceptor context; request `meta.actor` mismatch with token is denied.
 - Append-only audit chain semantics
 - Fail-closed behavior on critical audit unavailability for state-changing operations
 - Ingestion buffer exhaustion disables further ingress for affected boundary

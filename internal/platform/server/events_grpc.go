@@ -84,14 +84,12 @@ func (s *EventsService) responseMeta(meta *rgsv1.RequestMeta, code rgsv1.ResultC
 	}
 }
 
-func (s *EventsService) authorizeWrite(meta *rgsv1.RequestMeta) (bool, string) {
-	if meta == nil || meta.Actor == nil {
-		return false, "actor is required"
+func (s *EventsService) authorizeWrite(ctx context.Context, meta *rgsv1.RequestMeta) (bool, string) {
+	actor, reason := resolveActor(ctx, meta)
+	if reason != "" {
+		return false, reason
 	}
-	if meta.Actor.ActorId == "" || meta.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED {
-		return false, "actor binding is required"
-	}
-	switch meta.Actor.ActorType {
+	switch actor.ActorType {
 	case rgsv1.ActorType_ACTOR_TYPE_OPERATOR, rgsv1.ActorType_ACTOR_TYPE_SERVICE:
 		return true, ""
 	default:
@@ -99,8 +97,8 @@ func (s *EventsService) authorizeWrite(meta *rgsv1.RequestMeta) (bool, string) {
 	}
 }
 
-func (s *EventsService) authorizeRead(meta *rgsv1.RequestMeta) (bool, string) {
-	return s.authorizeWrite(meta)
+func (s *EventsService) authorizeRead(ctx context.Context, meta *rgsv1.RequestMeta) (bool, string) {
+	return s.authorizeWrite(ctx, meta)
 }
 
 func (s *EventsService) nextAuditIDLocked() string {
@@ -204,7 +202,7 @@ func (s *EventsService) SubmitSignificantEvent(ctx context.Context, req *rgsv1.S
 	if req == nil || req.Event == nil || req.Event.EventId == "" || req.Event.EquipmentId == "" {
 		return &rgsv1.SubmitSignificantEventResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "event_id and equipment_id are required")}, nil
 	}
-	if ok, reason := s.authorizeWrite(req.Meta); !ok {
+	if ok, reason := s.authorizeWrite(ctx, req.Meta); !ok {
 		s.submitBlocked(req.Meta, "significant_event", req.Event.EventId, "submit_significant_event", reason)
 		return &rgsv1.SubmitSignificantEventResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -262,7 +260,7 @@ func (s *EventsService) submitMeter(ctx context.Context, meta *rgsv1.RequestMeta
 	if meter == nil || meter.MeterId == "" || meter.EquipmentId == "" || meter.MeterLabel == "" {
 		return &rgsv1.SubmitMeterSnapshotResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "meter_id, equipment_id, and meter_label are required")}, nil
 	}
-	if ok, reason := s.authorizeWrite(meta); !ok {
+	if ok, reason := s.authorizeWrite(ctx, meta); !ok {
 		s.submitBlocked(meta, "meter_record", meter.MeterId, "submit_meter", reason)
 		return &rgsv1.SubmitMeterSnapshotResponse{Meta: s.responseMeta(meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -309,7 +307,7 @@ func (s *EventsService) ListEvents(ctx context.Context, req *rgsv1.ListEventsReq
 	if req == nil {
 		req = &rgsv1.ListEventsRequest{}
 	}
-	if ok, reason := s.authorizeRead(req.Meta); !ok {
+	if ok, reason := s.authorizeRead(ctx, req.Meta); !ok {
 		s.submitBlocked(req.Meta, "significant_event", "", "list_events", reason)
 		return &rgsv1.ListEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -384,7 +382,7 @@ func (s *EventsService) ListMeters(ctx context.Context, req *rgsv1.ListMetersReq
 	if req == nil {
 		req = &rgsv1.ListMetersRequest{}
 	}
-	if ok, reason := s.authorizeRead(req.Meta); !ok {
+	if ok, reason := s.authorizeRead(ctx, req.Meta); !ok {
 		s.submitBlocked(req.Meta, "meter_record", "", "list_meters", reason)
 		return &rgsv1.ListMetersResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}

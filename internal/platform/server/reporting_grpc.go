@@ -65,14 +65,12 @@ func (s *ReportingService) responseMeta(meta *rgsv1.RequestMeta, code rgsv1.Resu
 	}
 }
 
-func (s *ReportingService) authorize(meta *rgsv1.RequestMeta) (bool, string) {
-	if meta == nil || meta.Actor == nil {
-		return false, "actor is required"
+func (s *ReportingService) authorize(ctx context.Context, meta *rgsv1.RequestMeta) (bool, string) {
+	actor, reason := resolveActor(ctx, meta)
+	if reason != "" {
+		return false, reason
 	}
-	if meta.Actor.ActorId == "" || meta.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED {
-		return false, "actor binding is required"
-	}
-	switch meta.Actor.ActorType {
+	switch actor.ActorType {
 	case rgsv1.ActorType_ACTOR_TYPE_OPERATOR, rgsv1.ActorType_ACTOR_TYPE_SERVICE:
 		return true, ""
 	default:
@@ -348,7 +346,7 @@ func (s *ReportingService) GenerateReport(ctx context.Context, req *rgsv1.Genera
 	if req == nil {
 		return &rgsv1.GenerateReportResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "request is required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "", "generate_report", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.GenerateReportResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -426,7 +424,7 @@ func (s *ReportingService) ListReportRuns(ctx context.Context, req *rgsv1.ListRe
 	if req == nil {
 		req = &rgsv1.ListReportRunsRequest{}
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "", "list_report_runs", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ListReportRunsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -487,7 +485,7 @@ func (s *ReportingService) GetReportRun(ctx context.Context, req *rgsv1.GetRepor
 	if req == nil || req.ReportRunId == "" {
 		return &rgsv1.GetReportRunResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "report_run_id is required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, req.ReportRunId, "get_report_run", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.GetReportRunResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}

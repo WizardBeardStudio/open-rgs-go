@@ -211,18 +211,16 @@ func isBalanced(postings []ledgerPosting) bool {
 	return total == 0
 }
 
-func (s *LedgerService) authorize(meta *rgsv1.RequestMeta, accountID string) (bool, string) {
-	if meta == nil || meta.Actor == nil {
-		return false, "actor is required"
+func (s *LedgerService) authorize(ctx context.Context, meta *rgsv1.RequestMeta, accountID string) (bool, string) {
+	actor, reason := resolveActor(ctx, meta)
+	if reason != "" {
+		return false, reason
 	}
-	if meta.Actor.ActorId == "" || meta.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED {
-		return false, "actor binding is required"
-	}
-	switch meta.Actor.ActorType {
+	switch actor.ActorType {
 	case rgsv1.ActorType_ACTOR_TYPE_OPERATOR, rgsv1.ActorType_ACTOR_TYPE_SERVICE:
 		return true, ""
 	case rgsv1.ActorType_ACTOR_TYPE_PLAYER:
-		if accountID != meta.Actor.ActorId {
+		if accountID != actor.ActorId {
 			return false, "player cannot access another account"
 		}
 		return true, ""
@@ -290,7 +288,7 @@ func (s *LedgerService) GetBalance(ctx context.Context, req *rgsv1.GetBalanceReq
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.GetBalanceResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta, req.AccountId); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta, req.AccountId); !ok {
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "get_balance", reason)
 		return &rgsv1.GetBalanceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -324,7 +322,7 @@ func (s *LedgerService) Deposit(ctx context.Context, req *rgsv1.DepositRequest) 
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.DepositResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta, req.AccountId); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta, req.AccountId); !ok {
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "deposit", reason)
 		return &rgsv1.DepositResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -441,7 +439,7 @@ func (s *LedgerService) Withdraw(ctx context.Context, req *rgsv1.WithdrawRequest
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta, req.AccountId); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta, req.AccountId); !ok {
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "withdraw", reason)
 		return &rgsv1.WithdrawResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -569,7 +567,7 @@ func (s *LedgerService) TransferToDevice(ctx context.Context, req *rgsv1.Transfe
 	if req == nil || req.AccountId == "" || req.DeviceId == "" {
 		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id and device_id are required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta, req.AccountId); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta, req.AccountId); !ok {
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "transfer_to_device", reason)
 		return &rgsv1.TransferToDeviceResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -690,7 +688,7 @@ func (s *LedgerService) TransferToAccount(ctx context.Context, req *rgsv1.Transf
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta, req.AccountId); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta, req.AccountId); !ok {
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "transfer_to_account", reason)
 		return &rgsv1.TransferToAccountResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -806,7 +804,7 @@ func (s *LedgerService) ListTransactions(ctx context.Context, req *rgsv1.ListTra
 	if req == nil || req.AccountId == "" {
 		return &rgsv1.ListTransactionsResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "account_id is required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta, req.AccountId); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta, req.AccountId); !ok {
 		s.auditDenied(req.Meta, "ledger_account", req.AccountId, "list_transactions", reason)
 		return &rgsv1.ListTransactionsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}

@@ -67,14 +67,12 @@ func (s *ConfigService) responseMeta(meta *rgsv1.RequestMeta, code rgsv1.ResultC
 	}
 }
 
-func (s *ConfigService) authorize(meta *rgsv1.RequestMeta) (bool, string) {
-	if meta == nil || meta.Actor == nil {
-		return false, "actor is required"
+func (s *ConfigService) authorize(ctx context.Context, meta *rgsv1.RequestMeta) (bool, string) {
+	actor, reason := resolveActor(ctx, meta)
+	if reason != "" {
+		return false, reason
 	}
-	if meta.Actor.ActorId == "" || meta.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED {
-		return false, "actor binding is required"
-	}
-	switch meta.Actor.ActorType {
+	switch actor.ActorType {
 	case rgsv1.ActorType_ACTOR_TYPE_OPERATOR, rgsv1.ActorType_ACTOR_TYPE_SERVICE:
 		return true, ""
 	default:
@@ -150,7 +148,7 @@ func (s *ConfigService) ProposeConfigChange(ctx context.Context, req *rgsv1.Prop
 	if req == nil || req.ConfigNamespace == "" || req.ConfigKey == "" || req.ProposedValue == "" {
 		return &rgsv1.ProposeConfigChangeResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "config_namespace, config_key and proposed_value are required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "config_change", "", "propose_config_change", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ProposeConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -197,7 +195,7 @@ func (s *ConfigService) ApproveConfigChange(ctx context.Context, req *rgsv1.Appr
 	if req == nil || req.ChangeId == "" {
 		return &rgsv1.ApproveConfigChangeResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "change_id is required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "config_change", req.ChangeId, "approve_config_change", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ApproveConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -241,7 +239,7 @@ func (s *ConfigService) ApplyConfigChange(ctx context.Context, req *rgsv1.ApplyC
 	if req == nil || req.ChangeId == "" {
 		return &rgsv1.ApplyConfigChangeResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "change_id is required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "config_change", req.ChangeId, "apply_config_change", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ApplyConfigChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -289,7 +287,7 @@ func (s *ConfigService) ListConfigHistory(ctx context.Context, req *rgsv1.ListCo
 	if req == nil {
 		req = &rgsv1.ListConfigHistoryRequest{}
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "config_change", "", "list_config_history", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ListConfigHistoryResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -349,7 +347,7 @@ func (s *ConfigService) RecordDownloadLibraryChange(ctx context.Context, req *rg
 	if req == nil || req.Entry == nil || req.Entry.LibraryPath == "" || req.Entry.Checksum == "" || req.Entry.Version == "" {
 		return &rgsv1.RecordDownloadLibraryChangeResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "entry library_path/checksum/version are required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "download_library_entry", "", "record_download_library_change", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.RecordDownloadLibraryChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -386,7 +384,7 @@ func (s *ConfigService) ListDownloadLibraryChanges(ctx context.Context, req *rgs
 	if req == nil {
 		req = &rgsv1.ListDownloadLibraryChangesRequest{}
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "download_library_entry", "", "list_download_library_changes", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ListDownloadLibraryChangesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}

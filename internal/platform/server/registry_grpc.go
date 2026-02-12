@@ -56,14 +56,12 @@ func (s *RegistryService) responseMeta(meta *rgsv1.RequestMeta, code rgsv1.Resul
 	}
 }
 
-func (s *RegistryService) authorize(meta *rgsv1.RequestMeta) (bool, string) {
-	if meta == nil || meta.Actor == nil {
-		return false, "actor is required"
+func (s *RegistryService) authorize(ctx context.Context, meta *rgsv1.RequestMeta) (bool, string) {
+	actor, reason := resolveActor(ctx, meta)
+	if reason != "" {
+		return false, reason
 	}
-	if meta.Actor.ActorId == "" || meta.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED {
-		return false, "actor binding is required"
-	}
-	switch meta.Actor.ActorType {
+	switch actor.ActorType {
 	case rgsv1.ActorType_ACTOR_TYPE_OPERATOR, rgsv1.ActorType_ACTOR_TYPE_SERVICE:
 		return true, ""
 	default:
@@ -125,7 +123,7 @@ func (s *RegistryService) UpsertEquipment(ctx context.Context, req *rgsv1.Upsert
 	if req == nil || req.Equipment == nil || req.Equipment.EquipmentId == "" {
 		return &rgsv1.UpsertEquipmentResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "equipment.equipment_id is required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, req.Equipment.EquipmentId, "upsert_equipment", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.UpsertEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -177,7 +175,7 @@ func (s *RegistryService) GetEquipment(ctx context.Context, req *rgsv1.GetEquipm
 	if req == nil || req.EquipmentId == "" {
 		return &rgsv1.GetEquipmentResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "equipment_id is required")}, nil
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, req.EquipmentId, "get_equipment", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.GetEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
@@ -208,7 +206,7 @@ func (s *RegistryService) ListEquipment(ctx context.Context, req *rgsv1.ListEqui
 	if req == nil {
 		req = &rgsv1.ListEquipmentRequest{}
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "", "list_equipment", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ListEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 )
 
 func TestIdentityPlayerLoginRefreshLogout(t *testing.T) {
@@ -97,5 +98,51 @@ func TestIdentityOperatorLoginDistinctFromPlayer(t *testing.T) {
 	}
 	if denied.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied mismatched actor/credentials, got=%v", denied.Meta.GetResultCode())
+	}
+}
+
+func TestIdentityLoginLockoutPolicy(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 13, 20, 0, 0, time.UTC)}
+	svc := NewIdentityService(clk, "test-secret", 15*time.Minute, time.Hour)
+	svc.maxFailures = 3
+	svc.lockoutTTL = 10 * time.Minute
+
+	for i := 0; i < 3; i++ {
+		resp, err := svc.Login(context.Background(), &rgsv1.LoginRequest{
+			Meta: meta("player-lock-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+			Credentials: &rgsv1.LoginRequest_Player{
+				Player: &rgsv1.PlayerCredentials{PlayerId: "player-lock-1", Pin: "bad"},
+			},
+		})
+		if err != nil {
+			t.Fatalf("failed login err: %v", err)
+		}
+		if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+			t.Fatalf("expected denied failed login, got=%v", resp.Meta.GetResultCode())
+		}
+	}
+
+	locked, err := svc.Login(context.Background(), &rgsv1.LoginRequest{
+		Meta: meta("player-lock-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Credentials: &rgsv1.LoginRequest_Player{
+			Player: &rgsv1.PlayerCredentials{PlayerId: "player-lock-1", Pin: "1234"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("locked login err: %v", err)
+	}
+	if locked.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied while locked, got=%v", locked.Meta.GetResultCode())
+	}
+	if locked.Meta.GetDenialReason() != "account locked" {
+		t.Fatalf("expected account locked reason, got=%q", locked.Meta.GetDenialReason())
+	}
+}
+
+func TestResolveActorContextMismatchDenied(t *testing.T) {
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "player-ctx", Type: "ACTOR_TYPE_PLAYER"})
+	_, reason := resolveActor(ctx, meta("player-meta", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""))
+	if reason != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch, got=%q", reason)
 	}
 }

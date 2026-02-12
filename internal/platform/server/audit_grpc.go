@@ -40,14 +40,12 @@ func (s *AuditService) responseMeta(meta *rgsv1.RequestMeta, code rgsv1.ResultCo
 	}
 }
 
-func (s *AuditService) authorize(meta *rgsv1.RequestMeta) (bool, string) {
-	if meta == nil || meta.Actor == nil {
-		return false, "actor is required"
+func (s *AuditService) authorize(ctx context.Context, meta *rgsv1.RequestMeta) (bool, string) {
+	actor, reason := resolveActor(ctx, meta)
+	if reason != "" {
+		return false, reason
 	}
-	if meta.Actor.ActorId == "" || meta.Actor.ActorType == rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED {
-		return false, "actor binding is required"
-	}
-	switch meta.Actor.ActorType {
+	switch actor.ActorType {
 	case rgsv1.ActorType_ACTOR_TYPE_OPERATOR, rgsv1.ActorType_ACTOR_TYPE_SERVICE:
 		return true, ""
 	default:
@@ -80,11 +78,11 @@ func paginate[T any](items []T, pageToken string, pageSize int32) ([]T, string) 
 	return items[start:end], next
 }
 
-func (s *AuditService) ListAuditEvents(_ context.Context, req *rgsv1.ListAuditEventsRequest) (*rgsv1.ListAuditEventsResponse, error) {
+func (s *AuditService) ListAuditEvents(ctx context.Context, req *rgsv1.ListAuditEventsRequest) (*rgsv1.ListAuditEventsResponse, error) {
 	if req == nil {
 		req = &rgsv1.ListAuditEventsRequest{}
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 
@@ -123,11 +121,11 @@ func (s *AuditService) ListAuditEvents(_ context.Context, req *rgsv1.ListAuditEv
 	return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Events: page, NextPageToken: next}, nil
 }
 
-func (s *AuditService) ListRemoteAccessActivities(_ context.Context, req *rgsv1.ListRemoteAccessActivitiesRequest) (*rgsv1.ListRemoteAccessActivitiesResponse, error) {
+func (s *AuditService) ListRemoteAccessActivities(ctx context.Context, req *rgsv1.ListRemoteAccessActivitiesRequest) (*rgsv1.ListRemoteAccessActivitiesResponse, error) {
 	if req == nil {
 		req = &rgsv1.ListRemoteAccessActivitiesRequest{}
 	}
-	if ok, reason := s.authorize(req.Meta); !ok {
+	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.ListRemoteAccessActivitiesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 

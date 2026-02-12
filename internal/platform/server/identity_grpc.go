@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"strconv"
@@ -13,6 +14,7 @@ import (
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
 	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
 	"github.com/wizardbeard/open-rgs-go/internal/platform/clock"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type identitySession struct {
@@ -31,13 +33,22 @@ type IdentityService struct {
 
 	mu              sync.Mutex
 	refreshSessions map[string]*identitySession
+	failedAttempts  map[string]int
+	lockedUntil     map[string]time.Time
 	nextAuditID     int64
 	signingSecret   []byte
 	accessTTL       time.Duration
 	refreshTTL      time.Duration
+	lockoutTTL      time.Duration
+	maxFailures     int
+	db              *sql.DB
 }
 
-func NewIdentityService(clk clock.Clock, signingSecret string, accessTTL, refreshTTL time.Duration) *IdentityService {
+func NewIdentityService(clk clock.Clock, signingSecret string, accessTTL, refreshTTL time.Duration, db ...*sql.DB) *IdentityService {
+	var handle *sql.DB
+	if len(db) > 0 {
+		handle = db[0]
+	}
 	if accessTTL <= 0 {
 		accessTTL = 15 * time.Minute
 	}
@@ -51,10 +62,31 @@ func NewIdentityService(clk clock.Clock, signingSecret string, accessTTL, refres
 		Clock:           clk,
 		AuditStore:      audit.NewInMemoryStore(),
 		refreshSessions: make(map[string]*identitySession),
+		failedAttempts:  make(map[string]int),
+		lockedUntil:     make(map[string]time.Time),
 		signingSecret:   []byte(signingSecret),
 		accessTTL:       accessTTL,
 		refreshTTL:      refreshTTL,
+		lockoutTTL:      15 * time.Minute,
+		maxFailures:     5,
+		db:              handle,
 	}
+}
+
+func (s *IdentityService) SetLockoutPolicy(maxFailures int, ttl time.Duration) {
+	if s == nil {
+		return
+	}
+	if maxFailures <= 0 {
+		maxFailures = 5
+	}
+	if ttl <= 0 {
+		ttl = 15 * time.Minute
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.maxFailures = maxFailures
+	s.lockoutTTL = ttl
 }
 
 func (s *IdentityService) now() time.Time {
@@ -127,9 +159,6 @@ func (s *IdentityService) validateLoginRequest(req *rgsv1.LoginRequest) (string,
 		if req.Meta.Actor.ActorType != rgsv1.ActorType_ACTOR_TYPE_PLAYER || req.Meta.Actor.ActorId != creds.Player.PlayerId {
 			return "", rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED, "actor must match player credentials"
 		}
-		if creds.Player.Pin != "1234" {
-			return "", rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED, "invalid player credentials"
-		}
 		return creds.Player.PlayerId, rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""
 	case *rgsv1.LoginRequest_Operator:
 		if creds.Operator == nil || creds.Operator.OperatorId == "" || creds.Operator.Password == "" {
@@ -137,9 +166,6 @@ func (s *IdentityService) validateLoginRequest(req *rgsv1.LoginRequest) (string,
 		}
 		if req.Meta.Actor.ActorType != rgsv1.ActorType_ACTOR_TYPE_OPERATOR || req.Meta.Actor.ActorId != creds.Operator.OperatorId {
 			return "", rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED, "actor must match operator credentials"
-		}
-		if creds.Operator.Password != "operator-pass" {
-			return "", rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED, "invalid operator credentials"
 		}
 		return creds.Operator.OperatorId, rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""
 	default:
@@ -184,7 +210,105 @@ func sessionSnapshot(refreshToken, actorID string, actorType rgsv1.ActorType, ex
 	return b
 }
 
-func (s *IdentityService) Login(_ context.Context, req *rgsv1.LoginRequest) (*rgsv1.LoginResponse, error) {
+func lockKey(actorID string, actorType rgsv1.ActorType) string {
+	return actorType.String() + "|" + actorID
+}
+
+func (s *IdentityService) checkLocked(ctx context.Context, actorID string, actorType rgsv1.ActorType) (bool, error) {
+	if s.db != nil {
+		const q = `
+SELECT COALESCE(locked_until, to_timestamp(0))
+FROM identity_lockouts
+WHERE actor_id = $1 AND actor_type = $2
+`
+		var lockedUntil time.Time
+		err := s.db.QueryRowContext(ctx, q, actorID, actorType.String()).Scan(&lockedUntil)
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		return lockedUntil.After(s.now()), nil
+	}
+	until := s.lockedUntil[lockKey(actorID, actorType)]
+	return until.After(s.now()), nil
+}
+
+func (s *IdentityService) recordFailure(ctx context.Context, actorID string, actorType rgsv1.ActorType) error {
+	if s.db != nil {
+		const q = `
+INSERT INTO identity_lockouts (actor_id, actor_type, failed_attempts, locked_until)
+VALUES ($1, $2, 1, NULL)
+ON CONFLICT (actor_id, actor_type) DO UPDATE
+SET failed_attempts = identity_lockouts.failed_attempts + 1,
+    locked_until = CASE
+      WHEN identity_lockouts.failed_attempts + 1 >= $3
+      THEN NOW() + ($4 || ' seconds')::interval
+      ELSE identity_lockouts.locked_until
+    END,
+    updated_at = NOW()
+`
+		_, err := s.db.ExecContext(ctx, q, actorID, actorType.String(), s.maxFailures, int(s.lockoutTTL.Seconds()))
+		return err
+	}
+	k := lockKey(actorID, actorType)
+	s.failedAttempts[k]++
+	if s.failedAttempts[k] >= s.maxFailures {
+		s.lockedUntil[k] = s.now().Add(s.lockoutTTL)
+	}
+	return nil
+}
+
+func (s *IdentityService) resetFailures(ctx context.Context, actorID string, actorType rgsv1.ActorType) error {
+	if s.db != nil {
+		const q = `
+INSERT INTO identity_lockouts (actor_id, actor_type, failed_attempts, locked_until)
+VALUES ($1, $2, 0, NULL)
+ON CONFLICT (actor_id, actor_type) DO UPDATE
+SET failed_attempts = 0,
+    locked_until = NULL,
+    updated_at = NOW()
+`
+		_, err := s.db.ExecContext(ctx, q, actorID, actorType.String())
+		return err
+	}
+	k := lockKey(actorID, actorType)
+	delete(s.failedAttempts, k)
+	delete(s.lockedUntil, k)
+	return nil
+}
+
+func (s *IdentityService) verifyCredentials(ctx context.Context, actorID string, actorType rgsv1.ActorType, secret string) (bool, error) {
+	if s.db != nil {
+		const q = `
+SELECT password_hash, status
+FROM identity_credentials
+WHERE actor_id = $1 AND actor_type = $2
+`
+		var hash, status string
+		err := s.db.QueryRowContext(ctx, q, actorID, actorType.String()).Scan(&hash, &status)
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		if err != nil {
+			return false, err
+		}
+		if status != "active" {
+			return false, nil
+		}
+		return bcrypt.CompareHashAndPassword([]byte(hash), []byte(secret)) == nil, nil
+	}
+	if actorType == rgsv1.ActorType_ACTOR_TYPE_PLAYER {
+		return secret == "1234", nil
+	}
+	if actorType == rgsv1.ActorType_ACTOR_TYPE_OPERATOR {
+		return secret == "operator-pass", nil
+	}
+	return false, nil
+}
+
+func (s *IdentityService) Login(ctx context.Context, req *rgsv1.LoginRequest) (*rgsv1.LoginResponse, error) {
 	actorID, actorType, reason := s.validateLoginRequest(req)
 	if reason != "" {
 		var meta *rgsv1.RequestMeta
@@ -193,6 +317,38 @@ func (s *IdentityService) Login(_ context.Context, req *rgsv1.LoginRequest) (*rg
 		}
 		s.auditDenied(meta, "", "identity_login", reason)
 		return &rgsv1.LoginResponse{Meta: s.responseMeta(meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	secret := ""
+	switch creds := req.Credentials.(type) {
+	case *rgsv1.LoginRequest_Player:
+		secret = creds.Player.GetPin()
+	case *rgsv1.LoginRequest_Operator:
+		secret = creds.Operator.GetPassword()
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	locked, err := s.checkLocked(ctx, actorID, actorType)
+	if err != nil {
+		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if locked {
+		s.auditDenied(req.Meta, "", "identity_login", "account locked")
+		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "account locked")}, nil
+	}
+
+	okCreds, err := s.verifyCredentials(ctx, actorID, actorType, secret)
+	if err != nil {
+		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
+	}
+	if !okCreds {
+		_ = s.recordFailure(ctx, actorID, actorType)
+		s.auditDenied(req.Meta, "", "identity_login", "invalid credentials")
+		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "invalid credentials")}, nil
+	}
+	if err := s.resetFailures(ctx, actorID, actorType); err != nil {
+		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
 
 	accessToken, accessExpiry, err := s.signAccessToken(actorID, actorType)
@@ -204,8 +360,6 @@ func (s *IdentityService) Login(_ context.Context, req *rgsv1.LoginRequest) (*rg
 		return &rgsv1.LoginResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "failed to create refresh token")}, nil
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	expiresAt := s.now().Add(s.refreshTTL)
 	s.refreshSessions[refreshToken] = &identitySession{
 		refreshToken: refreshToken,

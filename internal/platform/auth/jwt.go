@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -57,7 +58,19 @@ func ActorFromContext(ctx context.Context) (Actor, bool) {
 }
 
 func HTTPJWTMiddleware(verifier *JWTVerifier, next http.Handler) http.Handler {
+	return HTTPJWTMiddlewareWithSkips(verifier, next, nil)
+}
+
+func HTTPJWTMiddlewareWithSkips(verifier *JWTVerifier, next http.Handler, skipPaths []string) http.Handler {
+	skip := make(map[string]struct{}, len(skipPaths))
+	for _, p := range skipPaths {
+		skip[p] = struct{}{}
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, ok := skip[r.URL.Path]; ok {
+			next.ServeHTTP(w, r)
+			return
+		}
 		h := r.Header.Get("Authorization")
 		if !strings.HasPrefix(h, "Bearer ") {
 			http.Error(w, "missing bearer token", http.StatusUnauthorized)
@@ -71,4 +84,41 @@ func HTTPJWTMiddleware(verifier *JWTVerifier, next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r.WithContext(WithActor(r.Context(), actor)))
 	})
+}
+
+type RefreshTokenAllowlist struct {
+	mu     sync.RWMutex
+	tokens map[string]struct{}
+}
+
+func NewRefreshTokenAllowlist() *RefreshTokenAllowlist {
+	return &RefreshTokenAllowlist{tokens: make(map[string]struct{})}
+}
+
+func (l *RefreshTokenAllowlist) Add(token string) {
+	if l == nil || strings.TrimSpace(token) == "" {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.tokens[token] = struct{}{}
+}
+
+func (l *RefreshTokenAllowlist) Remove(token string) {
+	if l == nil || strings.TrimSpace(token) == "" {
+		return
+	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	delete(l.tokens, token)
+}
+
+func (l *RefreshTokenAllowlist) Contains(token string) bool {
+	if l == nil || strings.TrimSpace(token) == "" {
+		return false
+	}
+	l.mu.RLock()
+	defer l.mu.RUnlock()
+	_, ok := l.tokens[token]
+	return ok
 }
