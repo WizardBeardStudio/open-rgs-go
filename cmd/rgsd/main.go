@@ -216,8 +216,10 @@ func main() {
 	configSvc.SetDownloadSignatureKeys(parseKeyValueSecrets(downloadSigningKeysSpec))
 	rgsv1.RegisterConfigServiceServer(grpcServer, configSvc)
 	promotionsSvc := server.NewPromotionsService(clk, db)
+	promotionsSvc.SetDisableInMemoryCache(strictProductionMode)
 	rgsv1.RegisterPromotionsServiceServer(grpcServer, promotionsSvc)
 	uiOverlaySvc := server.NewUISystemOverlayService(clk, db)
+	uiOverlaySvc.SetDisableInMemoryCache(strictProductionMode)
 	rgsv1.RegisterUISystemOverlayServiceServer(grpcServer, uiOverlaySvc)
 
 	grpcListener, err := net.Listen("tcp", grpcAddr)

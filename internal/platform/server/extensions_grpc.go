@@ -20,14 +20,15 @@ type PromotionsService struct {
 	Clock      clock.Clock
 	AuditStore *audit.InMemoryStore
 
-	mu          sync.Mutex
-	bonusTx     map[string]*rgsv1.BonusTransaction
-	bonusOrder  []string
-	awards      map[string]*rgsv1.PromotionalAward
-	nextBonusID int64
-	nextAwardID int64
-	nextAuditID int64
-	db          *sql.DB
+	mu                   sync.Mutex
+	bonusTx              map[string]*rgsv1.BonusTransaction
+	bonusOrder           []string
+	awards               map[string]*rgsv1.PromotionalAward
+	nextBonusID          int64
+	nextAwardID          int64
+	nextAuditID          int64
+	db                   *sql.DB
+	disableInMemoryCache bool
 }
 
 func NewPromotionsService(clk clock.Clock, db ...*sql.DB) *PromotionsService {
@@ -42,6 +43,15 @@ func NewPromotionsService(clk clock.Clock, db ...*sql.DB) *PromotionsService {
 		awards:     make(map[string]*rgsv1.PromotionalAward),
 		db:         handle,
 	}
+}
+
+func (s *PromotionsService) SetDisableInMemoryCache(disable bool) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.disableInMemoryCache = disable
 }
 
 func (s *PromotionsService) now() time.Time {
@@ -152,8 +162,10 @@ func (s *PromotionsService) RecordBonusTransaction(ctx context.Context, req *rgs
 	if tx.OccurredAt == "" {
 		tx.OccurredAt = s.now().Format(time.RFC3339Nano)
 	}
-	s.bonusTx[tx.BonusTransactionId] = cloneBonusTx(tx)
-	s.bonusOrder = append(s.bonusOrder, tx.BonusTransactionId)
+	if !s.disableInMemoryCache {
+		s.bonusTx[tx.BonusTransactionId] = cloneBonusTx(tx)
+		s.bonusOrder = append(s.bonusOrder, tx.BonusTransactionId)
+	}
 	if err := s.persistBonusTransaction(ctx, tx); err != nil {
 		return &rgsv1.RecordBonusTransactionResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
@@ -189,6 +201,9 @@ func (s *PromotionsService) ListRecentBonusTransactions(ctx context.Context, req
 		}
 		return &rgsv1.ListRecentBonusTransactionsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Transactions: rows}, nil
 	}
+	if s.disableInMemoryCache {
+		return &rgsv1.ListRecentBonusTransactionsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Transactions: nil}, nil
+	}
 
 	out := make([]*rgsv1.BonusTransaction, 0, limit)
 	for i := len(s.bonusOrder) - 1; i >= 0 && len(out) < limit; i-- {
@@ -223,7 +238,9 @@ func (s *PromotionsService) RecordPromotionalAward(ctx context.Context, req *rgs
 	if award.OccurredAt == "" {
 		award.OccurredAt = s.now().Format(time.RFC3339Nano)
 	}
-	s.awards[award.PromotionalAwardId] = cloneAward(award)
+	if !s.disableInMemoryCache {
+		s.awards[award.PromotionalAwardId] = cloneAward(award)
+	}
 	if err := s.persistPromotionalAward(ctx, award); err != nil {
 		return &rgsv1.RecordPromotionalAwardResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
@@ -240,12 +257,13 @@ type UISystemOverlayService struct {
 	Clock      clock.Clock
 	AuditStore *audit.InMemoryStore
 
-	mu          sync.Mutex
-	events      map[string]*rgsv1.SystemWindowEvent
-	eventOrder  []string
-	nextEventID int64
-	nextAuditID int64
-	db          *sql.DB
+	mu                   sync.Mutex
+	events               map[string]*rgsv1.SystemWindowEvent
+	eventOrder           []string
+	nextEventID          int64
+	nextAuditID          int64
+	db                   *sql.DB
+	disableInMemoryCache bool
 }
 
 func NewUISystemOverlayService(clk clock.Clock, db ...*sql.DB) *UISystemOverlayService {
@@ -259,6 +277,15 @@ func NewUISystemOverlayService(clk clock.Clock, db ...*sql.DB) *UISystemOverlayS
 		events:     make(map[string]*rgsv1.SystemWindowEvent),
 		db:         handle,
 	}
+}
+
+func (s *UISystemOverlayService) SetDisableInMemoryCache(disable bool) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.disableInMemoryCache = disable
 }
 
 func (s *UISystemOverlayService) now() time.Time {
@@ -366,8 +393,10 @@ func (s *UISystemOverlayService) SubmitSystemWindowEvent(ctx context.Context, re
 	if parseRFC3339OrZero(ev.EventTime).IsZero() {
 		ev.EventTime = s.now().Format(time.RFC3339Nano)
 	}
-	s.events[ev.EventId] = cloneSystemWindowEvent(ev)
-	s.eventOrder = append(s.eventOrder, ev.EventId)
+	if !s.disableInMemoryCache {
+		s.events[ev.EventId] = cloneSystemWindowEvent(ev)
+		s.eventOrder = append(s.eventOrder, ev.EventId)
+	}
 	if err := s.persistSystemWindowEvent(ctx, ev); err != nil {
 		return &rgsv1.SubmitSystemWindowEventResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
@@ -410,6 +439,9 @@ func (s *UISystemOverlayService) ListSystemWindowEvents(ctx context.Context, req
 			return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
 		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Events: rows, NextPageToken: next}, nil
+	}
+	if s.disableInMemoryCache {
+		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Events: nil, NextPageToken: ""}, nil
 	}
 
 	filtered := make([]*rgsv1.SystemWindowEvent, 0, len(s.eventOrder))
