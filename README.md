@@ -115,6 +115,7 @@ Environment variables:
 - `RGS_HTTP_ADDR` (default: `:8080`)
 - `RGS_TRUSTED_CIDRS` (default: `127.0.0.1/32,::1/128`)
 - `RGS_DATABASE_URL` (optional PostgreSQL DSN for config/download persistence)
+- `RGS_STRICT_PRODUCTION_MODE` (default: `true` when `RGS_VERSION != dev`, otherwise `false`; when enabled, startup requires DB + TLS + non-default JWT signing setup)
 - `RGS_JWT_SIGNING_SECRET` (default: `dev-insecure-change-me`; HMAC key for identity access tokens)
 - `RGS_JWT_KEYSET` (optional; comma-separated `kid:secret` entries for key rotation, e.g. `old:secret1,new:secret2`)
 - `RGS_JWT_ACTIVE_KID` (default: `default`; active signing key id from `RGS_JWT_KEYSET`)

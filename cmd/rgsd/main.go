@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -54,6 +55,10 @@ func main() {
 	metricsRefreshInterval := mustParseDurationEnv("RGS_METRICS_REFRESH_INTERVAL", "1m")
 	tlsEnabled := envOr("RGS_TLS_ENABLED", "false") == "true"
 	tlsRequireClientCert := envOr("RGS_TLS_REQUIRE_CLIENT_CERT", "false") == "true"
+	strictProductionMode := mustParseBoolEnv("RGS_STRICT_PRODUCTION_MODE", version != "dev")
+	if err := validateProductionRuntime(strictProductionMode, databaseURL, tlsEnabled, jwtSigningSecret, jwtKeysetSpec); err != nil {
+		log.Fatalf("invalid production runtime configuration: %v", err)
+	}
 	tlsCfg, err := server.BuildTLSConfig(server.TLSConfig{
 		Enabled:           tlsEnabled,
 		CertFile:          envOr("RGS_TLS_CERT_FILE", ""),
@@ -275,4 +280,36 @@ func mustParseIntEnv(key string, def int) int {
 		log.Fatalf("invalid integer for %s=%q: %v", key, raw, err)
 	}
 	return v
+}
+
+func mustParseBoolEnv(key string, def bool) bool {
+	raw := strings.TrimSpace(envOr(key, ""))
+	if raw == "" {
+		return def
+	}
+	switch strings.ToLower(raw) {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	default:
+		log.Fatalf("invalid boolean for %s=%q", key, raw)
+		return def
+	}
+}
+
+func validateProductionRuntime(strict bool, databaseURL string, tlsEnabled bool, jwtSigningSecret string, jwtKeysetSpec string) error {
+	if !strict {
+		return nil
+	}
+	if strings.TrimSpace(databaseURL) == "" {
+		return fmt.Errorf("RGS_DATABASE_URL is required when RGS_STRICT_PRODUCTION_MODE=true")
+	}
+	if !tlsEnabled {
+		return fmt.Errorf("RGS_TLS_ENABLED must be true when RGS_STRICT_PRODUCTION_MODE=true")
+	}
+	if strings.TrimSpace(jwtKeysetSpec) == "" && jwtSigningSecret == "dev-insecure-change-me" {
+		return fmt.Errorf("default JWT signing secret is not allowed when RGS_STRICT_PRODUCTION_MODE=true")
+	}
+	return nil
 }
