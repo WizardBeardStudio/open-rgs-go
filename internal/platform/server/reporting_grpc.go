@@ -26,12 +26,13 @@ type ReportingService struct {
 	Ledger *LedgerService
 	Events *EventsService
 
-	mu          sync.Mutex
-	runs        map[string]*rgsv1.ReportRun
-	runOrder    []string
-	nextRunID   int64
-	nextAuditID int64
-	db          *sql.DB
+	mu                   sync.Mutex
+	runs                 map[string]*rgsv1.ReportRun
+	runOrder             []string
+	nextRunID            int64
+	nextAuditID          int64
+	db                   *sql.DB
+	disableInMemoryCache bool
 }
 
 func NewReportingService(clk clock.Clock, ledger *LedgerService, events *EventsService, db ...*sql.DB) *ReportingService {
@@ -47,6 +48,24 @@ func NewReportingService(clk clock.Clock, ledger *LedgerService, events *EventsS
 		runs:       make(map[string]*rgsv1.ReportRun),
 		db:         handle,
 	}
+}
+
+func (s *ReportingService) SetDisableInMemoryCache(disable bool) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.disableInMemoryCache = disable
+}
+
+func (s *ReportingService) useInMemoryCache() bool {
+	if s == nil {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return !s.disableInMemoryCache
 }
 
 func (s *ReportingService) now() time.Time {
@@ -185,7 +204,7 @@ func (s *ReportingService) buildSignificantEventsPayload(interval rgsv1.ReportIn
 			rows = dbRows
 		}
 	}
-	if len(rows) == 0 && s.Events != nil {
+	if len(rows) == 0 && s.Events != nil && s.useInMemoryCache() {
 		s.Events.mu.Lock()
 		ids := append([]string(nil), s.Events.eventOrder...)
 		for _, id := range ids {
@@ -244,7 +263,7 @@ func (s *ReportingService) buildCashlessLiabilityPayload(interval rgsv1.ReportIn
 		}
 	}
 
-	if len(rows) == 0 && s.Ledger != nil {
+	if len(rows) == 0 && s.Ledger != nil && s.useInMemoryCache() {
 		s.Ledger.mu.Lock()
 		ids := make([]string, 0, len(s.Ledger.accounts))
 		for id := range s.Ledger.accounts {
@@ -298,7 +317,7 @@ func (s *ReportingService) buildAccountTransactionStatementPayload(interval rgsv
 		}
 	}
 
-	if len(rows) == 0 && s.Ledger != nil {
+	if len(rows) == 0 && s.Ledger != nil && s.useInMemoryCache() {
 		s.Ledger.mu.Lock()
 		accountIDs := make([]string, 0, len(s.Ledger.transactionsByAcct))
 		for accountID := range s.Ledger.transactionsByAcct {
@@ -473,8 +492,10 @@ func (s *ReportingService) GenerateReport(ctx context.Context, req *rgsv1.Genera
 		ContentType: contentType,
 		Content:     content,
 	}
-	s.runs[runID] = run
-	s.runOrder = append(s.runOrder, runID)
+	if !s.disableInMemoryCache {
+		s.runs[runID] = run
+		s.runOrder = append(s.runOrder, runID)
+	}
 	s.mu.Unlock()
 
 	after, _ := json.Marshal(run)
@@ -484,11 +505,6 @@ func (s *ReportingService) GenerateReport(ctx context.Context, req *rgsv1.Genera
 	if err := s.persistReportRun(ctx, req.Meta, run); err != nil {
 		return &rgsv1.GenerateReportResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 	}
-
-	s.mu.Lock()
-	s.runs[runID] = run
-	s.runOrder = append(s.runOrder, runID)
-	s.mu.Unlock()
 
 	return &rgsv1.GenerateReportResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), ReportRun: cloneRun(run)}, nil
 }

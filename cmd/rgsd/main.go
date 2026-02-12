@@ -209,6 +209,7 @@ func main() {
 	eventsSvc := server.NewEventsService(clk, db)
 	rgsv1.RegisterEventsServiceServer(grpcServer, eventsSvc)
 	reportingSvc := server.NewReportingService(clk, ledgerSvc, eventsSvc, db)
+	reportingSvc.SetDisableInMemoryCache(strictProductionMode)
 	rgsv1.RegisterReportingServiceServer(grpcServer, reportingSvc)
 	configSvc := server.NewConfigService(clk, db)
 	configSvc.SetDownloadSignatureKeys(parseKeyValueSecrets(downloadSigningKeysSpec))

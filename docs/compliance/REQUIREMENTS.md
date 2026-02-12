@@ -84,7 +84,7 @@ This document maps implemented requirements to standards references, code locati
 - Standard refs: GLI-13 report interval and generation metadata expectations
 - Code: `api/proto/rgs/v1/reporting.proto`, `internal/platform/server/reporting_grpc.go`, `migrations/000004_reporting_runs.up.sql`
 - Tests: `internal/platform/server/reporting_grpc_test.go`
-- Status: implemented
+- Status: implemented (strict production disables in-memory reporting payload fallback and in-memory run retention)
 
 ## RGS-0302 Significant Events/Alterations Reporting Content
 - Standard refs: GLI-13 significant events and alterations reportability
