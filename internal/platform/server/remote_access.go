@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -38,7 +39,10 @@ type RemoteAccessGuard struct {
 	db                   *sql.DB
 	disableInMemoryCache bool
 	failClosedLogPersist bool
+	inMemoryLogCap       int
 }
+
+var errRemoteAccessLogCapacityExceeded = errors.New("remote access activity log capacity exceeded")
 
 func NewRemoteAccessGuard(clk clock.Clock, store *audit.InMemoryStore, cidrs []string) (*RemoteAccessGuard, error) {
 	trusted := make([]*net.IPNet, 0, len(cidrs))
@@ -94,6 +98,18 @@ func (g *RemoteAccessGuard) SetFailClosedOnLogPersistenceFailure(enable bool) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.failClosedLogPersist = enable
+}
+
+func (g *RemoteAccessGuard) SetInMemoryActivityLogCap(cap int) {
+	if g == nil {
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if cap < 0 {
+		cap = 0
+	}
+	g.inMemoryLogCap = cap
 }
 
 func (g *RemoteAccessGuard) isAdminPath(path string) bool {
@@ -182,6 +198,10 @@ func (g *RemoteAccessGuard) logActivity(r *http.Request, sourceIP, sourcePort st
 	}
 	g.mu.Lock()
 	if !g.disableInMemoryCache {
+		if g.db == nil && g.inMemoryLogCap > 0 && len(g.logs) >= g.inMemoryLogCap {
+			g.mu.Unlock()
+			return errRemoteAccessLogCapacityExceeded
+		}
 		g.logs = append(g.logs, entry)
 	}
 	db := g.db

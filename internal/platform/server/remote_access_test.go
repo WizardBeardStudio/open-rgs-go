@@ -136,3 +136,61 @@ func TestRemoteAccessGuardAllowsWhenLogPersistenceFailureNotFailClosed(t *testin
 		t.Fatalf("expected ok when fail-closed logging is disabled, got=%d", rec.Result().StatusCode)
 	}
 }
+
+func TestRemoteAccessGuardFailClosedWhenInMemoryActivityCapExceeded(t *testing.T) {
+	guard, err := NewRemoteAccessGuard(ledgerFixedClock{now: time.Date(2026, 2, 12, 18, 0, 0, 0, time.UTC)}, nil, []string{"127.0.0.1/32"})
+	if err != nil {
+		t.Fatalf("new guard err: %v", err)
+	}
+	guard.SetFailClosedOnLogPersistenceFailure(true)
+	guard.SetInMemoryActivityLogCap(1)
+
+	h := guard.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	firstReq := httptest.NewRequest(http.MethodGet, "/v1/reporting/runs", nil)
+	firstReq.RemoteAddr = "127.0.0.1:44000"
+	firstRec := httptest.NewRecorder()
+	h.ServeHTTP(firstRec, firstReq)
+	if firstRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected first request to pass, got=%d", firstRec.Result().StatusCode)
+	}
+
+	secondReq := httptest.NewRequest(http.MethodGet, "/v1/reporting/runs", nil)
+	secondReq.RemoteAddr = "127.0.0.1:44000"
+	secondRec := httptest.NewRecorder()
+	h.ServeHTTP(secondRec, secondReq)
+	if secondRec.Result().StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("expected service unavailable after activity-cap reached, got=%d", secondRec.Result().StatusCode)
+	}
+}
+
+func TestRemoteAccessGuardCapExceededDoesNotFailClosedWhenDisabled(t *testing.T) {
+	guard, err := NewRemoteAccessGuard(ledgerFixedClock{now: time.Date(2026, 2, 12, 18, 0, 0, 0, time.UTC)}, nil, []string{"127.0.0.1/32"})
+	if err != nil {
+		t.Fatalf("new guard err: %v", err)
+	}
+	guard.SetFailClosedOnLogPersistenceFailure(false)
+	guard.SetInMemoryActivityLogCap(1)
+
+	h := guard.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	firstReq := httptest.NewRequest(http.MethodGet, "/v1/reporting/runs", nil)
+	firstReq.RemoteAddr = "127.0.0.1:44000"
+	firstRec := httptest.NewRecorder()
+	h.ServeHTTP(firstRec, firstReq)
+	if firstRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected first request to pass, got=%d", firstRec.Result().StatusCode)
+	}
+
+	secondReq := httptest.NewRequest(http.MethodGet, "/v1/reporting/runs", nil)
+	secondReq.RemoteAddr = "127.0.0.1:44000"
+	secondRec := httptest.NewRecorder()
+	h.ServeHTTP(secondRec, secondReq)
+	if secondRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected second request to pass when fail-closed is disabled, got=%d", secondRec.Result().StatusCode)
+	}
+}

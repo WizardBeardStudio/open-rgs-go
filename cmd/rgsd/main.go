@@ -64,6 +64,7 @@ func main() {
 	idempotencyCleanupInterval := mustParseDurationEnv("RGS_LEDGER_IDEMPOTENCY_CLEANUP_INTERVAL", "15m")
 	idempotencyCleanupBatch := mustParseIntEnv("RGS_LEDGER_IDEMPOTENCY_CLEANUP_BATCH", 500)
 	metricsRefreshInterval := mustParseDurationEnv("RGS_METRICS_REFRESH_INTERVAL", "1m")
+	remoteAccessActivityLogCap := mustParseIntEnv("RGS_REMOTE_ACCESS_ACTIVITY_LOG_CAP", 5000)
 	tlsEnabled := envOr("RGS_TLS_ENABLED", "false") == "true"
 	tlsRequireClientCert := envOr("RGS_TLS_REQUIRE_CLIENT_CERT", "false") == "true"
 	strictProductionMode := mustParseBoolEnv("RGS_STRICT_PRODUCTION_MODE", version != "dev")
@@ -280,6 +281,7 @@ func main() {
 	}
 	guard.SetDisableInMemoryActivityCache(strictProductionMode)
 	guard.SetFailClosedOnLogPersistenceFailure(strictProductionMode)
+	guard.SetInMemoryActivityLogCap(remoteAccessActivityLogCap)
 	auditSvc := server.NewAuditService(
 		clk,
 		guard,

@@ -140,6 +140,7 @@ Environment variables:
 - `RGS_IDENTITY_LOCKOUT_TTL` (default: `15m`)
 - `RGS_IDENTITY_LOGIN_RATE_LIMIT_MAX_ATTEMPTS` (default: `60`; per-actor login attempts allowed per rate-limit window)
 - `RGS_IDENTITY_LOGIN_RATE_LIMIT_WINDOW` (default: `1m`; rolling window for login rate limiting)
+- `RGS_REMOTE_ACCESS_ACTIVITY_LOG_CAP` (default: `5000`; max in-memory remote-access activity records before log-cap errors when DB logging is unavailable)
 - `RGS_IDENTITY_SESSION_CLEANUP_INTERVAL` (default: `15m`)
 - `RGS_IDENTITY_SESSION_CLEANUP_BATCH` (default: `500`)
 - `RGS_EFT_FRAUD_MAX_FAILURES` (default: `5`; repeated denied EFT operations before lockout)
