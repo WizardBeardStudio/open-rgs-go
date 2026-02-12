@@ -247,3 +247,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`, `docs/compliance/PRODUCTION_READINESS_ROUNDS.md`
 - Tests: `go test ./...` release-gate execution
 - Status: implemented (release evidence checklist defined and linked)
+
+## RGS-0707 Promotions and UI Overlay Runtime Services
+- Standard refs: GLI-16 bonusing/promotional tracking expectations, GLI-28 system-window recall expectations
+- Code: `api/proto/rgs/v1/extensions.proto`, `internal/platform/server/extensions_grpc.go`, `internal/platform/server/extensions_postgres.go`, `cmd/rgsd/main.go`, `migrations/000009_bonus_ui_scaffolds.up.sql`
+- Tests: `internal/platform/server/extensions_grpc_test.go`, `internal/platform/server/extensions_gateway_test.go`
+- Status: implemented (record/list bonus transactions, record promotional awards, submit/list system-window events with DB-backed persistence when configured)

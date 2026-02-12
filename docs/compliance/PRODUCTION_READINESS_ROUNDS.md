@@ -44,7 +44,7 @@ This checklist tracks the remaining production-readiness work identified against
 
 ## Round 6: Required Scaffolds (Bonusing/Promotions/Wireless/UI Overlay Recall)
 - Goal: establish canonical contracts and storage hooks for AGENTS-required scaffolds.
-- Status: implemented (scaffold level)
+- Status: implemented (contracts + baseline runtime handlers + schema scaffolds)
 - Acceptance:
   - Add protobuf scaffolds for promotions/bonusing and UI system window event recall.
   - Add DB schema scaffold for system-window recall events.

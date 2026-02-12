@@ -16,7 +16,8 @@ Implemented and wired:
 - `ReportingService` (DTD/MTD/YTD/LTD, JSON/CSV)
 - `ConfigService` (propose/approve/apply workflow + download-library logs)
 - `AuditService` (audit event retrieval + remote-access activity retrieval)
-- Promotions/UI scaffold contracts (bonus/promo/system-window event APIs in proto for next-stage implementation)
+- `PromotionsService` (bonus transactions + promotional award capture)
+- `UISystemOverlayService` (system-window open/close recall event ingestion and listing)
 
 Current persistence model:
 - Runtime services support optional PostgreSQL-backed paths when `RGS_DATABASE_URL` is configured.
@@ -214,7 +215,7 @@ Services and methods are defined in:
 - `api/proto/rgs/v1/reporting.proto`
 - `api/proto/rgs/v1/config.proto`
 - `api/proto/rgs/v1/audit.proto`
-- `api/proto/rgs/v1/extensions.proto` (bonusing/promotions/UI overlay scaffolds)
+- `api/proto/rgs/v1/extensions.proto`
 
 Cross-cutting request/response metadata is in `api/proto/rgs/v1/common.proto`.
 
@@ -266,7 +267,7 @@ Chaos tests:
 Current limitations:
 - Some stateful behavior is still partially in-memory (for example wagering state and local idempotency response caches), with PostgreSQL used as the durable source where wired.
 - JWT issuance/refresh/rotation is implemented, but production secret lifecycle still needs KMS/HSM-backed key management and rotation automation.
-- Promotions/bonusing/UI overlay contracts are currently scaffold-only and not yet backed by full runtime service implementations.
+- Promotions/UI services are implemented at baseline CRUD/reportability level, but advanced campaign policy engines and full device-side interaction workflows are still pending.
 
 Recommended next steps:
 - Add service-level SLO/error-budget alerting for gRPC/REST result-code failure rates and latency percentiles.

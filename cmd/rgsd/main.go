@@ -161,6 +161,10 @@ func main() {
 	rgsv1.RegisterReportingServiceServer(grpcServer, reportingSvc)
 	configSvc := server.NewConfigService(clk, db)
 	rgsv1.RegisterConfigServiceServer(grpcServer, configSvc)
+	promotionsSvc := server.NewPromotionsService(clk, db)
+	rgsv1.RegisterPromotionsServiceServer(grpcServer, promotionsSvc)
+	uiOverlaySvc := server.NewUISystemOverlayService(clk, db)
+	rgsv1.RegisterUISystemOverlayServiceServer(grpcServer, uiOverlaySvc)
 
 	grpcListener, err := net.Listen("tcp", grpcAddr)
 	if err != nil {
@@ -196,6 +200,12 @@ func main() {
 	if err := rgsv1.RegisterConfigServiceHandlerServer(ctx, gwMux, configSvc); err != nil {
 		log.Fatalf("register config gateway handlers: %v", err)
 	}
+	if err := rgsv1.RegisterPromotionsServiceHandlerServer(ctx, gwMux, promotionsSvc); err != nil {
+		log.Fatalf("register promotions gateway handlers: %v", err)
+	}
+	if err := rgsv1.RegisterUISystemOverlayServiceHandlerServer(ctx, gwMux, uiOverlaySvc); err != nil {
+		log.Fatalf("register ui overlay gateway handlers: %v", err)
+	}
 	remoteAccessAuditStore := audit.NewInMemoryStore()
 	guard, err := server.NewRemoteAccessGuard(clk, remoteAccessAuditStore, trustedCIDRs)
 	if err != nil {
@@ -213,6 +223,8 @@ func main() {
 		reportingSvc.AuditStore,
 		configSvc.AuditStore,
 		identitySvc.AuditStore,
+		promotionsSvc.AuditStore,
+		uiOverlaySvc.AuditStore,
 		remoteAccessAuditStore,
 	)
 	rgsv1.RegisterAuditServiceServer(grpcServer, auditSvc)
