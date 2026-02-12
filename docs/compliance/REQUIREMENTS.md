@@ -48,7 +48,7 @@ This document maps implemented requirements to standards references, code locati
 - Standard refs: GLI-13 registry and equipment lifecycle expectations
 - Code: `api/proto/rgs/v1/registry.proto`, `internal/platform/server/registry_grpc.go`, `migrations/000003_registry_events_meters.up.sql`
 - Tests: `internal/platform/server/registry_events_test.go`, `internal/platform/server/registry_events_gateway_test.go`
-- Status: implemented (in-memory service + schema)
+- Status: implemented (DB-backed registry with in-memory fallback; strict production disables in-memory registry mirrors)
 
 ## RGS-0202 Significant Event Ingestion with Time Triplet
 - Standard refs: GLI-13 significant events and event retention/reporting

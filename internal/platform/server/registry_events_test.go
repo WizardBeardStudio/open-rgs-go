@@ -67,6 +67,49 @@ func TestRegistryAuthorizationDeniedForPlayer(t *testing.T) {
 	}
 }
 
+func TestRegistryDisableInMemoryCacheSkipsMirror(t *testing.T) {
+	svc := NewRegistryService(ledgerFixedClock{now: time.Date(2026, 2, 12, 10, 5, 0, 0, time.UTC)})
+	svc.SetDisableInMemoryCache(true)
+	ctx := context.Background()
+
+	upsert, err := svc.UpsertEquipment(ctx, &rgsv1.UpsertEquipmentRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Equipment: &rgsv1.Equipment{
+			EquipmentId: "eq-disabled",
+			Location:    "room-x",
+			Status:      rgsv1.EquipmentStatus_EQUIPMENT_STATUS_ACTIVE,
+		},
+		Reason: "register",
+	})
+	if err != nil {
+		t.Fatalf("upsert equipment: %v", err)
+	}
+	if upsert.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected upsert ok, got=%v", upsert.Meta.GetResultCode())
+	}
+
+	got, err := svc.GetEquipment(ctx, &rgsv1.GetEquipmentRequest{
+		Meta:        meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		EquipmentId: "eq-disabled",
+	})
+	if err != nil {
+		t.Fatalf("get equipment: %v", err)
+	}
+	if got.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected not found in memory-disabled mode, got=%v", got.Meta.GetResultCode())
+	}
+
+	list, err := svc.ListEquipment(ctx, &rgsv1.ListEquipmentRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+	})
+	if err != nil {
+		t.Fatalf("list equipment: %v", err)
+	}
+	if len(list.Equipment) != 0 {
+		t.Fatalf("expected no in-memory equipment entries when cache disabled, got=%d", len(list.Equipment))
+	}
+}
+
 func TestEventsSubmitAndList(t *testing.T) {
 	svc := NewEventsService(ledgerFixedClock{now: time.Date(2026, 2, 12, 10, 30, 0, 0, time.UTC)})
 	ctx := context.Background()

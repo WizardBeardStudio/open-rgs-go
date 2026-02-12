@@ -205,6 +205,7 @@ func main() {
 	wageringSvc.SetDisableInMemoryIdempotencyCache(strictProductionMode)
 	rgsv1.RegisterWageringServiceServer(grpcServer, wageringSvc)
 	registrySvc := server.NewRegistryService(clk, db)
+	registrySvc.SetDisableInMemoryCache(strictProductionMode)
 	rgsv1.RegisterRegistryServiceServer(grpcServer, registrySvc)
 	eventsSvc := server.NewEventsService(clk, db)
 	rgsv1.RegisterEventsServiceServer(grpcServer, eventsSvc)

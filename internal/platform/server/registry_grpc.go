@@ -21,10 +21,11 @@ type RegistryService struct {
 	Clock      clock.Clock
 	AuditStore *audit.InMemoryStore
 
-	mu          sync.Mutex
-	equipment   map[string]*rgsv1.Equipment
-	nextAuditID int64
-	db          *sql.DB
+	mu                   sync.Mutex
+	equipment            map[string]*rgsv1.Equipment
+	nextAuditID          int64
+	db                   *sql.DB
+	disableInMemoryCache bool
 }
 
 func NewRegistryService(clk clock.Clock, db ...*sql.DB) *RegistryService {
@@ -38,6 +39,15 @@ func NewRegistryService(clk clock.Clock, db ...*sql.DB) *RegistryService {
 		equipment:  make(map[string]*rgsv1.Equipment),
 		db:         handle,
 	}
+}
+
+func (s *RegistryService) SetDisableInMemoryCache(disable bool) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.disableInMemoryCache = disable
 }
 
 func (s *RegistryService) now() time.Time {
@@ -162,7 +172,9 @@ func (s *RegistryService) UpsertEquipment(ctx context.Context, req *rgsv1.Upsert
 			return &rgsv1.UpsertEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable")}, nil
 		}
 	} else {
-		s.equipment[upsert.EquipmentId] = upsert
+		if !s.disableInMemoryCache {
+			s.equipment[upsert.EquipmentId] = upsert
+		}
 	}
 
 	return &rgsv1.UpsertEquipmentResponse{
@@ -190,6 +202,9 @@ func (s *RegistryService) GetEquipment(ctx context.Context, req *rgsv1.GetEquipm
 		} else {
 			return &rgsv1.GetEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Equipment: eq}, nil
 		}
+	}
+	if s.disableInMemoryCache {
+		return &rgsv1.GetEquipmentResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "equipment not found")}, nil
 	}
 
 	s.mu.Lock()
@@ -234,6 +249,13 @@ func (s *RegistryService) ListEquipment(ctx context.Context, req *rgsv1.ListEqui
 			Meta:          s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
 			Equipment:     items,
 			NextPageToken: next,
+		}, nil
+	}
+	if s.disableInMemoryCache {
+		return &rgsv1.ListEquipmentResponse{
+			Meta:          s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
+			Equipment:     nil,
+			NextPageToken: "",
 		}, nil
 	}
 
