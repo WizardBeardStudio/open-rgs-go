@@ -48,6 +48,9 @@ message DownloadLibraryEntry {
   string changed_by = 6;
   string reason = 7;
   string occurred_at = 8;
+  string signer_kid = 9;
+  string signature = 10;
+  string signature_alg = 11;
 }
 
 service ConfigService {

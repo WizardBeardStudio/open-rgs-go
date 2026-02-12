@@ -67,15 +67,18 @@ func (s *ConfigService) persistDownloadEntry(ctx context.Context, e *rgsv1.Downl
 	}
 	const q = `
 INSERT INTO download_library_changes (
-  entry_id, library_path, checksum, version, action, changed_by, reason, occurred_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::timestamptz)
+  entry_id, library_path, checksum, version, action, changed_by, reason, occurred_at, signer_kid, signature, signature_alg
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8::timestamptz,$9,$10,$11)
 ON CONFLICT (entry_id) DO UPDATE SET
   checksum = EXCLUDED.checksum,
   version = EXCLUDED.version,
   action = EXCLUDED.action,
   changed_by = EXCLUDED.changed_by,
   reason = EXCLUDED.reason,
-  occurred_at = EXCLUDED.occurred_at
+  occurred_at = EXCLUDED.occurred_at,
+  signer_kid = EXCLUDED.signer_kid,
+  signature = EXCLUDED.signature,
+  signature_alg = EXCLUDED.signature_alg
 `
 	_, err := s.db.ExecContext(ctx, q,
 		e.EntryId,
@@ -86,6 +89,9 @@ ON CONFLICT (entry_id) DO UPDATE SET
 		e.ChangedBy,
 		e.Reason,
 		nullIfEmpty(e.OccurredAt),
+		e.SignerKid,
+		e.Signature,
+		e.SignatureAlg,
 	)
 	return err
 }
@@ -217,7 +223,7 @@ func (s *ConfigService) listDownloadEntriesFromDB(ctx context.Context, limit, of
 		return nil, nil
 	}
 	const q = `
-SELECT entry_id, library_path, checksum, version, action::text, changed_by, reason, occurred_at
+SELECT entry_id, library_path, checksum, version, action::text, changed_by, reason, occurred_at, signer_kid, signature, signature_alg
 FROM download_library_changes
 ORDER BY occurred_at DESC, entry_id DESC
 LIMIT $1 OFFSET $2
@@ -231,21 +237,24 @@ LIMIT $1 OFFSET $2
 	out := make([]*rgsv1.DownloadLibraryEntry, 0, limit)
 	for rows.Next() {
 		var (
-			entryID, path, checksum, version, action, changedBy, reason string
-			occurredAt                                                  time.Time
+			entryID, path, checksum, version, action, changedBy, reason, signerKid, signature, signatureAlg string
+			occurredAt                                                                                      time.Time
 		)
-		if err := rows.Scan(&entryID, &path, &checksum, &version, &action, &changedBy, &reason, &occurredAt); err != nil {
+		if err := rows.Scan(&entryID, &path, &checksum, &version, &action, &changedBy, &reason, &occurredAt, &signerKid, &signature, &signatureAlg); err != nil {
 			return nil, err
 		}
 		out = append(out, &rgsv1.DownloadLibraryEntry{
-			EntryId:     entryID,
-			LibraryPath: path,
-			Checksum:    checksum,
-			Version:     version,
-			Action:      downloadActionFromDB(action),
-			ChangedBy:   changedBy,
-			Reason:      reason,
-			OccurredAt:  occurredAt.UTC().Format(time.RFC3339Nano),
+			EntryId:      entryID,
+			LibraryPath:  path,
+			Checksum:     checksum,
+			Version:      version,
+			Action:       downloadActionFromDB(action),
+			ChangedBy:    changedBy,
+			Reason:       reason,
+			OccurredAt:   occurredAt.UTC().Format(time.RFC3339Nano),
+			SignerKid:    signerKid,
+			Signature:    signature,
+			SignatureAlg: signatureAlg,
 		})
 	}
 	return out, rows.Err()

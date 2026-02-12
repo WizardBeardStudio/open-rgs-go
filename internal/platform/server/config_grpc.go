@@ -2,10 +2,14 @@ package server
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -34,6 +38,7 @@ type ConfigService struct {
 	nextEntryID     int64
 	nextAuditID     int64
 	db              *sql.DB
+	downloadSigKeys map[string][]byte
 }
 
 func NewConfigService(clk clock.Clock, db ...*sql.DB) *ConfigService {
@@ -47,8 +52,49 @@ func NewConfigService(clk clock.Clock, db ...*sql.DB) *ConfigService {
 		changes:         make(map[string]*rgsv1.ConfigChange),
 		currentValues:   make(map[string]string),
 		downloadEntries: make(map[string]*rgsv1.DownloadLibraryEntry),
+		downloadSigKeys: make(map[string][]byte),
 		db:              handle,
 	}
+}
+
+func (s *ConfigService) SetDownloadSignatureKeys(keys map[string][]byte) {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.downloadSigKeys = make(map[string][]byte, len(keys))
+	for kid, secret := range keys {
+		kid = strings.TrimSpace(kid)
+		if kid == "" || len(secret) == 0 {
+			continue
+		}
+		cp := make([]byte, len(secret))
+		copy(cp, secret)
+		s.downloadSigKeys[kid] = cp
+	}
+}
+
+func downloadSignaturePayload(e *rgsv1.DownloadLibraryEntry) string {
+	if e == nil {
+		return ""
+	}
+	return strings.Join([]string{
+		strings.TrimSpace(e.LibraryPath),
+		strings.TrimSpace(e.Checksum),
+		strings.TrimSpace(e.Version),
+		e.Action.String(),
+	}, "|")
+}
+
+func verifyDownloadSignature(e *rgsv1.DownloadLibraryEntry, secret []byte) bool {
+	if e == nil || len(secret) == 0 {
+		return false
+	}
+	mac := hmac.New(sha256.New, secret)
+	_, _ = mac.Write([]byte(downloadSignaturePayload(e)))
+	expected := base64.RawStdEncoding.EncodeToString(mac.Sum(nil))
+	return hmac.Equal([]byte(expected), []byte(strings.TrimSpace(e.Signature)))
 }
 
 func (s *ConfigService) now() time.Time {
@@ -364,6 +410,19 @@ func (s *ConfigService) RecordDownloadLibraryChange(ctx context.Context, req *rg
 	}
 	if entry.OccurredAt == "" {
 		entry.OccurredAt = s.now().Format(time.RFC3339Nano)
+	}
+	if entry.Action == rgsv1.DownloadAction_DOWNLOAD_ACTION_ACTIVATE {
+		if entry.SignerKid == "" || entry.Signature == "" {
+			return &rgsv1.RecordDownloadLibraryChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "activation requires signer_kid and signature")}, nil
+		}
+		secret := s.downloadSigKeys[entry.SignerKid]
+		if !verifyDownloadSignature(entry, secret) {
+			_ = s.appendAudit(req.Meta, "download_library_entry", entry.EntryId, "record_download_library_change", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid download signature")
+			return &rgsv1.RecordDownloadLibraryChangeResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "invalid download signature")}, nil
+		}
+		if entry.SignatureAlg == "" {
+			entry.SignatureAlg = "HMAC-SHA256"
+		}
 	}
 
 	after, _ := json.Marshal(entry)

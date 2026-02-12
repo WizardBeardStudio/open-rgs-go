@@ -47,6 +47,11 @@
 - Download-library change recording and recall log
   - `internal/platform/server/config_grpc.go`
   - `migrations/000005_config_change_control.up.sql`
+- Signed download activation verification
+  - `internal/platform/server/config_grpc.go`
+  - `internal/platform/server/config_postgres.go`
+  - `migrations/000011_download_signature_verification.up.sql`
+  - `docs/deployment/PACKAGE_SIGNING.md`
 - Remote access guard + admin-path filtering and activity logging
   - `internal/platform/server/remote_access.go`
   - `cmd/rgsd/main.go`
@@ -80,5 +85,5 @@
 - Integrate persistent DB-backed service repositories (replace in-memory stores)
 - Add full KMS/HSM custody integration and attested key lifecycle controls beyond file-based runtime hooks
 - Expand baseline rate-limiting and antifraud controls with network-aware and behavioral scoring models
-- Add signed package verification pipeline for download library entries
+- Expand package-signing controls from baseline HMAC verification to full asymmetric signing/certificate-chain validation
 - Expand promotions/bonusing/UI services beyond baseline record/list into full policy/workflow engines

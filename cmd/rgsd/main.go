@@ -48,6 +48,7 @@ func main() {
 	jwtActiveKID := envOr("RGS_JWT_ACTIVE_KID", "default")
 	jwtKeysetFile := envOr("RGS_JWT_KEYSET_FILE", "")
 	jwtKeysetRefreshInterval := mustParseDurationEnv("RGS_JWT_KEYSET_REFRESH_INTERVAL", "1m")
+	downloadSigningKeysSpec := envOr("RGS_DOWNLOAD_SIGNING_KEYS", "")
 	jwtAccessTTL := mustParseDurationEnv("RGS_JWT_ACCESS_TTL", "15m")
 	jwtRefreshTTL := mustParseDurationEnv("RGS_JWT_REFRESH_TTL", "24h")
 	identityLockoutTTL := mustParseDurationEnv("RGS_IDENTITY_LOCKOUT_TTL", "15m")
@@ -203,6 +204,7 @@ func main() {
 	reportingSvc := server.NewReportingService(clk, ledgerSvc, eventsSvc, db)
 	rgsv1.RegisterReportingServiceServer(grpcServer, reportingSvc)
 	configSvc := server.NewConfigService(clk, db)
+	configSvc.SetDownloadSignatureKeys(parseKeyValueSecrets(downloadSigningKeysSpec))
 	rgsv1.RegisterConfigServiceServer(grpcServer, configSvc)
 	promotionsSvc := server.NewPromotionsService(clk, db)
 	rgsv1.RegisterPromotionsServiceServer(grpcServer, promotionsSvc)
@@ -385,6 +387,28 @@ func loadJWTKeyset(jwtSigningSecret string, jwtKeysetSpec string, jwtActiveKID s
 		return platformauth.HMACKeyset{}, "", err
 	}
 	return keyset, keysetFingerprint(keyset), nil
+}
+
+func parseKeyValueSecrets(spec string) map[string][]byte {
+	out := make(map[string][]byte)
+	parts := strings.Split(spec, ",")
+	for _, part := range parts {
+		entry := strings.TrimSpace(part)
+		if entry == "" {
+			continue
+		}
+		pair := strings.SplitN(entry, ":", 2)
+		if len(pair) != 2 {
+			continue
+		}
+		kid := strings.TrimSpace(pair[0])
+		secret := strings.TrimSpace(pair[1])
+		if kid == "" || secret == "" {
+			continue
+		}
+		out[kid] = []byte(secret)
+	}
+	return out
 }
 
 func keysetFingerprint(keyset platformauth.HMACKeyset) string {

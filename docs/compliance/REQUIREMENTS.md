@@ -265,3 +265,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `internal/platform/server/identity_grpc.go`, `internal/platform/server/ledger_grpc.go`, `cmd/rgsd/main.go`, `README.md`
 - Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/ledger_grpc_test.go`
 - Status: implemented (configurable login rate limits and configurable EFT fraud lockouts for repeated denied cashless operations)
+
+## RGS-0710 Signed Download Activation Verification
+- Standard refs: GLI-21/GLI-13 download activation and change integrity expectations
+- Code: `api/proto/rgs/v1/config.proto`, `internal/platform/server/config_grpc.go`, `internal/platform/server/config_postgres.go`, `cmd/rgsd/main.go`, `migrations/000011_download_signature_verification.up.sql`, `docs/deployment/PACKAGE_SIGNING.md`
+- Tests: `internal/platform/server/config_grpc_test.go`, `cmd/rgsd/main_test.go`
+- Status: implemented (activation entries require valid signer id and package signature verification before acceptance)

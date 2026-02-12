@@ -2,6 +2,9 @@ package server
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -118,5 +121,74 @@ func TestConfigDeniedForPlayer(t *testing.T) {
 	}
 	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied for player, got=%v", resp.Meta.GetResultCode())
+	}
+}
+
+func signDownloadEntryForTest(entry *rgsv1.DownloadLibraryEntry, secret []byte) string {
+	mac := hmac.New(sha256.New, secret)
+	_, _ = mac.Write([]byte(downloadSignaturePayload(entry)))
+	return base64.RawStdEncoding.EncodeToString(mac.Sum(nil))
+}
+
+func TestDownloadLibraryActivateRequiresValidSignature(t *testing.T) {
+	svc := NewConfigService(ledgerFixedClock{now: time.Date(2026, 2, 12, 17, 30, 0, 0, time.UTC)})
+	svc.SetDownloadSignatureKeys(map[string][]byte{"k1": []byte("download-signing-secret")})
+	ctx := context.Background()
+
+	deniedMissingSig, err := svc.RecordDownloadLibraryChange(ctx, &rgsv1.RecordDownloadLibraryChangeRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Entry: &rgsv1.DownloadLibraryEntry{
+			LibraryPath: "games/slot-a.pkg",
+			Checksum:    "abc123",
+			Version:     "2.0.0",
+			Action:      rgsv1.DownloadAction_DOWNLOAD_ACTION_ACTIVATE,
+			Reason:      "activate package",
+		},
+	})
+	if err != nil {
+		t.Fatalf("record activate missing signature err: %v", err)
+	}
+	if deniedMissingSig.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid for missing signature, got=%v", deniedMissingSig.Meta.GetResultCode())
+	}
+
+	validEntry := &rgsv1.DownloadLibraryEntry{
+		LibraryPath: "games/slot-a.pkg",
+		Checksum:    "abc123",
+		Version:     "2.0.0",
+		Action:      rgsv1.DownloadAction_DOWNLOAD_ACTION_ACTIVATE,
+		Reason:      "activate package",
+		SignerKid:   "k1",
+	}
+	validEntry.Signature = signDownloadEntryForTest(validEntry, []byte("download-signing-secret"))
+	okResp, err := svc.RecordDownloadLibraryChange(ctx, &rgsv1.RecordDownloadLibraryChangeRequest{
+		Meta:  meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Entry: validEntry,
+	})
+	if err != nil {
+		t.Fatalf("record activate with signature err: %v", err)
+	}
+	if okResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected ok with valid signature, got=%v", okResp.Meta.GetResultCode())
+	}
+
+	badEntry := &rgsv1.DownloadLibraryEntry{
+		LibraryPath: "games/slot-a.pkg",
+		Checksum:    "abc123",
+		Version:     "2.0.0",
+		Action:      rgsv1.DownloadAction_DOWNLOAD_ACTION_ACTIVATE,
+		Reason:      "activate package",
+		SignerKid:   "k1",
+		Signature:   "invalid-signature",
+	}
+	deniedBadSig, err := svc.RecordDownloadLibraryChange(ctx, &rgsv1.RecordDownloadLibraryChangeRequest{
+		Meta:  meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Entry: badEntry,
+	})
+	if err != nil {
+		t.Fatalf("record activate invalid signature err: %v", err)
+	}
+	if deniedBadSig.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied for invalid signature, got=%v", deniedBadSig.Meta.GetResultCode())
 	}
 }

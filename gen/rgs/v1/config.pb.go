@@ -282,6 +282,9 @@ type DownloadLibraryEntry struct {
 	ChangedBy     string                 `protobuf:"bytes,6,opt,name=changed_by,json=changedBy,proto3" json:"changed_by,omitempty"`
 	Reason        string                 `protobuf:"bytes,7,opt,name=reason,proto3" json:"reason,omitempty"`
 	OccurredAt    string                 `protobuf:"bytes,8,opt,name=occurred_at,json=occurredAt,proto3" json:"occurred_at,omitempty"`
+	SignerKid     string                 `protobuf:"bytes,9,opt,name=signer_kid,json=signerKid,proto3" json:"signer_kid,omitempty"`
+	Signature     string                 `protobuf:"bytes,10,opt,name=signature,proto3" json:"signature,omitempty"`
+	SignatureAlg  string                 `protobuf:"bytes,11,opt,name=signature_alg,json=signatureAlg,proto3" json:"signature_alg,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -368,6 +371,27 @@ func (x *DownloadLibraryEntry) GetReason() string {
 func (x *DownloadLibraryEntry) GetOccurredAt() string {
 	if x != nil {
 		return x.OccurredAt
+	}
+	return ""
+}
+
+func (x *DownloadLibraryEntry) GetSignerKid() string {
+	if x != nil {
+		return x.SignerKid
+	}
+	return ""
+}
+
+func (x *DownloadLibraryEntry) GetSignature() string {
+	if x != nil {
+		return x.Signature
+	}
+	return ""
+}
+
+func (x *DownloadLibraryEntry) GetSignatureAlg() string {
+	if x != nil {
+		return x.SignatureAlg
 	}
 	return ""
 }
@@ -1102,7 +1126,7 @@ const file_rgs_v1_config_proto_rawDesc = "" +
 	"\vapproved_at\x18\f \x01(\tR\n" +
 	"approvedAt\x12\x1d\n" +
 	"\n" +
-	"applied_at\x18\r \x01(\tR\tappliedAt\"\x92\x02\n" +
+	"applied_at\x18\r \x01(\tR\tappliedAt\"\xf4\x02\n" +
 	"\x14DownloadLibraryEntry\x12\x19\n" +
 	"\bentry_id\x18\x01 \x01(\tR\aentryId\x12!\n" +
 	"\flibrary_path\x18\x02 \x01(\tR\vlibraryPath\x12\x1a\n" +
@@ -1113,7 +1137,12 @@ const file_rgs_v1_config_proto_rawDesc = "" +
 	"changed_by\x18\x06 \x01(\tR\tchangedBy\x12\x16\n" +
 	"\x06reason\x18\a \x01(\tR\x06reason\x12\x1f\n" +
 	"\voccurred_at\x18\b \x01(\tR\n" +
-	"occurredAt\"\xce\x01\n" +
+	"occurredAt\x12\x1d\n" +
+	"\n" +
+	"signer_kid\x18\t \x01(\tR\tsignerKid\x12\x1c\n" +
+	"\tsignature\x18\n" +
+	" \x01(\tR\tsignature\x12#\n" +
+	"\rsignature_alg\x18\v \x01(\tR\fsignatureAlg\"\xce\x01\n" +
 	"\x1aProposeConfigChangeRequest\x12'\n" +
 	"\x04meta\x18\x01 \x01(\v2\x13.rgs.v1.RequestMetaR\x04meta\x12)\n" +
 	"\x10config_namespace\x18\x02 \x01(\tR\x0fconfigNamespace\x12\x1d\n" +

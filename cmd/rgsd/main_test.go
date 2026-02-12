@@ -110,3 +110,13 @@ func TestLoadJWTKeysetFromFile(t *testing.T) {
 		t.Fatalf("expected non-empty fingerprint")
 	}
 }
+
+func TestParseKeyValueSecrets(t *testing.T) {
+	keys := parseKeyValueSecrets("k1:secret1, k2:secret2, invalid, :missing")
+	if len(keys) != 2 {
+		t.Fatalf("expected 2 parsed keys, got=%d", len(keys))
+	}
+	if string(keys["k1"]) != "secret1" || string(keys["k2"]) != "secret2" {
+		t.Fatalf("unexpected key parsing result")
+	}
+}
