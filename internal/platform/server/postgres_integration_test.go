@@ -56,6 +56,9 @@ TRUNCATE TABLE
   identity_lockouts,
   identity_credentials,
   remote_access_activity,
+  system_window_events,
+  promotional_awards,
+  bonus_transactions,
   audit_events
 RESTART IDENTITY CASCADE
 `

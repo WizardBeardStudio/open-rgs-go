@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package rgs.v1;
+
+option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+
+import "google/api/annotations.proto";
+import "rgs/v1/common.proto";
+import "rgs/v1/ledger.proto";
+
+enum PromotionalAwardType {
+  PROMOTIONAL_AWARD_TYPE_UNSPECIFIED = 0;
+  PROMOTIONAL_AWARD_TYPE_FREEPLAY = 1;
+  PROMOTIONAL_AWARD_TYPE_MATCH_BONUS = 2;
+  PROMOTIONAL_AWARD_TYPE_LOYALTY_POINTS = 3;
+  PROMOTIONAL_AWARD_TYPE_NON_CASHABLE_CREDIT = 4;
+}
+
+enum SystemWindowEventType {
+  SYSTEM_WINDOW_EVENT_TYPE_UNSPECIFIED = 0;
+  SYSTEM_WINDOW_EVENT_TYPE_OPENED = 1;
+  SYSTEM_WINDOW_EVENT_TYPE_CLOSED = 2;
+  SYSTEM_WINDOW_EVENT_TYPE_DECLINED = 3;
+  SYSTEM_WINDOW_EVENT_TYPE_TIMED_OUT = 4;
+}
+
+message BonusTransaction {
+  string bonus_transaction_id = 1;
+  string equipment_id = 2;
+  string player_id = 3;
+  string campaign_id = 4;
+  string meter_name = 5;
+  Money amount = 6;
+  string occurred_at = 7;
+}
+
+message PromotionalAward {
+  string promotional_award_id = 1;
+  string player_id = 2;
+  PromotionalAwardType award_type = 3;
+  Money amount = 4;
+  string campaign_id = 5;
+  string occurred_at = 6;
+}
+
+message SystemWindowEvent {
+  string event_id = 1;
+  string equipment_id = 2;
+  string player_id = 3;
+  string window_id = 4;
+  SystemWindowEventType event_type = 5;
+  string event_time = 6;
+  string details = 7;
+}
+
+service PromotionsService {
+  rpc RecordBonusTransaction(RecordBonusTransactionRequest) returns (RecordBonusTransactionResponse) {
+    option (google.api.http) = {
+      post: "/v1/promotions/bonus-transactions"
+      body: "*"
+    };
+  }
+
+  rpc ListRecentBonusTransactions(ListRecentBonusTransactionsRequest) returns (ListRecentBonusTransactionsResponse) {
+    option (google.api.http) = {
+      get: "/v1/promotions/bonus-transactions"
+    };
+  }
+
+  rpc RecordPromotionalAward(RecordPromotionalAwardRequest) returns (RecordPromotionalAwardResponse) {
+    option (google.api.http) = {
+      post: "/v1/promotions/awards"
+      body: "*"
+    };
+  }
+}
+
+service UISystemOverlayService {
+  rpc SubmitSystemWindowEvent(SubmitSystemWindowEventRequest) returns (SubmitSystemWindowEventResponse) {
+    option (google.api.http) = {
+      post: "/v1/ui/system-window-events"
+      body: "*"
+    };
+  }
+
+  rpc ListSystemWindowEvents(ListSystemWindowEventsRequest) returns (ListSystemWindowEventsResponse) {
+    option (google.api.http) = {
+      get: "/v1/ui/system-window-events"
+    };
+  }
+}
+
+message RecordBonusTransactionRequest {
+  RequestMeta meta = 1;
+  BonusTransaction transaction = 2;
+}
+
+message RecordBonusTransactionResponse {
+  ResponseMeta meta = 1;
+  BonusTransaction transaction = 2;
+}
+
+message ListRecentBonusTransactionsRequest {
+  RequestMeta meta = 1;
+  string equipment_id = 2;
+  int32 limit = 3;
+}
+
+message ListRecentBonusTransactionsResponse {
+  ResponseMeta meta = 1;
+  repeated BonusTransaction transactions = 2;
+}
+
+message RecordPromotionalAwardRequest {
+  RequestMeta meta = 1;
+  PromotionalAward award = 2;
+}
+
+message RecordPromotionalAwardResponse {
+  ResponseMeta meta = 1;
+  PromotionalAward award = 2;
+}
+
+message SubmitSystemWindowEventRequest {
+  RequestMeta meta = 1;
+  SystemWindowEvent event = 2;
+}
+
+message SubmitSystemWindowEventResponse {
+  ResponseMeta meta = 1;
+  SystemWindowEvent event = 2;
+}
+
+message ListSystemWindowEventsRequest {
+  RequestMeta meta = 1;
+  string equipment_id = 2;
+  string from_time = 3;
+  string to_time = 4;
+  int32 page_size = 5;
+  string page_token = 6;
+}
+
+message ListSystemWindowEventsResponse {
+  ResponseMeta meta = 1;
+  repeated SystemWindowEvent events = 2;
+  string next_page_token = 3;
+}

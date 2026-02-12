@@ -16,6 +16,7 @@ Implemented and wired:
 - `ReportingService` (DTD/MTD/YTD/LTD, JSON/CSV)
 - `ConfigService` (propose/approve/apply workflow + download-library logs)
 - `AuditService` (audit event retrieval + remote-access activity retrieval)
+- Promotions/UI scaffold contracts (bonus/promo/system-window event APIs in proto for next-stage implementation)
 
 Current persistence model:
 - Runtime services support optional PostgreSQL-backed paths when `RGS_DATABASE_URL` is configured.
@@ -105,6 +106,7 @@ Schema files are ordered and additive:
 - `000006_identity_auth.*` identity credentials and lockout tracking
 - `000007_identity_sessions.*` refresh-session persistence and cleanup
 - `000008_remote_access_activity.*` remote access activity persistence
+- `000009_bonus_ui_scaffolds.*` bonusing/promotions/UI overlay recall scaffolds
 
 Apply migrations with your preferred migration runner in numeric order.
 
@@ -198,6 +200,7 @@ Additional controls:
 Deployment guidance:
 - `docs/deployment/FIREWALL_LOGGING.md`
 - `docs/deployment/METRICS_ALERTING.md`
+- `docs/deployment/WIRELESS_ONBOARDING.md`
 
 ## 10. API Surface (Current)
 
@@ -211,6 +214,7 @@ Services and methods are defined in:
 - `api/proto/rgs/v1/reporting.proto`
 - `api/proto/rgs/v1/config.proto`
 - `api/proto/rgs/v1/audit.proto`
+- `api/proto/rgs/v1/extensions.proto` (bonusing/promotions/UI overlay scaffolds)
 
 Cross-cutting request/response metadata is in `api/proto/rgs/v1/common.proto`.
 
