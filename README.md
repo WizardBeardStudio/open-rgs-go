@@ -250,6 +250,7 @@ Chaos tests:
 - Requirements traceability: `docs/compliance/REQUIREMENTS.md`
 - Threat model: `docs/compliance/THREAT_MODEL.md`
 - Report catalog: `docs/compliance/REPORT_CATALOG.md`
+- Production readiness rounds: `docs/compliance/PRODUCTION_READINESS_ROUNDS.md`
 
 ## 13. Known Limitations and Next Work
 
