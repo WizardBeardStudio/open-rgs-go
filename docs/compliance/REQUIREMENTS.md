@@ -184,9 +184,9 @@ This document maps implemented requirements to standards references, code locati
 
 ## RGS-0605 Identity Credential Management and Lockout Controls
 - Standard refs: GLI-13 workstation/account controls and lockout expectations, GLI-21 unauthorized access prevention
-- Code: `api/proto/rgs/v1/identity.proto`, `internal/platform/server/identity_grpc.go`, `migrations/000006_identity_auth.up.sql`, `cmd/credhash/main.go`, `cmd/rgsd/main.go`
+- Code: `api/proto/rgs/v1/identity.proto`, `internal/platform/server/identity_grpc.go`, `internal/platform/server/identity_postgres.go`, `migrations/000006_identity_auth.up.sql`, `cmd/credhash/main.go`, `cmd/rgsd/main.go`
 - Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/postgres_integration_test.go`
-- Status: implemented (credential set/rotation API, bcrypt verification, failed-attempt lockout policy)
+- Status: implemented (credential set/rotation, enable/disable controls, bcrypt verification, lockout status/reset operations, failed-attempt lockout policy)
 
 ## RGS-0606 Refresh Session Revocation, Persistence, and Expiry Sweep
 - Standard refs: GLI-13 session/account control expectations and retention controls
@@ -199,3 +199,9 @@ This document maps implemented requirements to standards references, code locati
 - Code: `cmd/rgsd/main.go`, `internal/platform/server/identity_postgres.go`, `migrations/000006_identity_auth.up.sql`
 - Tests: `internal/platform/server/postgres_integration_test.go`
 - Status: implemented (startup fails when DB mode is enabled and no active credentials exist)
+
+## RGS-0608 Identity Authentication Observability and Alerting
+- Standard refs: GLI-13/GLI-21 operational monitoring and security event review expectations
+- Code: `internal/platform/server/metrics.go`, `cmd/rgsd/main.go`, `docs/deployment/METRICS_ALERTING.md`
+- Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/postgres_integration_test.go`
+- Status: implemented (login outcome counters, lockout activation counters, session-state gauges, and baseline alert rules)
