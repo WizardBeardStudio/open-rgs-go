@@ -10,6 +10,7 @@ Implemented and wired:
 - `SystemService`
 - `IdentityService` (player/operator login, refresh, logout)
 - `LedgerService` (cashless semantics, idempotency, invariants)
+- `WageringService` (wager placement, settlement, cancellation)
 - `RegistryService` (equipment registry)
 - `EventsService` (significant events/meters with buffering semantics)
 - `ReportingService` (DTD/MTD/YTD/LTD, JSON/CSV)
@@ -202,6 +203,7 @@ Services and methods are defined in:
 - `api/proto/rgs/v1/system.proto`
 - `api/proto/rgs/v1/identity.proto`
 - `api/proto/rgs/v1/ledger.proto`
+- `api/proto/rgs/v1/wagering.proto`
 - `api/proto/rgs/v1/registry.proto`
 - `api/proto/rgs/v1/events.proto`
 - `api/proto/rgs/v1/reporting.proto`

@@ -146,6 +146,8 @@ func main() {
 		}
 	})
 	rgsv1.RegisterLedgerServiceServer(grpcServer, ledgerSvc)
+	wageringSvc := server.NewWageringService(clk)
+	rgsv1.RegisterWageringServiceServer(grpcServer, wageringSvc)
 	registrySvc := server.NewRegistryService(clk, db)
 	rgsv1.RegisterRegistryServiceServer(grpcServer, registrySvc)
 	eventsSvc := server.NewEventsService(clk, db)
@@ -173,6 +175,9 @@ func main() {
 	}
 	if err := rgsv1.RegisterLedgerServiceHandlerServer(ctx, gwMux, ledgerSvc); err != nil {
 		log.Fatalf("register ledger gateway handlers: %v", err)
+	}
+	if err := rgsv1.RegisterWageringServiceHandlerServer(ctx, gwMux, wageringSvc); err != nil {
+		log.Fatalf("register wagering gateway handlers: %v", err)
 	}
 	if err := rgsv1.RegisterRegistryServiceHandlerServer(ctx, gwMux, registrySvc); err != nil {
 		log.Fatalf("register registry gateway handlers: %v", err)

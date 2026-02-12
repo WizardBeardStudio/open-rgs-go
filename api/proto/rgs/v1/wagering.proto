@@ -1,0 +1,88 @@
+syntax = "proto3";
+
+package rgs.v1;
+
+option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+
+import "google/api/annotations.proto";
+import "rgs/v1/common.proto";
+import "rgs/v1/ledger.proto";
+
+enum WagerStatus {
+  WAGER_STATUS_UNSPECIFIED = 0;
+  WAGER_STATUS_PENDING = 1;
+  WAGER_STATUS_SETTLED = 2;
+  WAGER_STATUS_CANCELED = 3;
+}
+
+message Wager {
+  string wager_id = 1;
+  string player_id = 2;
+  string game_id = 3;
+  Money stake = 4;
+  WagerStatus status = 5;
+  Money payout = 6;
+  string outcome_ref = 7;
+  string placed_at = 8;
+  string settled_at = 9;
+  string canceled_at = 10;
+  string cancel_reason = 11;
+}
+
+service WageringService {
+  rpc PlaceWager(PlaceWagerRequest) returns (PlaceWagerResponse) {
+    option (google.api.http) = {
+      post: "/v1/wagering/wagers"
+      body: "*"
+    };
+  }
+
+  rpc SettleWager(SettleWagerRequest) returns (SettleWagerResponse) {
+    option (google.api.http) = {
+      post: "/v1/wagering/wagers/{wager_id}:settle"
+      body: "*"
+    };
+  }
+
+  rpc CancelWager(CancelWagerRequest) returns (CancelWagerResponse) {
+    option (google.api.http) = {
+      post: "/v1/wagering/wagers/{wager_id}:cancel"
+      body: "*"
+    };
+  }
+}
+
+message PlaceWagerRequest {
+  RequestMeta meta = 1;
+  string player_id = 2;
+  string game_id = 3;
+  Money stake = 4;
+}
+
+message PlaceWagerResponse {
+  ResponseMeta meta = 1;
+  Wager wager = 2;
+}
+
+message SettleWagerRequest {
+  RequestMeta meta = 1;
+  string wager_id = 2;
+  Money payout = 3;
+  string outcome_ref = 4;
+}
+
+message SettleWagerResponse {
+  ResponseMeta meta = 1;
+  Wager wager = 2;
+}
+
+message CancelWagerRequest {
+  RequestMeta meta = 1;
+  string wager_id = 2;
+  string reason = 3;
+}
+
+message CancelWagerResponse {
+  ResponseMeta meta = 1;
+  Wager wager = 2;
+}

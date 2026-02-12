@@ -1,0 +1,288 @@
+package server
+
+import (
+	"context"
+	"encoding/json"
+	"strconv"
+	"sync"
+	"time"
+
+	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
+	"github.com/wizardbeard/open-rgs-go/internal/platform/clock"
+	"google.golang.org/protobuf/proto"
+)
+
+type WageringService struct {
+	rgsv1.UnimplementedWageringServiceServer
+
+	Clock      clock.Clock
+	AuditStore *audit.InMemoryStore
+
+	mu                  sync.Mutex
+	wagers              map[string]*rgsv1.Wager
+	placeByIdempotency  map[string]*rgsv1.PlaceWagerResponse
+	settleByIdempotency map[string]*rgsv1.SettleWagerResponse
+	cancelByIdempotency map[string]*rgsv1.CancelWagerResponse
+	nextWagerID         int64
+	nextAuditID         int64
+}
+
+func NewWageringService(clk clock.Clock) *WageringService {
+	return &WageringService{
+		Clock:               clk,
+		AuditStore:          audit.NewInMemoryStore(),
+		wagers:              make(map[string]*rgsv1.Wager),
+		placeByIdempotency:  make(map[string]*rgsv1.PlaceWagerResponse),
+		settleByIdempotency: make(map[string]*rgsv1.SettleWagerResponse),
+		cancelByIdempotency: make(map[string]*rgsv1.CancelWagerResponse),
+	}
+}
+
+func (s *WageringService) now() time.Time {
+	if s.Clock == nil {
+		return time.Now().UTC()
+	}
+	return s.Clock.Now().UTC()
+}
+
+func (s *WageringService) responseMeta(meta *rgsv1.RequestMeta, code rgsv1.ResultCode, denial string) *rgsv1.ResponseMeta {
+	return &rgsv1.ResponseMeta{
+		RequestId:    requestID(meta),
+		ResultCode:   code,
+		DenialReason: denial,
+		ServerTime:   s.now().Format(time.RFC3339Nano),
+	}
+}
+
+func (s *WageringService) nextWagerIDLocked() string {
+	s.nextWagerID++
+	return "wager-" + strconv.FormatInt(s.nextWagerID, 10)
+}
+
+func (s *WageringService) nextAuditIDLocked() string {
+	s.nextAuditID++
+	return "wagering-audit-" + strconv.FormatInt(s.nextAuditID, 10)
+}
+
+func (s *WageringService) appendAudit(meta *rgsv1.RequestMeta, objectID, action string, before, after []byte, result audit.Result, reason string) error {
+	if s.AuditStore == nil {
+		return audit.ErrCorruptChain
+	}
+	actorID := "system"
+	actorType := "service"
+	if meta != nil && meta.Actor != nil {
+		actorID = meta.Actor.ActorId
+		actorType = meta.Actor.ActorType.String()
+	}
+	now := s.now()
+	_, err := s.AuditStore.Append(audit.Event{
+		AuditID:      s.nextAuditIDLocked(),
+		OccurredAt:   now,
+		RecordedAt:   now,
+		ActorID:      actorID,
+		ActorType:    actorType,
+		ObjectType:   "wager",
+		ObjectID:     objectID,
+		Action:       action,
+		Before:       before,
+		After:        after,
+		Result:       result,
+		Reason:       reason,
+		PartitionDay: now.Format("2006-01-02"),
+	})
+	return err
+}
+
+func (s *WageringService) authorizePlace(ctx context.Context, meta *rgsv1.RequestMeta, playerID string) (bool, string) {
+	actor, reason := resolveActor(ctx, meta)
+	if reason != "" {
+		return false, reason
+	}
+	switch actor.ActorType {
+	case rgsv1.ActorType_ACTOR_TYPE_OPERATOR, rgsv1.ActorType_ACTOR_TYPE_SERVICE:
+		return true, ""
+	case rgsv1.ActorType_ACTOR_TYPE_PLAYER:
+		if actor.ActorId != playerID {
+			return false, "player cannot place wager for another player"
+		}
+		return true, ""
+	default:
+		return false, "unauthorized actor type"
+	}
+}
+
+func (s *WageringService) authorizeSettlement(ctx context.Context, meta *rgsv1.RequestMeta) (bool, string) {
+	actor, reason := resolveActor(ctx, meta)
+	if reason != "" {
+		return false, reason
+	}
+	switch actor.ActorType {
+	case rgsv1.ActorType_ACTOR_TYPE_OPERATOR, rgsv1.ActorType_ACTOR_TYPE_SERVICE:
+		return true, ""
+	default:
+		return false, "unauthorized actor type"
+	}
+}
+
+func cloneWager(in *rgsv1.Wager) *rgsv1.Wager {
+	if in == nil {
+		return nil
+	}
+	cp, _ := proto.Clone(in).(*rgsv1.Wager)
+	return cp
+}
+
+func clonePlaceResponse(in *rgsv1.PlaceWagerResponse) *rgsv1.PlaceWagerResponse {
+	if in == nil {
+		return nil
+	}
+	cp, _ := proto.Clone(in).(*rgsv1.PlaceWagerResponse)
+	return cp
+}
+
+func cloneSettleResponse(in *rgsv1.SettleWagerResponse) *rgsv1.SettleWagerResponse {
+	if in == nil {
+		return nil
+	}
+	cp, _ := proto.Clone(in).(*rgsv1.SettleWagerResponse)
+	return cp
+}
+
+func cloneCancelResponse(in *rgsv1.CancelWagerResponse) *rgsv1.CancelWagerResponse {
+	if in == nil {
+		return nil
+	}
+	cp, _ := proto.Clone(in).(*rgsv1.CancelWagerResponse)
+	return cp
+}
+
+func (s *WageringService) PlaceWager(ctx context.Context, req *rgsv1.PlaceWagerRequest) (*rgsv1.PlaceWagerResponse, error) {
+	if req == nil || req.PlayerId == "" || req.GameId == "" || invalidAmount(req.Stake) {
+		return &rgsv1.PlaceWagerResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "player_id, game_id, and valid stake are required")}, nil
+	}
+	if idempotency(req.Meta) == "" {
+		return &rgsv1.PlaceWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "idempotency_key is required")}, nil
+	}
+	if ok, reason := s.authorizePlace(ctx, req.Meta, req.PlayerId); !ok {
+		_ = s.appendAudit(req.Meta, "", "place_wager", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
+		return &rgsv1.PlaceWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	idemKey := req.PlayerId + "|place|" + idempotency(req.Meta)
+	if prev := s.placeByIdempotency[idemKey]; prev != nil {
+		return clonePlaceResponse(prev), nil
+	}
+
+	now := s.now().Format(time.RFC3339Nano)
+	wager := &rgsv1.Wager{
+		WagerId:    s.nextWagerIDLocked(),
+		PlayerId:   req.PlayerId,
+		GameId:     req.GameId,
+		Stake:      req.Stake,
+		Status:     rgsv1.WagerStatus_WAGER_STATUS_PENDING,
+		PlacedAt:   now,
+		OutcomeRef: "",
+	}
+	s.wagers[wager.WagerId] = wager
+
+	resp := &rgsv1.PlaceWagerResponse{
+		Meta:  s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
+		Wager: cloneWager(wager),
+	}
+	s.placeByIdempotency[idemKey] = clonePlaceResponse(resp)
+	after, _ := json.Marshal(wager)
+	if err := s.appendAudit(req.Meta, wager.WagerId, "place_wager", []byte(`{}`), after, audit.ResultSuccess, ""); err != nil {
+		return &rgsv1.PlaceWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+	return resp, nil
+}
+
+func (s *WageringService) SettleWager(ctx context.Context, req *rgsv1.SettleWagerRequest) (*rgsv1.SettleWagerResponse, error) {
+	if req == nil || req.WagerId == "" || req.OutcomeRef == "" || invalidAmount(req.Payout) {
+		return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "wager_id, outcome_ref, and valid payout are required")}, nil
+	}
+	if idempotency(req.Meta) == "" {
+		return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "idempotency_key is required")}, nil
+	}
+	if ok, reason := s.authorizeSettlement(ctx, req.Meta); !ok {
+		_ = s.appendAudit(req.Meta, req.WagerId, "settle_wager", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
+		return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	idemKey := req.WagerId + "|settle|" + idempotency(req.Meta)
+	if prev := s.settleByIdempotency[idemKey]; prev != nil {
+		return cloneSettleResponse(prev), nil
+	}
+
+	wager := s.wagers[req.WagerId]
+	if wager == nil {
+		return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "wager not found")}, nil
+	}
+	if wager.Status != rgsv1.WagerStatus_WAGER_STATUS_PENDING {
+		return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "wager is not pending")}, nil
+	}
+	before, _ := json.Marshal(wager)
+	wager.Status = rgsv1.WagerStatus_WAGER_STATUS_SETTLED
+	wager.Payout = req.Payout
+	wager.OutcomeRef = req.OutcomeRef
+	wager.SettledAt = s.now().Format(time.RFC3339Nano)
+	after, _ := json.Marshal(wager)
+	resp := &rgsv1.SettleWagerResponse{
+		Meta:  s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
+		Wager: cloneWager(wager),
+	}
+	s.settleByIdempotency[idemKey] = cloneSettleResponse(resp)
+	if err := s.appendAudit(req.Meta, req.WagerId, "settle_wager", before, after, audit.ResultSuccess, ""); err != nil {
+		return &rgsv1.SettleWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+	return resp, nil
+}
+
+func (s *WageringService) CancelWager(ctx context.Context, req *rgsv1.CancelWagerRequest) (*rgsv1.CancelWagerResponse, error) {
+	if req == nil || req.WagerId == "" || req.Reason == "" {
+		return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "wager_id and reason are required")}, nil
+	}
+	if idempotency(req.Meta) == "" {
+		return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "idempotency_key is required")}, nil
+	}
+	if ok, reason := s.authorizeSettlement(ctx, req.Meta); !ok {
+		_ = s.appendAudit(req.Meta, req.WagerId, "cancel_wager", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
+		return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	idemKey := req.WagerId + "|cancel|" + idempotency(req.Meta)
+	if prev := s.cancelByIdempotency[idemKey]; prev != nil {
+		return cloneCancelResponse(prev), nil
+	}
+	wager := s.wagers[req.WagerId]
+	if wager == nil {
+		return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "wager not found")}, nil
+	}
+	if wager.Status != rgsv1.WagerStatus_WAGER_STATUS_PENDING {
+		return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "wager is not pending")}, nil
+	}
+	before, _ := json.Marshal(wager)
+	wager.Status = rgsv1.WagerStatus_WAGER_STATUS_CANCELED
+	wager.CancelReason = req.Reason
+	wager.CanceledAt = s.now().Format(time.RFC3339Nano)
+	after, _ := json.Marshal(wager)
+	resp := &rgsv1.CancelWagerResponse{
+		Meta:  s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""),
+		Wager: cloneWager(wager),
+	}
+	s.cancelByIdempotency[idemKey] = cloneCancelResponse(resp)
+	if err := s.appendAudit(req.Meta, req.WagerId, "cancel_wager", before, after, audit.ResultSuccess, ""); err != nil {
+		return &rgsv1.CancelWagerResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "audit unavailable")}, nil
+	}
+	return resp, nil
+}
