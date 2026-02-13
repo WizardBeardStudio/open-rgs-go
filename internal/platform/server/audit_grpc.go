@@ -23,6 +23,8 @@ type AuditService struct {
 	db          *sql.DB
 }
 
+const maxAuditPageSize = 1000
+
 func NewAuditService(clk clock.Clock, remoteGuard *RemoteAccessGuard, stores ...*audit.InMemoryStore) *AuditService {
 	return &AuditService{Clock: clk, remoteGuard: remoteGuard, stores: stores}
 }
@@ -97,6 +99,9 @@ func (s *AuditService) ListAuditEvents(ctx context.Context, req *rgsv1.ListAudit
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
+	if req.PageSize > maxAuditPageSize {
+		return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "page_size exceeds max allowed")}, nil
+	}
 	if s.db != nil {
 		rows, next, err := listAuditEventsFromDB(ctx, s.db, req.ObjectTypeFilter, req.PageToken, req.PageSize)
 		if err != nil {
@@ -149,6 +154,9 @@ func (s *AuditService) ListRemoteAccessActivities(ctx context.Context, req *rgsv
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.ListRemoteAccessActivitiesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	if req.PageSize > maxAuditPageSize {
+		return &rgsv1.ListRemoteAccessActivitiesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "page_size exceeds max allowed")}, nil
 	}
 
 	activities := make([]*rgsv1.RemoteAccessActivityRecord, 0)

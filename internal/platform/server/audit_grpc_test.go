@@ -167,3 +167,40 @@ func TestAuditServiceListRemoteAccessRejectsInvalidPageToken(t *testing.T) {
 		t.Fatalf("expected invalid page token, got=%v", resp.Meta.GetResultCode())
 	}
 }
+
+func TestAuditServiceListAuditEventsRejectsOversizedPageSize(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 11, 20, 0, 0, time.UTC)}
+	ledgerSvc := NewLedgerService(clk)
+	auditSvc := NewAuditService(clk, nil, ledgerSvc.AuditStore)
+
+	resp, err := auditSvc.ListAuditEvents(context.Background(), &rgsv1.ListAuditEventsRequest{
+		Meta:     meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageSize: maxAuditPageSize + 1,
+	})
+	if err != nil {
+		t.Fatalf("list audit events err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid oversized page_size, got=%v", resp.Meta.GetResultCode())
+	}
+}
+
+func TestAuditServiceListRemoteAccessRejectsOversizedPageSize(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 11, 25, 0, 0, time.UTC)}
+	guard, err := NewRemoteAccessGuard(clk, audit.NewInMemoryStore(), []string{"127.0.0.1/32"})
+	if err != nil {
+		t.Fatalf("new guard err: %v", err)
+	}
+	auditSvc := NewAuditService(clk, guard)
+
+	resp, err := auditSvc.ListRemoteAccessActivities(context.Background(), &rgsv1.ListRemoteAccessActivitiesRequest{
+		Meta:     meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageSize: maxAuditPageSize + 1,
+	})
+	if err != nil {
+		t.Fatalf("list remote access err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid oversized page_size, got=%v", resp.Meta.GetResultCode())
+	}
+}
