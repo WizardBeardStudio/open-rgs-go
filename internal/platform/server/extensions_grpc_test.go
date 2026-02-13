@@ -465,6 +465,40 @@ func TestUISystemOverlayListRejectsInvalidPageToken(t *testing.T) {
 	}
 }
 
+func TestUISystemOverlayListRejectsNegativePageToken(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 56, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListSystemWindowEvents(ctx, &rgsv1.ListSystemWindowEventsRequest{
+		Meta:      meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageToken: "-1",
+	})
+	if err != nil {
+		t.Fatalf("list window events err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for negative page token, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
+func TestPromotionsListAwardsRejectsNegativePageToken(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 37, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListPromotionalAwards(ctx, &rgsv1.ListPromotionalAwardsRequest{
+		Meta:      meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageToken: "-1",
+	})
+	if err != nil {
+		t.Fatalf("list awards err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for negative page token, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
 func TestUISystemOverlayListRejectsInvalidTimeInputs(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 50, 0, 0, time.UTC)}
 	svc := NewUISystemOverlayService(clk)
