@@ -251,6 +251,30 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 		t.Fatalf("expected invalid ui submit result code, got=%s", uiResp.GetMeta().GetResultCode().String())
 	}
 
+	uiBadTypeReq := &rgsv1.SubmitSystemWindowEventRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Event: &rgsv1.SystemWindowEvent{
+			EquipmentId: "eq-1",
+			WindowId:    "sys-menu",
+			EventType:   rgsv1.SystemWindowEventType(99),
+		},
+	}
+	uiBadTypeBody, _ := protojson.Marshal(uiBadTypeReq)
+	uiBadTypeHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/ui/system-window-events", bytes.NewReader(uiBadTypeBody))
+	uiBadTypeHTTPReq.Header.Set("Content-Type", "application/json")
+	uiBadTypeRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(uiBadTypeRec, uiBadTypeHTTPReq)
+	if uiBadTypeRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("ui bad type submit status: got=%d body=%s", uiBadTypeRec.Result().StatusCode, uiBadTypeRec.Body.String())
+	}
+	var uiBadTypeResp rgsv1.SubmitSystemWindowEventResponse
+	if err := protojson.Unmarshal(uiBadTypeRec.Body.Bytes(), &uiBadTypeResp); err != nil {
+		t.Fatalf("unmarshal ui bad type response: %v", err)
+	}
+	if uiBadTypeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid ui bad type result code, got=%s", uiBadTypeResp.GetMeta().GetResultCode().String())
+	}
+
 	playerBonusReq := &rgsv1.RecordBonusTransactionRequest{
 		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
 		Transaction: &rgsv1.BonusTransaction{
@@ -298,6 +322,31 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if playerUIResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied player ui result code, got=%s", playerUIResp.GetMeta().GetResultCode().String())
+	}
+
+	playerAwardReq := &rgsv1.RecordPromotionalAwardRequest{
+		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Award: &rgsv1.PromotionalAward{
+			PlayerId:   "player-1",
+			CampaignId: "camp-1",
+			AwardType:  rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_FREEPLAY,
+			Amount:     &rgsv1.Money{AmountMinor: 50, Currency: "USD"},
+		},
+	}
+	playerAwardBody, _ := protojson.Marshal(playerAwardReq)
+	playerAwardHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/promotions/awards", bytes.NewReader(playerAwardBody))
+	playerAwardHTTPReq.Header.Set("Content-Type", "application/json")
+	playerAwardRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(playerAwardRec, playerAwardHTTPReq)
+	if playerAwardRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("player award record status: got=%d body=%s", playerAwardRec.Result().StatusCode, playerAwardRec.Body.String())
+	}
+	var playerAwardResp rgsv1.RecordPromotionalAwardResponse
+	if err := protojson.Unmarshal(playerAwardRec.Body.Bytes(), &playerAwardResp); err != nil {
+		t.Fatalf("unmarshal player award response: %v", err)
+	}
+	if playerAwardResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied player award result code, got=%s", playerAwardResp.GetMeta().GetResultCode().String())
 	}
 
 	qPlayerBonusList := make(url.Values)
@@ -594,6 +643,15 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if !hasAuditEventWithReason(promoEvents, "record_bonus_transaction", audit.ResultDenied, "unauthorized actor type") {
 		t.Fatalf("expected promo audit reason unauthorized actor type for bonus write, got=%v", promoEvents)
 	}
+	if !hasAuditEventWithReason(promoEvents, "record_promotional_award", audit.ResultDenied, "invalid request") {
+		t.Fatalf("expected promo audit reason invalid request for award write, got=%v", promoEvents)
+	}
+	if !hasAuditEventWithReason(promoEvents, "record_promotional_award", audit.ResultDenied, "invalid occurred_at") {
+		t.Fatalf("expected promo audit reason invalid occurred_at for award write, got=%v", promoEvents)
+	}
+	if !hasAuditEventWithReason(promoEvents, "record_promotional_award", audit.ResultDenied, "unauthorized actor type") {
+		t.Fatalf("expected promo audit reason unauthorized actor type for award write, got=%v", promoEvents)
+	}
 	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "unauthorized actor type") {
 		t.Fatalf("expected promo audit reason unauthorized actor type for bonus list, got=%v", promoEvents)
 	}
@@ -619,6 +677,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if !hasAuditEventWithReason(uiEvents, "submit_system_window_event", audit.ResultDenied, "invalid event_time") {
 		t.Fatalf("expected ui audit reason invalid event_time, got=%v", uiEvents)
+	}
+	if !hasAuditEventWithReason(uiEvents, "submit_system_window_event", audit.ResultDenied, "invalid request") {
+		t.Fatalf("expected ui audit reason invalid request for submit, got=%v", uiEvents)
 	}
 	if !hasAuditEventWithReason(uiEvents, "submit_system_window_event", audit.ResultDenied, "unauthorized actor type") {
 		t.Fatalf("expected ui audit reason unauthorized actor type for submit, got=%v", uiEvents)
