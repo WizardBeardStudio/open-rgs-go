@@ -421,6 +421,13 @@ func TestPromotionsRecordPromotionalAwardRejectsUnknownAwardType(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for unknown award type, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "record_promotional_award" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for invalid award request, got=%v", events)
+	}
+	if events[len(events)-1].Reason != "invalid request" {
+		t.Fatalf("expected audit reason invalid request, got=%q", events[len(events)-1].Reason)
+	}
 }
 
 func TestPromotionsRecordPromotionalAwardRejectsInvalidOccurredAt(t *testing.T) {
@@ -443,6 +450,13 @@ func TestPromotionsRecordPromotionalAwardRejectsInvalidOccurredAt(t *testing.T) 
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for malformed occurred_at, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "record_promotional_award" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for invalid award timestamp, got=%v", events)
+	}
+	if events[len(events)-1].Reason != "invalid occurred_at" {
+		t.Fatalf("expected audit reason invalid occurred_at, got=%q", events[len(events)-1].Reason)
 	}
 }
 
@@ -497,6 +511,13 @@ func TestUISystemOverlaySubmitRejectsUnknownEventType(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for unknown event type, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "submit_system_window_event" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for invalid ui event type, got=%v", events)
+	}
+	if events[len(events)-1].Reason != "invalid request" {
+		t.Fatalf("expected audit reason invalid request, got=%q", events[len(events)-1].Reason)
 	}
 }
 
