@@ -591,11 +591,20 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if !hasAuditEventWithReason(promoEvents, "record_bonus_transaction", audit.ResultDenied, "invalid occurred_at") {
 		t.Fatalf("expected promo audit reason invalid occurred_at, got=%v", promoEvents)
 	}
+	if !hasAuditEventWithReason(promoEvents, "record_bonus_transaction", audit.ResultDenied, "unauthorized actor type") {
+		t.Fatalf("expected promo audit reason unauthorized actor type for bonus write, got=%v", promoEvents)
+	}
+	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "unauthorized actor type") {
+		t.Fatalf("expected promo audit reason unauthorized actor type for bonus list, got=%v", promoEvents)
+	}
 	if !hasAuditEvent(promoEvents, "list_promotional_awards", audit.ResultDenied) {
 		t.Fatalf("expected denied promo audit for invalid/unauthorized awards list path, got=%v", promoEvents)
 	}
 	if !hasAuditEventWithReason(promoEvents, "list_promotional_awards", audit.ResultDenied, "invalid page_token") {
 		t.Fatalf("expected promo audit reason invalid page_token, got=%v", promoEvents)
+	}
+	if !hasAuditEventWithReason(promoEvents, "list_promotional_awards", audit.ResultDenied, "unauthorized actor type") {
+		t.Fatalf("expected promo audit reason unauthorized actor type for awards list, got=%v", promoEvents)
 	}
 	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "invalid limit") {
 		t.Fatalf("expected promo audit reason invalid limit, got=%v", promoEvents)
@@ -611,11 +620,17 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if !hasAuditEventWithReason(uiEvents, "submit_system_window_event", audit.ResultDenied, "invalid event_time") {
 		t.Fatalf("expected ui audit reason invalid event_time, got=%v", uiEvents)
 	}
+	if !hasAuditEventWithReason(uiEvents, "submit_system_window_event", audit.ResultDenied, "unauthorized actor type") {
+		t.Fatalf("expected ui audit reason unauthorized actor type for submit, got=%v", uiEvents)
+	}
 	if !hasAuditEvent(uiEvents, "list_system_window_events", audit.ResultDenied) {
 		t.Fatalf("expected denied ui audit for invalid/unauthorized list path, got=%v", uiEvents)
 	}
 	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "invalid page_token") {
 		t.Fatalf("expected ui audit reason invalid page_token, got=%v", uiEvents)
+	}
+	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "unauthorized actor type") {
+		t.Fatalf("expected ui audit reason unauthorized actor type for list, got=%v", uiEvents)
 	}
 	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "invalid page_size") {
 		t.Fatalf("expected ui audit reason invalid page_size, got=%v", uiEvents)
