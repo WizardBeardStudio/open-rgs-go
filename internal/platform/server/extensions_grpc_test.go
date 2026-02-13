@@ -499,6 +499,23 @@ func TestPromotionsListAwardsRejectsNegativePageToken(t *testing.T) {
 	}
 }
 
+func TestPromotionsListAwardsRejectsInvalidPageToken(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 38, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListPromotionalAwards(ctx, &rgsv1.ListPromotionalAwardsRequest{
+		Meta:      meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageToken: "bad-token",
+	})
+	if err != nil {
+		t.Fatalf("list awards err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for malformed page token, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
 func TestUISystemOverlayListRejectsInvalidTimeInputs(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 50, 0, 0, time.UTC)}
 	svc := NewUISystemOverlayService(clk)
