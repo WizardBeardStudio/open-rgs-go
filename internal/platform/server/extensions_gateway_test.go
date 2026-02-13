@@ -287,6 +287,42 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 		t.Fatalf("expected invalid bad range result code, got=%s", badRangeResp.GetMeta().GetResultCode().String())
 	}
 
+	qBadFrom := make(url.Values)
+	qBadFrom.Set("meta.actor.actorId", "op-1")
+	qBadFrom.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qBadFrom.Set("from_time", "not-a-time")
+	badFromReq := httptest.NewRequest(http.MethodGet, "/v1/ui/system-window-events?"+qBadFrom.Encode(), nil)
+	badFromRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(badFromRec, badFromReq)
+	if badFromRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("ui list bad from_time status: got=%d body=%s", badFromRec.Result().StatusCode, badFromRec.Body.String())
+	}
+	var badFromResp rgsv1.ListSystemWindowEventsResponse
+	if err := protojson.Unmarshal(badFromRec.Body.Bytes(), &badFromResp); err != nil {
+		t.Fatalf("unmarshal ui list bad from_time response: %v", err)
+	}
+	if badFromResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid bad from_time result code, got=%s", badFromResp.GetMeta().GetResultCode().String())
+	}
+
+	qBadTo := make(url.Values)
+	qBadTo.Set("meta.actor.actorId", "op-1")
+	qBadTo.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qBadTo.Set("to_time", "not-a-time")
+	badToReq := httptest.NewRequest(http.MethodGet, "/v1/ui/system-window-events?"+qBadTo.Encode(), nil)
+	badToRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(badToRec, badToReq)
+	if badToRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("ui list bad to_time status: got=%d body=%s", badToRec.Result().StatusCode, badToRec.Body.String())
+	}
+	var badToResp rgsv1.ListSystemWindowEventsResponse
+	if err := protojson.Unmarshal(badToRec.Body.Bytes(), &badToResp); err != nil {
+		t.Fatalf("unmarshal ui list bad to_time response: %v", err)
+	}
+	if badToResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid bad to_time result code, got=%s", badToResp.GetMeta().GetResultCode().String())
+	}
+
 	qBadBonusLimit := make(url.Values)
 	qBadBonusLimit.Set("meta.actor.actorId", "op-1")
 	qBadBonusLimit.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
