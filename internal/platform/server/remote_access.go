@@ -45,6 +45,7 @@ type RemoteAccessGuard struct {
 }
 
 var errRemoteAccessLogCapacityExceeded = errors.New("remote access activity log capacity exceeded")
+var errRemoteAccessAuditUnavailable = errors.New("remote access audit unavailable")
 
 func NewRemoteAccessGuard(clk clock.Clock, store *audit.InMemoryStore, cidrs []string) (*RemoteAccessGuard, error) {
 	trusted := make([]*net.IPNet, 0, len(cidrs))
@@ -64,6 +65,9 @@ func NewRemoteAccessGuard(clk clock.Clock, store *audit.InMemoryStore, cidrs []s
 			_, ipnet, _ := net.ParseCIDR(c)
 			trusted = append(trusted, ipnet)
 		}
+	}
+	if store == nil {
+		store = audit.NewInMemoryStore()
 	}
 	return &RemoteAccessGuard{Clock: clk, AuditStore: store, trusted: trusted}, nil
 }
@@ -171,9 +175,9 @@ func (g *RemoteAccessGuard) isTrusted(ipStr string) bool {
 	return false
 }
 
-func (g *RemoteAccessGuard) appendAudit(path, sourceIP, outcome, reason string) {
+func (g *RemoteAccessGuard) appendAudit(path, sourceIP, outcome, reason string) error {
 	if g.AuditStore == nil {
-		return
+		return errRemoteAccessAuditUnavailable
 	}
 	now := g.now()
 	g.mu.Lock()
@@ -202,9 +206,14 @@ func (g *RemoteAccessGuard) appendAudit(path, sourceIP, outcome, reason string) 
 		PartitionDay: now.Format("2006-01-02"),
 	}
 	if db != nil {
-		_ = appendAuditEventToDB(context.Background(), db, ev)
+		if err := appendAuditEventToDB(context.Background(), db, ev); err != nil {
+			return err
+		}
 	}
-	_, _ = g.AuditStore.Append(ev)
+	if _, err := g.AuditStore.Append(ev); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (g *RemoteAccessGuard) logActivity(r *http.Request, sourceIP, sourcePort string, allowed bool, reason string) error {
@@ -361,12 +370,37 @@ func (g *RemoteAccessGuard) Wrap(next http.Handler) http.Handler {
 			if observer != nil {
 				observer("denied")
 			}
-			g.appendAudit(r.URL.Path, sourceIP, "denied", "source ip outside trusted network")
+			if err := g.appendAudit(r.URL.Path, sourceIP, "denied", "source ip outside trusted network"); err != nil {
+				g.mu.Lock()
+				failClosed := g.failClosedLogPersist
+				observer := g.onDecision
+				g.mu.Unlock()
+				if observer != nil {
+					observer("logging_unavailable")
+				}
+				if failClosed {
+					http.Error(w, "remote access logging unavailable", http.StatusServiceUnavailable)
+					return
+				}
+			}
 			http.Error(w, "remote access denied", http.StatusForbidden)
 			return
 		}
 
 		if err := g.logActivity(r, sourceIP, sourcePort, true, ""); err != nil {
+			g.mu.Lock()
+			failClosed := g.failClosedLogPersist
+			observer := g.onDecision
+			g.mu.Unlock()
+			if observer != nil {
+				observer("logging_unavailable")
+			}
+			if failClosed {
+				http.Error(w, "remote access logging unavailable", http.StatusServiceUnavailable)
+				return
+			}
+		}
+		if err := g.appendAudit(r.URL.Path, sourceIP, "allowed", ""); err != nil {
 			g.mu.Lock()
 			failClosed := g.failClosedLogPersist
 			observer := g.onDecision
@@ -385,7 +419,6 @@ func (g *RemoteAccessGuard) Wrap(next http.Handler) http.Handler {
 		if observer != nil {
 			observer("allowed")
 		}
-		g.appendAudit(r.URL.Path, sourceIP, "allowed", "")
 		next.ServeHTTP(w, r)
 	})
 }
