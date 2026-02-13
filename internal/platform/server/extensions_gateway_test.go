@@ -299,6 +299,57 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 		t.Fatalf("expected denied player ui result code, got=%s", playerUIResp.GetMeta().GetResultCode().String())
 	}
 
+	qPlayerBonusList := make(url.Values)
+	qPlayerBonusList.Set("meta.actor.actorId", "player-1")
+	qPlayerBonusList.Set("meta.actor.actorType", "ACTOR_TYPE_PLAYER")
+	playerBonusListReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/bonus-transactions?"+qPlayerBonusList.Encode(), nil)
+	playerBonusListRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(playerBonusListRec, playerBonusListReq)
+	if playerBonusListRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("player bonus list status: got=%d body=%s", playerBonusListRec.Result().StatusCode, playerBonusListRec.Body.String())
+	}
+	var playerBonusListResp rgsv1.ListRecentBonusTransactionsResponse
+	if err := protojson.Unmarshal(playerBonusListRec.Body.Bytes(), &playerBonusListResp); err != nil {
+		t.Fatalf("unmarshal player bonus list response: %v", err)
+	}
+	if playerBonusListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied player bonus list result code, got=%s", playerBonusListResp.GetMeta().GetResultCode().String())
+	}
+
+	qPlayerAwardsList := make(url.Values)
+	qPlayerAwardsList.Set("meta.actor.actorId", "player-1")
+	qPlayerAwardsList.Set("meta.actor.actorType", "ACTOR_TYPE_PLAYER")
+	playerAwardsListReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/awards?"+qPlayerAwardsList.Encode(), nil)
+	playerAwardsListRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(playerAwardsListRec, playerAwardsListReq)
+	if playerAwardsListRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("player awards list status: got=%d body=%s", playerAwardsListRec.Result().StatusCode, playerAwardsListRec.Body.String())
+	}
+	var playerAwardsListResp rgsv1.ListPromotionalAwardsResponse
+	if err := protojson.Unmarshal(playerAwardsListRec.Body.Bytes(), &playerAwardsListResp); err != nil {
+		t.Fatalf("unmarshal player awards list response: %v", err)
+	}
+	if playerAwardsListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied player awards list result code, got=%s", playerAwardsListResp.GetMeta().GetResultCode().String())
+	}
+
+	qPlayerUIList := make(url.Values)
+	qPlayerUIList.Set("meta.actor.actorId", "player-1")
+	qPlayerUIList.Set("meta.actor.actorType", "ACTOR_TYPE_PLAYER")
+	playerUIListReq := httptest.NewRequest(http.MethodGet, "/v1/ui/system-window-events?"+qPlayerUIList.Encode(), nil)
+	playerUIListRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(playerUIListRec, playerUIListReq)
+	if playerUIListRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("player ui list status: got=%d body=%s", playerUIListRec.Result().StatusCode, playerUIListRec.Body.String())
+	}
+	var playerUIListResp rgsv1.ListSystemWindowEventsResponse
+	if err := protojson.Unmarshal(playerUIListRec.Body.Bytes(), &playerUIListResp); err != nil {
+		t.Fatalf("unmarshal player ui list response: %v", err)
+	}
+	if playerUIListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied player ui list result code, got=%s", playerUIListResp.GetMeta().GetResultCode().String())
+	}
+
 	qBadPageToken := make(url.Values)
 	qBadPageToken.Set("meta.actor.actorId", "op-1")
 	qBadPageToken.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
