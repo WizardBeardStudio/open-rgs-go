@@ -135,3 +135,104 @@ func TestExtensionsGatewayParity_Workflow(t *testing.T) {
 		t.Fatalf("expected 1 system window event, got=%d", len(listUIResp.Events))
 	}
 }
+
+func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 13, 0, 0, 0, time.UTC)}
+	promoSvc := NewPromotionsService(clk)
+	uiSvc := NewUISystemOverlayService(clk)
+
+	gwMux := runtime.NewServeMux()
+	if err := rgsv1.RegisterPromotionsServiceHandlerServer(context.Background(), gwMux, promoSvc); err != nil {
+		t.Fatalf("register promotions gateway handlers: %v", err)
+	}
+	if err := rgsv1.RegisterUISystemOverlayServiceHandlerServer(context.Background(), gwMux, uiSvc); err != nil {
+		t.Fatalf("register ui gateway handlers: %v", err)
+	}
+
+	awardReq := &rgsv1.RecordPromotionalAwardRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Award: &rgsv1.PromotionalAward{
+			PlayerId:   "player-1",
+			CampaignId: "camp-1",
+			AwardType:  rgsv1.PromotionalAwardType(99),
+			Amount:     &rgsv1.Money{AmountMinor: 50, Currency: "USD"},
+		},
+	}
+	awardBody, _ := protojson.Marshal(awardReq)
+	awardHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/promotions/awards", bytes.NewReader(awardBody))
+	awardHTTPReq.Header.Set("Content-Type", "application/json")
+	awardRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(awardRec, awardHTTPReq)
+	if awardRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("award record status: got=%d body=%s", awardRec.Result().StatusCode, awardRec.Body.String())
+	}
+	var awardResp rgsv1.RecordPromotionalAwardResponse
+	if err := protojson.Unmarshal(awardRec.Body.Bytes(), &awardResp); err != nil {
+		t.Fatalf("unmarshal award response: %v", err)
+	}
+	if awardResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid award result code, got=%s", awardResp.GetMeta().GetResultCode().String())
+	}
+
+	uiReq := &rgsv1.SubmitSystemWindowEventRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Event: &rgsv1.SystemWindowEvent{
+			EquipmentId: "eq-1",
+			WindowId:    "sys-menu",
+			EventType:   rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_OPENED,
+			EventTime:   "bad-time",
+		},
+	}
+	uiBody, _ := protojson.Marshal(uiReq)
+	uiHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/ui/system-window-events", bytes.NewReader(uiBody))
+	uiHTTPReq.Header.Set("Content-Type", "application/json")
+	uiRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(uiRec, uiHTTPReq)
+	if uiRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("ui submit status: got=%d body=%s", uiRec.Result().StatusCode, uiRec.Body.String())
+	}
+	var uiResp rgsv1.SubmitSystemWindowEventResponse
+	if err := protojson.Unmarshal(uiRec.Body.Bytes(), &uiResp); err != nil {
+		t.Fatalf("unmarshal ui submit response: %v", err)
+	}
+	if uiResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid ui submit result code, got=%s", uiResp.GetMeta().GetResultCode().String())
+	}
+
+	qBadPageToken := make(url.Values)
+	qBadPageToken.Set("meta.actor.actorId", "op-1")
+	qBadPageToken.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qBadPageToken.Set("page_token", "bad-token")
+	badPageReq := httptest.NewRequest(http.MethodGet, "/v1/ui/system-window-events?"+qBadPageToken.Encode(), nil)
+	badPageRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(badPageRec, badPageReq)
+	if badPageRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("ui list bad page token status: got=%d body=%s", badPageRec.Result().StatusCode, badPageRec.Body.String())
+	}
+	var badPageResp rgsv1.ListSystemWindowEventsResponse
+	if err := protojson.Unmarshal(badPageRec.Body.Bytes(), &badPageResp); err != nil {
+		t.Fatalf("unmarshal ui list bad page token response: %v", err)
+	}
+	if badPageResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid page token result code, got=%s", badPageResp.GetMeta().GetResultCode().String())
+	}
+
+	qBadRange := make(url.Values)
+	qBadRange.Set("meta.actor.actorId", "op-1")
+	qBadRange.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qBadRange.Set("from_time", "2026-02-16T13:00:00Z")
+	qBadRange.Set("to_time", "2026-02-16T12:00:00Z")
+	badRangeReq := httptest.NewRequest(http.MethodGet, "/v1/ui/system-window-events?"+qBadRange.Encode(), nil)
+	badRangeRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(badRangeRec, badRangeReq)
+	if badRangeRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("ui list bad range status: got=%d body=%s", badRangeRec.Result().StatusCode, badRangeRec.Body.String())
+	}
+	var badRangeResp rgsv1.ListSystemWindowEventsResponse
+	if err := protojson.Unmarshal(badRangeRec.Body.Bytes(), &badRangeResp); err != nil {
+		t.Fatalf("unmarshal ui list bad range response: %v", err)
+	}
+	if badRangeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid bad range result code, got=%s", badRangeResp.GetMeta().GetResultCode().String())
+	}
+}
