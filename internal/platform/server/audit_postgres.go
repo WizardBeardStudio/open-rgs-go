@@ -127,9 +127,11 @@ func listAuditEventsFromDB(ctx context.Context, db *sql.DB, objectTypeFilter str
 	}
 	start := 0
 	if pageToken != "" {
-		if n, err := strconv.Atoi(pageToken); err == nil && n >= 0 {
-			start = n
+		n, err := strconv.Atoi(pageToken)
+		if err != nil || n < 0 {
+			return nil, "", fmt.Errorf("invalid page token")
 		}
+		start = n
 	}
 
 	const q = `

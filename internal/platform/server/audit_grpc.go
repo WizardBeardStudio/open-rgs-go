@@ -92,12 +92,26 @@ func paginate[T any](items []T, pageToken string, pageSize int32) ([]T, string, 
 	return items[start:end], next, nil
 }
 
+func validatePageToken(pageToken string) error {
+	if pageToken == "" {
+		return nil
+	}
+	p, err := strconv.Atoi(pageToken)
+	if err != nil || p < 0 {
+		return fmt.Errorf("invalid page token")
+	}
+	return nil
+}
+
 func (s *AuditService) ListAuditEvents(ctx context.Context, req *rgsv1.ListAuditEventsRequest) (*rgsv1.ListAuditEventsResponse, error) {
 	if req == nil {
 		req = &rgsv1.ListAuditEventsRequest{}
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	if err := validatePageToken(req.PageToken); err != nil {
+		return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_token")}, nil
 	}
 	if req.PageSize > maxAuditPageSize {
 		return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "page_size exceeds max allowed")}, nil
@@ -154,6 +168,9 @@ func (s *AuditService) ListRemoteAccessActivities(ctx context.Context, req *rgsv
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.ListRemoteAccessActivitiesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	if err := validatePageToken(req.PageToken); err != nil {
+		return &rgsv1.ListRemoteAccessActivitiesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_token")}, nil
 	}
 	if req.PageSize > maxAuditPageSize {
 		return &rgsv1.ListRemoteAccessActivitiesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "page_size exceeds max allowed")}, nil

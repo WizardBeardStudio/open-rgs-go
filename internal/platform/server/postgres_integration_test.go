@@ -441,6 +441,36 @@ func TestPostgresAuditServiceVerifyAuditChain(t *testing.T) {
 	}
 }
 
+func TestPostgresAuditServiceRejectsInvalidPageToken(t *testing.T) {
+	db := openPostgresIntegrationDB(t)
+	resetPostgresIntegrationState(t, db)
+
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 17, 13, 10, 0, 0, time.UTC)}
+	ctx := context.Background()
+
+	ledgerSvc := NewLedgerService(clk, db)
+	if _, err := ledgerSvc.Deposit(ctx, &rgsv1.DepositRequest{
+		Meta:      meta("acct-audit-bad-token", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-audit-bad-token-1"),
+		AccountId: "acct-audit-bad-token",
+		Amount:    &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+	}); err != nil {
+		t.Fatalf("deposit err: %v", err)
+	}
+
+	auditSvc := NewAuditService(clk, nil)
+	auditSvc.SetDB(db)
+	resp, err := auditSvc.ListAuditEvents(ctx, &rgsv1.ListAuditEventsRequest{
+		Meta:      meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageToken: "bad-token",
+	})
+	if err != nil {
+		t.Fatalf("list audit events err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid for invalid db page token, got=%v", resp.Meta.GetResultCode())
+	}
+}
+
 func TestPostgresLedgerEFTLockoutPersistsAcrossRestart(t *testing.T) {
 	db := openPostgresIntegrationDB(t)
 	resetPostgresIntegrationState(t, db)
