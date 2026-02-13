@@ -202,6 +202,28 @@ func TestPromotionsDisableInMemoryCacheSkipsAwardMirror(t *testing.T) {
 	}
 }
 
+func TestPromotionsRecordPromotionalAwardRejectsUnknownAwardType(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 45, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.RecordPromotionalAward(ctx, &rgsv1.RecordPromotionalAwardRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Award: &rgsv1.PromotionalAward{
+			PlayerId:   "player-1",
+			CampaignId: "camp-1",
+			AwardType:  rgsv1.PromotionalAwardType(99),
+			Amount:     &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("record promotional award err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for unknown award type, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
 func TestUISystemOverlayDisableInMemoryCacheSkipsEventMirror(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 30, 0, 0, time.UTC)}
 	svc := NewUISystemOverlayService(clk)
@@ -231,6 +253,28 @@ func TestUISystemOverlayDisableInMemoryCacheSkipsEventMirror(t *testing.T) {
 	}
 	if len(list.Events) != 0 {
 		t.Fatalf("expected no in-memory window events when cache disabled, got=%d", len(list.Events))
+	}
+}
+
+func TestUISystemOverlaySubmitRejectsUnknownEventType(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 40, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.SubmitSystemWindowEvent(ctx, &rgsv1.SubmitSystemWindowEventRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Event: &rgsv1.SystemWindowEvent{
+			EquipmentId: "eq-1",
+			PlayerId:    "player-1",
+			WindowId:    "sys-menu",
+			EventType:   rgsv1.SystemWindowEventType(99),
+		},
+	})
+	if err != nil {
+		t.Fatalf("submit window event err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for unknown event type, got=%s", resp.GetMeta().GetResultCode().String())
 	}
 }
 

@@ -227,7 +227,7 @@ func (s *PromotionsService) ListRecentBonusTransactions(ctx context.Context, req
 }
 
 func (s *PromotionsService) RecordPromotionalAward(ctx context.Context, req *rgsv1.RecordPromotionalAwardRequest) (*rgsv1.RecordPromotionalAwardResponse, error) {
-	if req == nil || req.Award == nil || req.Award.PlayerId == "" || req.Award.AwardType == rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_UNSPECIFIED || invalidAmount(req.Award.Amount) {
+	if req == nil || req.Award == nil || req.Award.PlayerId == "" || !validPromotionalAwardType(req.Award.AwardType) || invalidAmount(req.Award.Amount) {
 		return &rgsv1.RecordPromotionalAwardResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "award requires player_id, award_type, and positive amount")}, nil
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
@@ -464,8 +464,32 @@ func parseRFC3339Strict(v string) (time.Time, bool) {
 	return ts.UTC(), true
 }
 
+func validPromotionalAwardType(t rgsv1.PromotionalAwardType) bool {
+	switch t {
+	case rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_FREEPLAY,
+		rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_MATCH_BONUS,
+		rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_LOYALTY_POINTS,
+		rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_NON_CASHABLE_CREDIT:
+		return true
+	default:
+		return false
+	}
+}
+
+func validSystemWindowEventType(t rgsv1.SystemWindowEventType) bool {
+	switch t {
+	case rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_OPENED,
+		rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_CLOSED,
+		rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_DECLINED,
+		rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_TIMED_OUT:
+		return true
+	default:
+		return false
+	}
+}
+
 func (s *UISystemOverlayService) SubmitSystemWindowEvent(ctx context.Context, req *rgsv1.SubmitSystemWindowEventRequest) (*rgsv1.SubmitSystemWindowEventResponse, error) {
-	if req == nil || req.Event == nil || req.Event.EquipmentId == "" || req.Event.WindowId == "" || req.Event.EventType == rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_UNSPECIFIED {
+	if req == nil || req.Event == nil || req.Event.EquipmentId == "" || req.Event.WindowId == "" || !validSystemWindowEventType(req.Event.EventType) {
 		return &rgsv1.SubmitSystemWindowEventResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "event requires equipment_id, window_id, and event_type")}, nil
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
