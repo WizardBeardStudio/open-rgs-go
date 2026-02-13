@@ -174,6 +174,57 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 		t.Fatalf("expected invalid award result code, got=%s", awardResp.GetMeta().GetResultCode().String())
 	}
 
+	bonusReq := &rgsv1.RecordBonusTransactionRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Transaction: &rgsv1.BonusTransaction{
+			EquipmentId: "eq-1",
+			PlayerId:    "player-1",
+			Amount:      &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+			OccurredAt:  "bad-time",
+		},
+	}
+	bonusBody, _ := protojson.Marshal(bonusReq)
+	bonusHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/promotions/bonus-transactions", bytes.NewReader(bonusBody))
+	bonusHTTPReq.Header.Set("Content-Type", "application/json")
+	bonusRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(bonusRec, bonusHTTPReq)
+	if bonusRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("bonus record status: got=%d body=%s", bonusRec.Result().StatusCode, bonusRec.Body.String())
+	}
+	var bonusResp rgsv1.RecordBonusTransactionResponse
+	if err := protojson.Unmarshal(bonusRec.Body.Bytes(), &bonusResp); err != nil {
+		t.Fatalf("unmarshal bonus response: %v", err)
+	}
+	if bonusResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid bonus result code, got=%s", bonusResp.GetMeta().GetResultCode().String())
+	}
+
+	awardBadTimeReq := &rgsv1.RecordPromotionalAwardRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Award: &rgsv1.PromotionalAward{
+			PlayerId:   "player-1",
+			CampaignId: "camp-1",
+			AwardType:  rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_FREEPLAY,
+			Amount:     &rgsv1.Money{AmountMinor: 50, Currency: "USD"},
+			OccurredAt: "bad-time",
+		},
+	}
+	awardBadTimeBody, _ := protojson.Marshal(awardBadTimeReq)
+	awardBadTimeHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/promotions/awards", bytes.NewReader(awardBadTimeBody))
+	awardBadTimeHTTPReq.Header.Set("Content-Type", "application/json")
+	awardBadTimeRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(awardBadTimeRec, awardBadTimeHTTPReq)
+	if awardBadTimeRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("award record bad time status: got=%d body=%s", awardBadTimeRec.Result().StatusCode, awardBadTimeRec.Body.String())
+	}
+	var awardBadTimeResp rgsv1.RecordPromotionalAwardResponse
+	if err := protojson.Unmarshal(awardBadTimeRec.Body.Bytes(), &awardBadTimeResp); err != nil {
+		t.Fatalf("unmarshal award bad time response: %v", err)
+	}
+	if awardBadTimeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid award bad-time result code, got=%s", awardBadTimeResp.GetMeta().GetResultCode().String())
+	}
+
 	uiReq := &rgsv1.SubmitSystemWindowEventRequest{
 		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
 		Event: &rgsv1.SystemWindowEvent{
@@ -270,6 +321,24 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if badAwardPageSizeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid awards page_size result code, got=%s", badAwardPageSizeResp.GetMeta().GetResultCode().String())
+	}
+
+	qBadAwardPageToken := make(url.Values)
+	qBadAwardPageToken.Set("meta.actor.actorId", "op-1")
+	qBadAwardPageToken.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qBadAwardPageToken.Set("page_token", "bad-token")
+	badAwardPageTokenReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/awards?"+qBadAwardPageToken.Encode(), nil)
+	badAwardPageTokenRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(badAwardPageTokenRec, badAwardPageTokenReq)
+	if badAwardPageTokenRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("awards list bad page_token status: got=%d body=%s", badAwardPageTokenRec.Result().StatusCode, badAwardPageTokenRec.Body.String())
+	}
+	var badAwardPageTokenResp rgsv1.ListPromotionalAwardsResponse
+	if err := protojson.Unmarshal(badAwardPageTokenRec.Body.Bytes(), &badAwardPageTokenResp); err != nil {
+		t.Fatalf("unmarshal awards list bad page_token response: %v", err)
+	}
+	if badAwardPageTokenResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid awards page_token result code, got=%s", badAwardPageTokenResp.GetMeta().GetResultCode().String())
 	}
 
 	qBadUIPageSize := make(url.Values)
