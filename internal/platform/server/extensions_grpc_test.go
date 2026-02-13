@@ -615,6 +615,13 @@ func TestUISystemOverlayListRejectsNegativePageToken(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for negative page token, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for negative page token, got=%v", events)
+	}
+	if events[len(events)-1].Reason != "invalid page_token" {
+		t.Fatalf("expected audit reason invalid page_token, got=%q", events[len(events)-1].Reason)
+	}
 }
 
 func TestPromotionsListAwardsRejectsNegativePageToken(t *testing.T) {
@@ -631,6 +638,13 @@ func TestPromotionsListAwardsRejectsNegativePageToken(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for negative page token, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_promotional_awards" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for negative page token, got=%v", events)
+	}
+	if events[len(events)-1].Reason != "invalid page_token" {
+		t.Fatalf("expected audit reason invalid page_token, got=%q", events[len(events)-1].Reason)
 	}
 }
 
