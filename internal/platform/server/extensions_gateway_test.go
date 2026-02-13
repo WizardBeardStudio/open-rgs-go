@@ -250,6 +250,55 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 		t.Fatalf("expected invalid ui submit result code, got=%s", uiResp.GetMeta().GetResultCode().String())
 	}
 
+	playerBonusReq := &rgsv1.RecordBonusTransactionRequest{
+		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Transaction: &rgsv1.BonusTransaction{
+			EquipmentId: "eq-1",
+			PlayerId:    "player-1",
+			Amount:      &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	}
+	playerBonusBody, _ := protojson.Marshal(playerBonusReq)
+	playerBonusHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/promotions/bonus-transactions", bytes.NewReader(playerBonusBody))
+	playerBonusHTTPReq.Header.Set("Content-Type", "application/json")
+	playerBonusRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(playerBonusRec, playerBonusHTTPReq)
+	if playerBonusRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("player bonus record status: got=%d body=%s", playerBonusRec.Result().StatusCode, playerBonusRec.Body.String())
+	}
+	var playerBonusResp rgsv1.RecordBonusTransactionResponse
+	if err := protojson.Unmarshal(playerBonusRec.Body.Bytes(), &playerBonusResp); err != nil {
+		t.Fatalf("unmarshal player bonus response: %v", err)
+	}
+	if playerBonusResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied player bonus result code, got=%s", playerBonusResp.GetMeta().GetResultCode().String())
+	}
+
+	playerUIReq := &rgsv1.SubmitSystemWindowEventRequest{
+		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Event: &rgsv1.SystemWindowEvent{
+			EquipmentId: "eq-1",
+			PlayerId:    "player-1",
+			WindowId:    "sys-menu",
+			EventType:   rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_OPENED,
+		},
+	}
+	playerUIBody, _ := protojson.Marshal(playerUIReq)
+	playerUIHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/ui/system-window-events", bytes.NewReader(playerUIBody))
+	playerUIHTTPReq.Header.Set("Content-Type", "application/json")
+	playerUIRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(playerUIRec, playerUIHTTPReq)
+	if playerUIRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("player ui submit status: got=%d body=%s", playerUIRec.Result().StatusCode, playerUIRec.Body.String())
+	}
+	var playerUIResp rgsv1.SubmitSystemWindowEventResponse
+	if err := protojson.Unmarshal(playerUIRec.Body.Bytes(), &playerUIResp); err != nil {
+		t.Fatalf("unmarshal player ui response: %v", err)
+	}
+	if playerUIResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied player ui result code, got=%s", playerUIResp.GetMeta().GetResultCode().String())
+	}
+
 	qBadPageToken := make(url.Values)
 	qBadPageToken.Set("meta.actor.actorId", "op-1")
 	qBadPageToken.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
