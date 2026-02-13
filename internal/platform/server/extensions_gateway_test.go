@@ -597,6 +597,12 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if !hasAuditEventWithReason(promoEvents, "list_promotional_awards", audit.ResultDenied, "invalid page_token") {
 		t.Fatalf("expected promo audit reason invalid page_token, got=%v", promoEvents)
 	}
+	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "invalid limit") {
+		t.Fatalf("expected promo audit reason invalid limit, got=%v", promoEvents)
+	}
+	if !hasAuditEventWithReason(promoEvents, "list_promotional_awards", audit.ResultDenied, "invalid page_size") {
+		t.Fatalf("expected promo audit reason invalid page_size, got=%v", promoEvents)
+	}
 
 	uiEvents := uiSvc.AuditStore.Events()
 	if !hasAuditEvent(uiEvents, "submit_system_window_event", audit.ResultDenied) {
@@ -610,6 +616,18 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "invalid page_token") {
 		t.Fatalf("expected ui audit reason invalid page_token, got=%v", uiEvents)
+	}
+	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "invalid page_size") {
+		t.Fatalf("expected ui audit reason invalid page_size, got=%v", uiEvents)
+	}
+	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "invalid from_time") {
+		t.Fatalf("expected ui audit reason invalid from_time, got=%v", uiEvents)
+	}
+	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "invalid to_time") {
+		t.Fatalf("expected ui audit reason invalid to_time, got=%v", uiEvents)
+	}
+	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "invalid time range") {
+		t.Fatalf("expected ui audit reason invalid time range, got=%v", uiEvents)
 	}
 }
 
