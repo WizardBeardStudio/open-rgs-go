@@ -235,4 +235,58 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if badRangeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid bad range result code, got=%s", badRangeResp.GetMeta().GetResultCode().String())
 	}
+
+	qBadBonusLimit := make(url.Values)
+	qBadBonusLimit.Set("meta.actor.actorId", "op-1")
+	qBadBonusLimit.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qBadBonusLimit.Set("limit", "-1")
+	badBonusLimitReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/bonus-transactions?"+qBadBonusLimit.Encode(), nil)
+	badBonusLimitRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(badBonusLimitRec, badBonusLimitReq)
+	if badBonusLimitRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("bonus list bad limit status: got=%d body=%s", badBonusLimitRec.Result().StatusCode, badBonusLimitRec.Body.String())
+	}
+	var badBonusLimitResp rgsv1.ListRecentBonusTransactionsResponse
+	if err := protojson.Unmarshal(badBonusLimitRec.Body.Bytes(), &badBonusLimitResp); err != nil {
+		t.Fatalf("unmarshal bonus list bad limit response: %v", err)
+	}
+	if badBonusLimitResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid bonus limit result code, got=%s", badBonusLimitResp.GetMeta().GetResultCode().String())
+	}
+
+	qBadAwardPageSize := make(url.Values)
+	qBadAwardPageSize.Set("meta.actor.actorId", "op-1")
+	qBadAwardPageSize.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qBadAwardPageSize.Set("page_size", "-1")
+	badAwardPageSizeReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/awards?"+qBadAwardPageSize.Encode(), nil)
+	badAwardPageSizeRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(badAwardPageSizeRec, badAwardPageSizeReq)
+	if badAwardPageSizeRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("awards list bad page_size status: got=%d body=%s", badAwardPageSizeRec.Result().StatusCode, badAwardPageSizeRec.Body.String())
+	}
+	var badAwardPageSizeResp rgsv1.ListPromotionalAwardsResponse
+	if err := protojson.Unmarshal(badAwardPageSizeRec.Body.Bytes(), &badAwardPageSizeResp); err != nil {
+		t.Fatalf("unmarshal awards list bad page_size response: %v", err)
+	}
+	if badAwardPageSizeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid awards page_size result code, got=%s", badAwardPageSizeResp.GetMeta().GetResultCode().String())
+	}
+
+	qBadUIPageSize := make(url.Values)
+	qBadUIPageSize.Set("meta.actor.actorId", "op-1")
+	qBadUIPageSize.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qBadUIPageSize.Set("page_size", "-1")
+	badUIPageSizeReq := httptest.NewRequest(http.MethodGet, "/v1/ui/system-window-events?"+qBadUIPageSize.Encode(), nil)
+	badUIPageSizeRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(badUIPageSizeRec, badUIPageSizeReq)
+	if badUIPageSizeRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("ui list bad page_size status: got=%d body=%s", badUIPageSizeRec.Result().StatusCode, badUIPageSizeRec.Body.String())
+	}
+	var badUIPageSizeResp rgsv1.ListSystemWindowEventsResponse
+	if err := protojson.Unmarshal(badUIPageSizeRec.Body.Bytes(), &badUIPageSizeResp); err != nil {
+		t.Fatalf("unmarshal ui list bad page_size response: %v", err)
+	}
+	if badUIPageSizeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid ui page_size result code, got=%s", badUIPageSizeResp.GetMeta().GetResultCode().String())
+	}
 }
