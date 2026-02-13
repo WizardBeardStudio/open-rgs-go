@@ -251,8 +251,8 @@ This document maps implemented requirements to standards references, code locati
 ## RGS-0707 Promotions and UI Overlay Runtime Services
 - Standard refs: GLI-16 bonusing/promotional tracking expectations, GLI-28 system-window recall expectations
 - Code: `api/proto/rgs/v1/extensions.proto`, `internal/platform/server/extensions_grpc.go`, `internal/platform/server/extensions_postgres.go`, `cmd/rgsd/main.go`, `migrations/000009_bonus_ui_scaffolds.up.sql`
-- Tests: `internal/platform/server/extensions_grpc_test.go`, `internal/platform/server/extensions_gateway_test.go`
-- Status: implemented (record/list bonus transactions, record/list promotional awards, submit/list system-window events with DB-backed persistence when configured; strict production disables in-memory promotions/UI mirrors)
+- Tests: `internal/platform/server/extensions_grpc_test.go`, `internal/platform/server/extensions_gateway_test.go`, `internal/platform/server/extensions_postgres_test.go`
+- Status: implemented (record/list bonus transactions, record/list promotional awards, submit/list system-window events with DB-backed persistence when configured; strict input validation for enums/timestamps/pagination on gRPC+REST paths; strict DB enum decode validation for extension reads; strict production disables in-memory promotions/UI mirrors)
 
 ## RGS-0708 JWT Keyset File Source and Live Reload
 - Standard refs: GLI-21 secure remote access/authentication controls and key lifecycle hardening expectations
