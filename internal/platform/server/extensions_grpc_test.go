@@ -74,6 +74,22 @@ func TestPromotionsListRecentRejectsOversizedLimit(t *testing.T) {
 	}
 }
 
+func TestPromotionsListRecentDeniedForPlayerActor(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 4, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListRecentBonusTransactions(ctx, &rgsv1.ListRecentBonusTransactionsRequest{
+		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+	})
+	if err != nil {
+		t.Fatalf("list bonus tx err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
 func TestPromotionsRecordBonusTransactionRejectsInvalidOccurredAt(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 5, 0, 0, time.UTC)}
 	svc := NewPromotionsService(clk)
@@ -313,6 +329,22 @@ func TestPromotionsListAwardsRejectsOversizedPageSize(t *testing.T) {
 	}
 }
 
+func TestPromotionsListAwardsDeniedForPlayerActor(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 39, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListPromotionalAwards(ctx, &rgsv1.ListPromotionalAwardsRequest{
+		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+	})
+	if err != nil {
+		t.Fatalf("list awards err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
 func TestPromotionsRecordPromotionalAwardRejectsUnknownAwardType(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 45, 0, 0, time.UTC)}
 	svc := NewPromotionsService(clk)
@@ -488,6 +520,22 @@ func TestUISystemOverlayListRejectsOversizedPageSize(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for oversized page_size, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
+func TestUISystemOverlayListDeniedForPlayerActor(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 45, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListSystemWindowEvents(ctx, &rgsv1.ListSystemWindowEventsRequest{
+		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+	})
+	if err != nil {
+		t.Fatalf("list window events err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
 	}
 }
 
