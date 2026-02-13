@@ -453,6 +453,17 @@ func parseRFC3339OrZero(v string) time.Time {
 	return ts.UTC()
 }
 
+func parseRFC3339Strict(v string) (time.Time, bool) {
+	if v == "" {
+		return time.Time{}, true
+	}
+	ts, err := time.Parse(time.RFC3339Nano, v)
+	if err != nil {
+		return time.Time{}, false
+	}
+	return ts.UTC(), true
+}
+
 func (s *UISystemOverlayService) SubmitSystemWindowEvent(ctx context.Context, req *rgsv1.SubmitSystemWindowEventRequest) (*rgsv1.SubmitSystemWindowEventResponse, error) {
 	if req == nil || req.Event == nil || req.Event.EquipmentId == "" || req.Event.WindowId == "" || req.Event.EventType == rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_UNSPECIFIED {
 		return &rgsv1.SubmitSystemWindowEventResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "event requires equipment_id, window_id, and event_type")}, nil
@@ -495,9 +506,11 @@ func (s *UISystemOverlayService) ListSystemWindowEvents(ctx context.Context, req
 	}
 	start := 0
 	if req.PageToken != "" {
-		if v, err := strconv.Atoi(req.PageToken); err == nil && v >= 0 {
-			start = v
+		v, err := strconv.Atoi(req.PageToken)
+		if err != nil || v < 0 {
+			return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_token")}, nil
 		}
+		start = v
 	}
 	size := int(req.PageSize)
 	if size <= 0 {
@@ -506,8 +519,17 @@ func (s *UISystemOverlayService) ListSystemWindowEvents(ctx context.Context, req
 	if size > 200 {
 		size = 200
 	}
-	fromTS := parseRFC3339OrZero(req.FromTime)
-	toTS := parseRFC3339OrZero(req.ToTime)
+	fromTS, ok := parseRFC3339Strict(req.FromTime)
+	if !ok {
+		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid from_time")}, nil
+	}
+	toTS, ok := parseRFC3339Strict(req.ToTime)
+	if !ok {
+		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid to_time")}, nil
+	}
+	if !fromTS.IsZero() && !toTS.IsZero() && fromTS.After(toTS) {
+		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "from_time must be <= to_time")}, nil
+	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()

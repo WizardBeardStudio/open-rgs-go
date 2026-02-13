@@ -233,3 +233,66 @@ func TestUISystemOverlayDisableInMemoryCacheSkipsEventMirror(t *testing.T) {
 		t.Fatalf("expected no in-memory window events when cache disabled, got=%d", len(list.Events))
 	}
 }
+
+func TestUISystemOverlayListRejectsInvalidPageToken(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 45, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListSystemWindowEvents(ctx, &rgsv1.ListSystemWindowEventsRequest{
+		Meta:      meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageToken: "bad-token",
+	})
+	if err != nil {
+		t.Fatalf("list window events err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for bad page token, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
+func TestUISystemOverlayListRejectsInvalidTimeInputs(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 50, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListSystemWindowEvents(ctx, &rgsv1.ListSystemWindowEventsRequest{
+		Meta:     meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		FromTime: "not-a-time",
+	})
+	if err != nil {
+		t.Fatalf("list window events err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for bad from_time, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+
+	resp, err = svc.ListSystemWindowEvents(ctx, &rgsv1.ListSystemWindowEventsRequest{
+		Meta:   meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		ToTime: "not-a-time",
+	})
+	if err != nil {
+		t.Fatalf("list window events err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for bad to_time, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
+func TestUISystemOverlayListRejectsInvertedTimeRange(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 55, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListSystemWindowEvents(ctx, &rgsv1.ListSystemWindowEventsRequest{
+		Meta:     meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		FromTime: "2026-02-16T12:00:00Z",
+		ToTime:   "2026-02-16T11:00:00Z",
+	})
+	if err != nil {
+		t.Fatalf("list window events err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for inverted range, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
