@@ -283,6 +283,7 @@ func main() {
 	guard.SetFailClosedOnLogPersistenceFailure(strictProductionMode)
 	guard.SetInMemoryActivityLogCap(remoteAccessActivityLogCap)
 	guard.SetDecisionObserver(metrics.ObserveRemoteAccessDecision)
+	guard.SetLogStateObserver(metrics.ObserveRemoteAccessLogState)
 	auditSvc := server.NewAuditService(
 		clk,
 		guard,

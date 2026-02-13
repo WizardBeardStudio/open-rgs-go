@@ -27,6 +27,8 @@ type Metrics struct {
 	identitySessionsRevoked prometheus.Gauge
 	identitySessionsExpired prometheus.Gauge
 	remoteAccessDecisions   *prometheus.CounterVec
+	remoteAccessLogEntries  prometheus.Gauge
+	remoteAccessLogCap      prometheus.Gauge
 	rpcRequestsTotal        *prometheus.CounterVec
 	rpcRequestLatency       *prometheus.HistogramVec
 	httpRequestsTotal       *prometheus.CounterVec
@@ -134,6 +136,22 @@ func NewMetrics() *Metrics {
 				Help:      "Total remote admin boundary decisions by outcome.",
 			},
 			[]string{"outcome"},
+		),
+		remoteAccessLogEntries: promauto.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: "open_rgs",
+				Subsystem: "remote_access",
+				Name:      "inmemory_log_entries",
+				Help:      "Current in-memory remote-access activity log entry count.",
+			},
+		),
+		remoteAccessLogCap: promauto.NewGauge(
+			prometheus.GaugeOpts{
+				Namespace: "open_rgs",
+				Subsystem: "remote_access",
+				Name:      "inmemory_log_cap",
+				Help:      "Configured in-memory remote-access activity log cap (0 means unlimited).",
+			},
 		),
 		rpcRequestsTotal: promauto.NewCounterVec(
 			prometheus.CounterOpts{
@@ -244,6 +262,20 @@ func (m *Metrics) ObserveRemoteAccessDecision(outcome string) {
 		outcome = "unknown"
 	}
 	m.remoteAccessDecisions.WithLabelValues(outcome).Inc()
+}
+
+func (m *Metrics) ObserveRemoteAccessLogState(entries int, cap int) {
+	if m == nil {
+		return
+	}
+	if entries < 0 {
+		entries = 0
+	}
+	if cap < 0 {
+		cap = 0
+	}
+	m.remoteAccessLogEntries.Set(float64(entries))
+	m.remoteAccessLogCap.Set(float64(cap))
 }
 
 func (m *Metrics) RefreshIdentitySessionCounts(ctx context.Context, db *sql.DB) {

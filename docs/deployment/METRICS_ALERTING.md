@@ -18,6 +18,8 @@ From `GET /metrics`:
 - `open_rgs_identity_sessions_revoked`
 - `open_rgs_identity_sessions_expired`
 - `open_rgs_remote_access_decisions_total{outcome}`
+- `open_rgs_remote_access_inmemory_log_entries`
+- `open_rgs_remote_access_inmemory_log_cap`
 - `open_rgs_rpc_requests_total{transport,method,result}`
 - `open_rgs_rpc_request_duration_seconds_bucket{transport,method,le}`
 - `open_rgs_http_requests_total{method,path,status}`
@@ -137,6 +139,18 @@ histogram_quantile(0.95, sum(rate(open_rgs_rpc_request_duration_seconds_bucket[5
 
 Suggested severity: `warning` (set threshold per endpoint SLOs).
 
+### 11) Remote-access in-memory log near capacity
+
+Trigger before capacity exhaustion in non-DB environments:
+
+```promql
+open_rgs_remote_access_inmemory_log_cap > 0
+and
+open_rgs_remote_access_inmemory_log_entries / open_rgs_remote_access_inmemory_log_cap > 0.8
+```
+
+Suggested severity: `warning` (raise to `critical` for >0.95 sustained).
+
 ## Operational Tuning Notes
 
 - If `open_rgs_ledger_idempotency_keys_expired` remains high:
@@ -154,6 +168,7 @@ Suggested severity: `warning` (set threshold per endpoint SLOs).
 - per-method gRPC/REST request rate and non-OK ratio
 - per-method gRPC/REST p95 latency
 - remote-access decision outcomes (`allowed` / `denied` / `logging_unavailable`)
+- remote-access log usage vs cap (`inmemory_log_entries` / `inmemory_log_cap`)
 
 ## Rule Group Example (YAML)
 

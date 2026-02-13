@@ -41,6 +41,7 @@ type RemoteAccessGuard struct {
 	failClosedLogPersist bool
 	inMemoryLogCap       int
 	onDecision           func(outcome string)
+	onLogState           func(entries int, cap int)
 }
 
 var errRemoteAccessLogCapacityExceeded = errors.New("remote access activity log capacity exceeded")
@@ -105,12 +106,29 @@ func (g *RemoteAccessGuard) SetInMemoryActivityLogCap(cap int) {
 	if g == nil {
 		return
 	}
-	g.mu.Lock()
-	defer g.mu.Unlock()
 	if cap < 0 {
 		cap = 0
 	}
+	g.mu.Lock()
 	g.inMemoryLogCap = cap
+	entries := len(g.logs)
+	observer := g.onLogState
+	g.mu.Unlock()
+	if observer != nil {
+		observer(entries, cap)
+	}
+}
+
+func (g *RemoteAccessGuard) SetLogStateObserver(observer func(entries int, cap int)) {
+	if g == nil {
+		return
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.onLogState = observer
+	if observer != nil {
+		observer(len(g.logs), g.inMemoryLogCap)
+	}
 }
 
 func (g *RemoteAccessGuard) SetDecisionObserver(observer func(outcome string)) {
@@ -209,13 +227,25 @@ func (g *RemoteAccessGuard) logActivity(r *http.Request, sourceIP, sourcePort st
 	g.mu.Lock()
 	if !g.disableInMemoryCache {
 		if g.db == nil && g.inMemoryLogCap > 0 && len(g.logs) >= g.inMemoryLogCap {
+			observer := g.onLogState
+			entries := len(g.logs)
+			cap := g.inMemoryLogCap
 			g.mu.Unlock()
+			if observer != nil {
+				observer(entries, cap)
+			}
 			return errRemoteAccessLogCapacityExceeded
 		}
 		g.logs = append(g.logs, entry)
 	}
 	db := g.db
+	entries := len(g.logs)
+	cap := g.inMemoryLogCap
+	logStateObserver := g.onLogState
 	g.mu.Unlock()
+	if logStateObserver != nil {
+		logStateObserver(entries, cap)
+	}
 	if db != nil {
 		if err := g.persistActivity(context.Background(), db, entry); err != nil {
 			return err

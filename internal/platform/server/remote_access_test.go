@@ -229,3 +229,39 @@ func TestRemoteAccessGuardDecisionObserver(t *testing.T) {
 		t.Fatalf("unexpected observer outcomes: %v", outcomes)
 	}
 }
+
+func TestRemoteAccessGuardLogStateObserver(t *testing.T) {
+	guard, err := NewRemoteAccessGuard(ledgerFixedClock{now: time.Date(2026, 2, 12, 18, 0, 0, 0, time.UTC)}, nil, []string{"127.0.0.1/32"})
+	if err != nil {
+		t.Fatalf("new guard err: %v", err)
+	}
+	type state struct {
+		entries int
+		cap     int
+	}
+	var states []state
+	guard.SetLogStateObserver(func(entries int, cap int) {
+		states = append(states, state{entries: entries, cap: cap})
+	})
+	guard.SetInMemoryActivityLogCap(2)
+
+	h := guard.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/reporting/runs", nil)
+	req.RemoteAddr = "127.0.0.1:44000"
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected request to pass, got=%d", rec.Result().StatusCode)
+	}
+
+	if len(states) < 3 {
+		t.Fatalf("expected at least 3 state observations, got=%d", len(states))
+	}
+	last := states[len(states)-1]
+	if last.entries != 1 || last.cap != 2 {
+		t.Fatalf("unexpected last log state: %+v", last)
+	}
+}
