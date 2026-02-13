@@ -588,22 +588,43 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if !hasAuditEvent(promoEvents, "record_bonus_transaction", audit.ResultDenied) {
 		t.Fatalf("expected denied promo audit for invalid/unauthorized bonus path, got=%v", promoEvents)
 	}
+	if !hasAuditEventWithReason(promoEvents, "record_bonus_transaction", audit.ResultDenied, "invalid occurred_at") {
+		t.Fatalf("expected promo audit reason invalid occurred_at, got=%v", promoEvents)
+	}
 	if !hasAuditEvent(promoEvents, "list_promotional_awards", audit.ResultDenied) {
 		t.Fatalf("expected denied promo audit for invalid/unauthorized awards list path, got=%v", promoEvents)
+	}
+	if !hasAuditEventWithReason(promoEvents, "list_promotional_awards", audit.ResultDenied, "invalid page_token") {
+		t.Fatalf("expected promo audit reason invalid page_token, got=%v", promoEvents)
 	}
 
 	uiEvents := uiSvc.AuditStore.Events()
 	if !hasAuditEvent(uiEvents, "submit_system_window_event", audit.ResultDenied) {
 		t.Fatalf("expected denied ui audit for invalid/unauthorized submit path, got=%v", uiEvents)
 	}
+	if !hasAuditEventWithReason(uiEvents, "submit_system_window_event", audit.ResultDenied, "invalid event_time") {
+		t.Fatalf("expected ui audit reason invalid event_time, got=%v", uiEvents)
+	}
 	if !hasAuditEvent(uiEvents, "list_system_window_events", audit.ResultDenied) {
 		t.Fatalf("expected denied ui audit for invalid/unauthorized list path, got=%v", uiEvents)
+	}
+	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "invalid page_token") {
+		t.Fatalf("expected ui audit reason invalid page_token, got=%v", uiEvents)
 	}
 }
 
 func hasAuditEvent(events []audit.Event, action string, result audit.Result) bool {
 	for _, ev := range events {
 		if ev.Action == action && ev.Result == result {
+			return true
+		}
+	}
+	return false
+}
+
+func hasAuditEventWithReason(events []audit.Event, action string, result audit.Result, reason string) bool {
+	for _, ev := range events {
+		if ev.Action == action && ev.Result == result && ev.Reason == reason {
 			return true
 		}
 	}
