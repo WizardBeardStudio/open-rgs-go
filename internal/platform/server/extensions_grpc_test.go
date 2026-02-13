@@ -460,6 +460,35 @@ func TestPromotionsRecordPromotionalAwardRejectsInvalidOccurredAt(t *testing.T) 
 	}
 }
 
+func TestPromotionsRecordPromotionalAwardDeniedForPlayerActor(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 47, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.RecordPromotionalAward(ctx, &rgsv1.RecordPromotionalAwardRequest{
+		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Award: &rgsv1.PromotionalAward{
+			PlayerId:   "player-1",
+			CampaignId: "camp-1",
+			AwardType:  rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_FREEPLAY,
+			Amount:     &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("record promotional award err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "record_promotional_award" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for award write access, got=%v", events)
+	}
+	if events[len(events)-1].Reason != "unauthorized actor type" {
+		t.Fatalf("expected audit reason unauthorized actor type, got=%q", events[len(events)-1].Reason)
+	}
+}
+
 func TestUISystemOverlayDisableInMemoryCacheSkipsEventMirror(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 30, 0, 0, time.UTC)}
 	svc := NewUISystemOverlayService(clk)
