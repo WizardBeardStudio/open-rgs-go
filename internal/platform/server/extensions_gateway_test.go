@@ -305,6 +305,24 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 		t.Fatalf("expected invalid bonus limit result code, got=%s", badBonusLimitResp.GetMeta().GetResultCode().String())
 	}
 
+	qOversizedBonusLimit := make(url.Values)
+	qOversizedBonusLimit.Set("meta.actor.actorId", "op-1")
+	qOversizedBonusLimit.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qOversizedBonusLimit.Set("limit", "101")
+	oversizedBonusLimitReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/bonus-transactions?"+qOversizedBonusLimit.Encode(), nil)
+	oversizedBonusLimitRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(oversizedBonusLimitRec, oversizedBonusLimitReq)
+	if oversizedBonusLimitRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("bonus list oversized limit status: got=%d body=%s", oversizedBonusLimitRec.Result().StatusCode, oversizedBonusLimitRec.Body.String())
+	}
+	var oversizedBonusLimitResp rgsv1.ListRecentBonusTransactionsResponse
+	if err := protojson.Unmarshal(oversizedBonusLimitRec.Body.Bytes(), &oversizedBonusLimitResp); err != nil {
+		t.Fatalf("unmarshal bonus list oversized limit response: %v", err)
+	}
+	if oversizedBonusLimitResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid oversized bonus limit result code, got=%s", oversizedBonusLimitResp.GetMeta().GetResultCode().String())
+	}
+
 	qBadAwardPageSize := make(url.Values)
 	qBadAwardPageSize.Set("meta.actor.actorId", "op-1")
 	qBadAwardPageSize.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
@@ -321,6 +339,24 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if badAwardPageSizeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid awards page_size result code, got=%s", badAwardPageSizeResp.GetMeta().GetResultCode().String())
+	}
+
+	qOversizedAwardPageSize := make(url.Values)
+	qOversizedAwardPageSize.Set("meta.actor.actorId", "op-1")
+	qOversizedAwardPageSize.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qOversizedAwardPageSize.Set("page_size", "101")
+	oversizedAwardPageSizeReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/awards?"+qOversizedAwardPageSize.Encode(), nil)
+	oversizedAwardPageSizeRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(oversizedAwardPageSizeRec, oversizedAwardPageSizeReq)
+	if oversizedAwardPageSizeRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("awards list oversized page_size status: got=%d body=%s", oversizedAwardPageSizeRec.Result().StatusCode, oversizedAwardPageSizeRec.Body.String())
+	}
+	var oversizedAwardPageSizeResp rgsv1.ListPromotionalAwardsResponse
+	if err := protojson.Unmarshal(oversizedAwardPageSizeRec.Body.Bytes(), &oversizedAwardPageSizeResp); err != nil {
+		t.Fatalf("unmarshal awards list oversized page_size response: %v", err)
+	}
+	if oversizedAwardPageSizeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid oversized awards page_size result code, got=%s", oversizedAwardPageSizeResp.GetMeta().GetResultCode().String())
 	}
 
 	qBadAwardPageToken := make(url.Values)
@@ -357,5 +393,23 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if badUIPageSizeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid ui page_size result code, got=%s", badUIPageSizeResp.GetMeta().GetResultCode().String())
+	}
+
+	qOversizedUIPageSize := make(url.Values)
+	qOversizedUIPageSize.Set("meta.actor.actorId", "op-1")
+	qOversizedUIPageSize.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qOversizedUIPageSize.Set("page_size", "201")
+	oversizedUIPageSizeReq := httptest.NewRequest(http.MethodGet, "/v1/ui/system-window-events?"+qOversizedUIPageSize.Encode(), nil)
+	oversizedUIPageSizeRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(oversizedUIPageSizeRec, oversizedUIPageSizeReq)
+	if oversizedUIPageSizeRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("ui list oversized page_size status: got=%d body=%s", oversizedUIPageSizeRec.Result().StatusCode, oversizedUIPageSizeRec.Body.String())
+	}
+	var oversizedUIPageSizeResp rgsv1.ListSystemWindowEventsResponse
+	if err := protojson.Unmarshal(oversizedUIPageSizeRec.Body.Bytes(), &oversizedUIPageSizeResp); err != nil {
+		t.Fatalf("unmarshal ui list oversized page_size response: %v", err)
+	}
+	if oversizedUIPageSizeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid oversized ui page_size result code, got=%s", oversizedUIPageSizeResp.GetMeta().GetResultCode().String())
 	}
 }
