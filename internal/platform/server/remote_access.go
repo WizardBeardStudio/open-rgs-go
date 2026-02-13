@@ -347,10 +347,10 @@ func (g *RemoteAccessGuard) Wrap(next http.Handler) http.Handler {
 				failClosed := g.failClosedLogPersist
 				observer := g.onDecision
 				g.mu.Unlock()
+				if observer != nil {
+					observer("logging_unavailable")
+				}
 				if failClosed {
-					if observer != nil {
-						observer("logging_unavailable")
-					}
 					http.Error(w, "remote access logging unavailable", http.StatusServiceUnavailable)
 					return
 				}
@@ -371,10 +371,10 @@ func (g *RemoteAccessGuard) Wrap(next http.Handler) http.Handler {
 			failClosed := g.failClosedLogPersist
 			observer := g.onDecision
 			g.mu.Unlock()
+			if observer != nil {
+				observer("logging_unavailable")
+			}
 			if failClosed {
-				if observer != nil {
-					observer("logging_unavailable")
-				}
 				http.Error(w, "remote access logging unavailable", http.StatusServiceUnavailable)
 				return
 			}

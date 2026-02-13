@@ -265,3 +265,89 @@ func TestRemoteAccessGuardLogStateObserver(t *testing.T) {
 		t.Fatalf("unexpected last log state: %+v", last)
 	}
 }
+
+func TestRemoteAccessGuardObserverEmitsLoggingUnavailableInFailOpenMode(t *testing.T) {
+	guard, err := NewRemoteAccessGuard(ledgerFixedClock{now: time.Date(2026, 2, 12, 18, 0, 0, 0, time.UTC)}, nil, []string{"127.0.0.1/32"})
+	if err != nil {
+		t.Fatalf("new guard err: %v", err)
+	}
+	guard.SetFailClosedOnLogPersistenceFailure(false)
+	guard.SetInMemoryActivityLogCap(1)
+	var outcomes []string
+	guard.SetDecisionObserver(func(outcome string) {
+		outcomes = append(outcomes, outcome)
+	})
+
+	h := guard.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	firstReq := httptest.NewRequest(http.MethodGet, "/v1/reporting/runs", nil)
+	firstReq.RemoteAddr = "127.0.0.1:44000"
+	firstRec := httptest.NewRecorder()
+	h.ServeHTTP(firstRec, firstReq)
+	if firstRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected first request to pass, got=%d", firstRec.Result().StatusCode)
+	}
+
+	secondReq := httptest.NewRequest(http.MethodGet, "/v1/reporting/runs", nil)
+	secondReq.RemoteAddr = "127.0.0.1:44000"
+	secondRec := httptest.NewRecorder()
+	h.ServeHTTP(secondRec, secondReq)
+	if secondRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected second request to pass in fail-open mode, got=%d", secondRec.Result().StatusCode)
+	}
+
+	expected := []string{"allowed", "logging_unavailable", "allowed"}
+	if len(outcomes) != len(expected) {
+		t.Fatalf("unexpected outcomes length: got=%v want=%v", outcomes, expected)
+	}
+	for i := range expected {
+		if outcomes[i] != expected[i] {
+			t.Fatalf("unexpected outcomes order: got=%v want=%v", outcomes, expected)
+		}
+	}
+}
+
+func TestRemoteAccessGuardObserverEmitsLoggingUnavailableInFailClosedMode(t *testing.T) {
+	guard, err := NewRemoteAccessGuard(ledgerFixedClock{now: time.Date(2026, 2, 12, 18, 0, 0, 0, time.UTC)}, nil, []string{"127.0.0.1/32"})
+	if err != nil {
+		t.Fatalf("new guard err: %v", err)
+	}
+	guard.SetFailClosedOnLogPersistenceFailure(true)
+	guard.SetInMemoryActivityLogCap(1)
+	var outcomes []string
+	guard.SetDecisionObserver(func(outcome string) {
+		outcomes = append(outcomes, outcome)
+	})
+
+	h := guard.Wrap(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	firstReq := httptest.NewRequest(http.MethodGet, "/v1/reporting/runs", nil)
+	firstReq.RemoteAddr = "127.0.0.1:44000"
+	firstRec := httptest.NewRecorder()
+	h.ServeHTTP(firstRec, firstReq)
+	if firstRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("expected first request to pass, got=%d", firstRec.Result().StatusCode)
+	}
+
+	secondReq := httptest.NewRequest(http.MethodGet, "/v1/reporting/runs", nil)
+	secondReq.RemoteAddr = "127.0.0.1:44000"
+	secondRec := httptest.NewRecorder()
+	h.ServeHTTP(secondRec, secondReq)
+	if secondRec.Result().StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("expected second request to fail closed, got=%d", secondRec.Result().StatusCode)
+	}
+
+	expected := []string{"allowed", "logging_unavailable"}
+	if len(outcomes) != len(expected) {
+		t.Fatalf("unexpected outcomes length: got=%v want=%v", outcomes, expected)
+	}
+	for i := range expected {
+		if outcomes[i] != expected[i] {
+			t.Fatalf("unexpected outcomes order: got=%v want=%v", outcomes, expected)
+		}
+	}
+}
