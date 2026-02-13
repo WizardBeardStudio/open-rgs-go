@@ -40,6 +40,23 @@ func TestPromotionsListRecentDefaultsTo25(t *testing.T) {
 	}
 }
 
+func TestPromotionsListRecentRejectsNegativeLimit(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 2, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListRecentBonusTransactions(ctx, &rgsv1.ListRecentBonusTransactionsRequest{
+		Meta:  meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Limit: -1,
+	})
+	if err != nil {
+		t.Fatalf("list bonus tx err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for negative limit, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
 func TestPromotionsRecordBonusTransactionRejectsInvalidOccurredAt(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 5, 0, 0, time.UTC)}
 	svc := NewPromotionsService(clk)
@@ -224,6 +241,23 @@ func TestPromotionsDisableInMemoryCacheSkipsAwardMirror(t *testing.T) {
 	}
 }
 
+func TestPromotionsListAwardsRejectsNegativePageSize(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 35, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListPromotionalAwards(ctx, &rgsv1.ListPromotionalAwardsRequest{
+		Meta:     meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageSize: -1,
+	})
+	if err != nil {
+		t.Fatalf("list awards err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for negative page_size, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
 func TestPromotionsRecordPromotionalAwardRejectsUnknownAwardType(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 45, 0, 0, time.UTC)}
 	svc := NewPromotionsService(clk)
@@ -343,6 +377,23 @@ func TestUISystemOverlaySubmitRejectsInvalidEventTime(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for malformed event_time, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
+func TestUISystemOverlayListRejectsNegativePageSize(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 42, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListSystemWindowEvents(ctx, &rgsv1.ListSystemWindowEventsRequest{
+		Meta:     meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageSize: -1,
+	})
+	if err != nil {
+		t.Fatalf("list window events err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for negative page_size, got=%s", resp.GetMeta().GetResultCode().String())
 	}
 }
 

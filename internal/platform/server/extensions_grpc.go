@@ -194,6 +194,9 @@ func (s *PromotionsService) ListRecentBonusTransactions(ctx context.Context, req
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.ListRecentBonusTransactionsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
+	if req.Limit < 0 {
+		return &rgsv1.ListRecentBonusTransactionsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid limit")}, nil
+	}
 	limit := int(req.Limit)
 	if limit <= 0 {
 		limit = 25
@@ -271,6 +274,9 @@ func (s *PromotionsService) ListPromotionalAwards(ctx context.Context, req *rgsv
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	if req.PageSize < 0 {
+		return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_size")}, nil
 	}
 	size := int(req.PageSize)
 	if size <= 0 {
@@ -536,6 +542,9 @@ func (s *UISystemOverlayService) ListSystemWindowEvents(ctx context.Context, req
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	if req.PageSize < 0 {
+		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_size")}, nil
 	}
 	start := 0
 	if req.PageToken != "" {
