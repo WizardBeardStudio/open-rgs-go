@@ -11,6 +11,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -582,4 +583,29 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if oversizedUIPageSizeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid oversized ui page_size result code, got=%s", oversizedUIPageSizeResp.GetMeta().GetResultCode().String())
 	}
+
+	promoEvents := promoSvc.AuditStore.Events()
+	if !hasAuditEvent(promoEvents, "record_bonus_transaction", audit.ResultDenied) {
+		t.Fatalf("expected denied promo audit for invalid/unauthorized bonus path, got=%v", promoEvents)
+	}
+	if !hasAuditEvent(promoEvents, "list_promotional_awards", audit.ResultDenied) {
+		t.Fatalf("expected denied promo audit for invalid/unauthorized awards list path, got=%v", promoEvents)
+	}
+
+	uiEvents := uiSvc.AuditStore.Events()
+	if !hasAuditEvent(uiEvents, "submit_system_window_event", audit.ResultDenied) {
+		t.Fatalf("expected denied ui audit for invalid/unauthorized submit path, got=%v", uiEvents)
+	}
+	if !hasAuditEvent(uiEvents, "list_system_window_events", audit.ResultDenied) {
+		t.Fatalf("expected denied ui audit for invalid/unauthorized list path, got=%v", uiEvents)
+	}
+}
+
+func hasAuditEvent(events []audit.Event, action string, result audit.Result) bool {
+	for _, ev := range events {
+		if ev.Action == action && ev.Result == result {
+			return true
+		}
+	}
+	return false
 }
