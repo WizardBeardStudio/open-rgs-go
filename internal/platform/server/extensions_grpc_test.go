@@ -96,6 +96,27 @@ func TestPromotionsRecordBonusTransactionRejectsInvalidOccurredAt(t *testing.T) 
 	}
 }
 
+func TestPromotionsRecordBonusTransactionDeniedForPlayerActor(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 6, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.RecordBonusTransaction(ctx, &rgsv1.RecordBonusTransactionRequest{
+		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Transaction: &rgsv1.BonusTransaction{
+			EquipmentId: "eq-1",
+			PlayerId:    "player-1",
+			Amount:      &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("record bonus tx err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
 func TestUISystemOverlaySubmitAndListPagination(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 0, 0, 0, time.UTC)}
 	svc := NewUISystemOverlayService(clk)
@@ -411,6 +432,28 @@ func TestUISystemOverlaySubmitRejectsInvalidEventTime(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for malformed event_time, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+}
+
+func TestUISystemOverlaySubmitDeniedForPlayerActor(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 44, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.SubmitSystemWindowEvent(ctx, &rgsv1.SubmitSystemWindowEventRequest{
+		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Event: &rgsv1.SystemWindowEvent{
+			EquipmentId: "eq-1",
+			PlayerId:    "player-1",
+			WindowId:    "sys-menu",
+			EventType:   rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_OPENED,
+		},
+	})
+	if err != nil {
+		t.Fatalf("submit window event err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
 	}
 }
 
