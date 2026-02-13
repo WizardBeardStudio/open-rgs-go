@@ -111,3 +111,21 @@ func TestAuditServiceVerifyAuditChainRequiresDB(t *testing.T) {
 		t.Fatalf("expected persistence error and valid=false, got code=%v valid=%v", resp.Meta.GetResultCode(), resp.Valid)
 	}
 }
+
+func TestAuditServiceVerifyAuditChainRejectsInvalidPartitionDay(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 11, 5, 0, 0, time.UTC)}
+	auditSvc := NewAuditService(clk, nil)
+	resp, err := auditSvc.VerifyAuditChain(context.Background(), &rgsv1.VerifyAuditChainRequest{
+		Meta:         meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PartitionDay: "20260213",
+	})
+	if err != nil {
+		t.Fatalf("verify audit chain err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid partition day, got=%v", resp.Meta.GetResultCode())
+	}
+	if resp.Valid {
+		t.Fatalf("expected valid=false for invalid partition day")
+	}
+}

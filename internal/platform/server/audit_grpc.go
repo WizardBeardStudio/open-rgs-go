@@ -180,6 +180,11 @@ func (s *AuditService) VerifyAuditChain(ctx context.Context, req *rgsv1.VerifyAu
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.VerifyAuditChainResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason), Valid: false}, nil
 	}
+	if req.PartitionDay != "" {
+		if _, err := time.Parse("2006-01-02", req.PartitionDay); err != nil {
+			return &rgsv1.VerifyAuditChainResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "partition_day must be YYYY-MM-DD"), Valid: false}, nil
+		}
+	}
 	if s.db == nil {
 		return &rgsv1.VerifyAuditChainResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_ERROR, "persistence unavailable"), Valid: false}, nil
 	}
