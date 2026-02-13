@@ -154,6 +154,9 @@ func (s *PromotionsService) RecordBonusTransaction(ctx context.Context, req *rgs
 	if req == nil || req.Transaction == nil || req.Transaction.EquipmentId == "" || req.Transaction.PlayerId == "" || invalidAmount(req.Transaction.Amount) {
 		return &rgsv1.RecordBonusTransactionResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "transaction requires equipment_id, player_id, and positive amount")}, nil
 	}
+	if _, ok := parseRFC3339Strict(req.Transaction.OccurredAt); req.Transaction.OccurredAt != "" && !ok {
+		return &rgsv1.RecordBonusTransactionResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid occurred_at")}, nil
+	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "bonus_transaction", "", "record_bonus_transaction", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.RecordBonusTransactionResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
@@ -229,6 +232,9 @@ func (s *PromotionsService) ListRecentBonusTransactions(ctx context.Context, req
 func (s *PromotionsService) RecordPromotionalAward(ctx context.Context, req *rgsv1.RecordPromotionalAwardRequest) (*rgsv1.RecordPromotionalAwardResponse, error) {
 	if req == nil || req.Award == nil || req.Award.PlayerId == "" || !validPromotionalAwardType(req.Award.AwardType) || invalidAmount(req.Award.Amount) {
 		return &rgsv1.RecordPromotionalAwardResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "award requires player_id, award_type, and positive amount")}, nil
+	}
+	if _, ok := parseRFC3339Strict(req.Award.OccurredAt); req.Award.OccurredAt != "" && !ok {
+		return &rgsv1.RecordPromotionalAwardResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid occurred_at")}, nil
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "promotional_award", "", "record_promotional_award", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
@@ -492,6 +498,9 @@ func (s *UISystemOverlayService) SubmitSystemWindowEvent(ctx context.Context, re
 	if req == nil || req.Event == nil || req.Event.EquipmentId == "" || req.Event.WindowId == "" || !validSystemWindowEventType(req.Event.EventType) {
 		return &rgsv1.SubmitSystemWindowEventResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "event requires equipment_id, window_id, and event_type")}, nil
 	}
+	if _, ok := parseRFC3339Strict(req.Event.EventTime); req.Event.EventTime != "" && !ok {
+		return &rgsv1.SubmitSystemWindowEventResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid event_time")}, nil
+	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		_ = s.appendAudit(req.Meta, "", "submit_system_window_event", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.SubmitSystemWindowEventResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
@@ -503,7 +512,7 @@ func (s *UISystemOverlayService) SubmitSystemWindowEvent(ctx context.Context, re
 	if ev.EventId == "" {
 		ev.EventId = s.nextEventIDLocked()
 	}
-	if parseRFC3339OrZero(ev.EventTime).IsZero() {
+	if ev.EventTime == "" {
 		ev.EventTime = s.now().Format(time.RFC3339Nano)
 	}
 	if !s.disableInMemoryCache {
