@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"sort"
 	"strconv"
 	"time"
@@ -62,12 +63,14 @@ func (s *AuditService) authorize(ctx context.Context, meta *rgsv1.RequestMeta) (
 	}
 }
 
-func paginate[T any](items []T, pageToken string, pageSize int32) ([]T, string) {
+func paginate[T any](items []T, pageToken string, pageSize int32) ([]T, string, error) {
 	start := 0
 	if pageToken != "" {
-		if p, err := strconv.Atoi(pageToken); err == nil && p >= 0 {
-			start = p
+		p, err := strconv.Atoi(pageToken)
+		if err != nil || p < 0 {
+			return nil, "", fmt.Errorf("invalid page token")
 		}
+		start = p
 	}
 	if start > len(items) {
 		start = len(items)
@@ -84,7 +87,7 @@ func paginate[T any](items []T, pageToken string, pageSize int32) ([]T, string) 
 	if end < len(items) {
 		next = strconv.Itoa(end)
 	}
-	return items[start:end], next
+	return items[start:end], next, nil
 }
 
 func (s *AuditService) ListAuditEvents(ctx context.Context, req *rgsv1.ListAuditEventsRequest) (*rgsv1.ListAuditEventsResponse, error) {
@@ -133,7 +136,10 @@ func (s *AuditService) ListAuditEvents(ctx context.Context, req *rgsv1.ListAudit
 		return events[i].RecordedAt > events[j].RecordedAt
 	})
 
-	page, next := paginate(events, req.PageToken, req.PageSize)
+	page, next, err := paginate(events, req.PageToken, req.PageSize)
+	if err != nil {
+		return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_token")}, nil
+	}
 	return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Events: page, NextPageToken: next}, nil
 }
 
@@ -169,7 +175,10 @@ func (s *AuditService) ListRemoteAccessActivities(ctx context.Context, req *rgsv
 		return activities[i].Timestamp > activities[j].Timestamp
 	})
 
-	page, next := paginate(activities, req.PageToken, req.PageSize)
+	page, next, err := paginate(activities, req.PageToken, req.PageSize)
+	if err != nil {
+		return &rgsv1.ListRemoteAccessActivitiesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_token")}, nil
+	}
 	return &rgsv1.ListRemoteAccessActivitiesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_OK, ""), Activities: page, NextPageToken: next}, nil
 }
 

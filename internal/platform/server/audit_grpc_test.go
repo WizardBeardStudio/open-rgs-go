@@ -10,6 +10,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -127,5 +128,42 @@ func TestAuditServiceVerifyAuditChainRejectsInvalidPartitionDay(t *testing.T) {
 	}
 	if resp.Valid {
 		t.Fatalf("expected valid=false for invalid partition day")
+	}
+}
+
+func TestAuditServiceListAuditEventsRejectsInvalidPageToken(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 11, 10, 0, 0, time.UTC)}
+	ledgerSvc := NewLedgerService(clk)
+	auditSvc := NewAuditService(clk, nil, ledgerSvc.AuditStore)
+
+	resp, err := auditSvc.ListAuditEvents(context.Background(), &rgsv1.ListAuditEventsRequest{
+		Meta:      meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageToken: "bad-token",
+	})
+	if err != nil {
+		t.Fatalf("list audit events err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid page token, got=%v", resp.Meta.GetResultCode())
+	}
+}
+
+func TestAuditServiceListRemoteAccessRejectsInvalidPageToken(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 11, 15, 0, 0, time.UTC)}
+	guard, err := NewRemoteAccessGuard(clk, audit.NewInMemoryStore(), []string{"127.0.0.1/32"})
+	if err != nil {
+		t.Fatalf("new guard err: %v", err)
+	}
+	auditSvc := NewAuditService(clk, guard)
+
+	resp, err := auditSvc.ListRemoteAccessActivities(context.Background(), &rgsv1.ListRemoteAccessActivitiesRequest{
+		Meta:      meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageToken: "-1",
+	})
+	if err != nil {
+		t.Fatalf("list remote access err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid page token, got=%v", resp.Meta.GetResultCode())
 	}
 }
