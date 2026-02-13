@@ -59,6 +59,9 @@ func TestPromotionsListRecentRejectsNegativeLimit(t *testing.T) {
 	if len(events) == 0 || events[len(events)-1].Action != "list_recent_bonus_transactions" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for invalid bonus list request, got=%v", events)
 	}
+	if events[len(events)-1].Reason != "invalid limit" {
+		t.Fatalf("expected audit reason invalid limit, got=%q", events[len(events)-1].Reason)
+	}
 }
 
 func TestPromotionsListRecentRejectsOversizedLimit(t *testing.T) {
@@ -75,6 +78,13 @@ func TestPromotionsListRecentRejectsOversizedLimit(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for oversized limit, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_recent_bonus_transactions" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for oversized bonus list request, got=%v", events)
+	}
+	if events[len(events)-1].Reason != "invalid limit" {
+		t.Fatalf("expected audit reason invalid limit, got=%q", events[len(events)-1].Reason)
 	}
 }
 
@@ -349,6 +359,13 @@ func TestPromotionsListAwardsRejectsOversizedPageSize(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for oversized page_size, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_promotional_awards" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for oversized awards list request, got=%v", events)
+	}
+	if events[len(events)-1].Reason != "invalid page_size" {
+		t.Fatalf("expected audit reason invalid page_size, got=%q", events[len(events)-1].Reason)
+	}
 }
 
 func TestPromotionsListAwardsDeniedForPlayerActor(t *testing.T) {
@@ -537,6 +554,13 @@ func TestUISystemOverlayListRejectsNegativePageSize(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for negative page_size, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for negative ui page_size, got=%v", events)
+	}
+	if events[len(events)-1].Reason != "invalid page_size" {
+		t.Fatalf("expected audit reason invalid page_size, got=%q", events[len(events)-1].Reason)
+	}
 }
 
 func TestUISystemOverlayListRejectsOversizedPageSize(t *testing.T) {
@@ -553,6 +577,13 @@ func TestUISystemOverlayListRejectsOversizedPageSize(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for oversized page_size, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for oversized ui page_size, got=%v", events)
+	}
+	if events[len(events)-1].Reason != "invalid page_size" {
+		t.Fatalf("expected audit reason invalid page_size, got=%q", events[len(events)-1].Reason)
 	}
 }
 
@@ -707,6 +738,9 @@ func TestUISystemOverlayListRejectsInvalidTimeInputs(t *testing.T) {
 	if prev.Action != "list_system_window_events" || prev.Result != "denied" || last.Action != "list_system_window_events" || last.Result != "denied" {
 		t.Fatalf("expected denied audit events for invalid time inputs, got prev=%v last=%v", prev, last)
 	}
+	if prev.Reason != "invalid from_time" || last.Reason != "invalid to_time" {
+		t.Fatalf("expected invalid time reasons from/to, got prev=%q last=%q", prev.Reason, last.Reason)
+	}
 }
 
 func TestUISystemOverlayListRejectsInvertedTimeRange(t *testing.T) {
@@ -724,5 +758,12 @@ func TestUISystemOverlayListRejectsInvertedTimeRange(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for inverted range, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for inverted range, got=%v", events)
+	}
+	if events[len(events)-1].Reason != "invalid time range" {
+		t.Fatalf("expected audit reason invalid time range, got=%q", events[len(events)-1].Reason)
 	}
 }
