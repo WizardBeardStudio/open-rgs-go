@@ -267,6 +267,23 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if badPageResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid page token result code, got=%s", badPageResp.GetMeta().GetResultCode().String())
 	}
+	qNegativePageToken := make(url.Values)
+	qNegativePageToken.Set("meta.actor.actorId", "op-1")
+	qNegativePageToken.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qNegativePageToken.Set("page_token", "-1")
+	negativePageReq := httptest.NewRequest(http.MethodGet, "/v1/ui/system-window-events?"+qNegativePageToken.Encode(), nil)
+	negativePageRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(negativePageRec, negativePageReq)
+	if negativePageRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("ui list negative page token status: got=%d body=%s", negativePageRec.Result().StatusCode, negativePageRec.Body.String())
+	}
+	var negativePageResp rgsv1.ListSystemWindowEventsResponse
+	if err := protojson.Unmarshal(negativePageRec.Body.Bytes(), &negativePageResp); err != nil {
+		t.Fatalf("unmarshal ui list negative page token response: %v", err)
+	}
+	if negativePageResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid negative page token result code, got=%s", negativePageResp.GetMeta().GetResultCode().String())
+	}
 
 	qBadRange := make(url.Values)
 	qBadRange.Set("meta.actor.actorId", "op-1")
@@ -411,6 +428,23 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if badAwardPageTokenResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid awards page_token result code, got=%s", badAwardPageTokenResp.GetMeta().GetResultCode().String())
+	}
+	qNegativeAwardPageToken := make(url.Values)
+	qNegativeAwardPageToken.Set("meta.actor.actorId", "op-1")
+	qNegativeAwardPageToken.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	qNegativeAwardPageToken.Set("page_token", "-1")
+	negativeAwardPageTokenReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/awards?"+qNegativeAwardPageToken.Encode(), nil)
+	negativeAwardPageTokenRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(negativeAwardPageTokenRec, negativeAwardPageTokenReq)
+	if negativeAwardPageTokenRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("awards list negative page_token status: got=%d body=%s", negativeAwardPageTokenRec.Result().StatusCode, negativeAwardPageTokenRec.Body.String())
+	}
+	var negativeAwardPageTokenResp rgsv1.ListPromotionalAwardsResponse
+	if err := protojson.Unmarshal(negativeAwardPageTokenRec.Body.Bytes(), &negativeAwardPageTokenResp); err != nil {
+		t.Fatalf("unmarshal awards list negative page_token response: %v", err)
+	}
+	if negativeAwardPageTokenResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid negative awards page_token result code, got=%s", negativeAwardPageTokenResp.GetMeta().GetResultCode().String())
 	}
 
 	qBadUIPageSize := make(url.Values)
