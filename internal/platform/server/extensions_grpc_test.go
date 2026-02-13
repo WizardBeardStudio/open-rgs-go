@@ -88,6 +88,10 @@ func TestPromotionsListRecentDeniedForPlayerActor(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_recent_bonus_transactions" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for bonus list access, got=%v", events)
+	}
 }
 
 func TestPromotionsRecordBonusTransactionRejectsInvalidOccurredAt(t *testing.T) {
@@ -343,6 +347,10 @@ func TestPromotionsListAwardsDeniedForPlayerActor(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_promotional_awards" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for awards list access, got=%v", events)
+	}
 }
 
 func TestPromotionsRecordPromotionalAwardRejectsUnknownAwardType(t *testing.T) {
@@ -536,6 +544,10 @@ func TestUISystemOverlayListDeniedForPlayerActor(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for ui list access, got=%v", events)
 	}
 }
 

@@ -192,6 +192,7 @@ func (s *PromotionsService) ListRecentBonusTransactions(ctx context.Context, req
 		req = &rgsv1.ListRecentBonusTransactionsRequest{}
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
+		_ = s.appendAudit(req.Meta, "bonus_transaction", req.EquipmentId, "list_recent_bonus_transactions", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ListRecentBonusTransactionsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	if req.Limit < 0 {
@@ -273,6 +274,7 @@ func (s *PromotionsService) ListPromotionalAwards(ctx context.Context, req *rgsv
 		req = &rgsv1.ListPromotionalAwardsRequest{}
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
+		_ = s.appendAudit(req.Meta, "promotional_award", req.PlayerId, "list_promotional_awards", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	if req.PageSize < 0 {
@@ -541,6 +543,7 @@ func (s *UISystemOverlayService) ListSystemWindowEvents(ctx context.Context, req
 		req = &rgsv1.ListSystemWindowEventsRequest{}
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
+		_ = s.appendAudit(req.Meta, req.EquipmentId, "list_system_window_events", []byte(`{}`), []byte(`{}`), audit.ResultDenied, reason)
 		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	if req.PageSize < 0 {
