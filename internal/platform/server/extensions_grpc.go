@@ -202,7 +202,7 @@ func (s *PromotionsService) ListRecentBonusTransactions(ctx context.Context, req
 		limit = 25
 	}
 	if limit > 100 {
-		limit = 100
+		return &rgsv1.ListRecentBonusTransactionsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid limit")}, nil
 	}
 
 	s.mu.Lock()
@@ -283,7 +283,7 @@ func (s *PromotionsService) ListPromotionalAwards(ctx context.Context, req *rgsv
 		size = 25
 	}
 	if size > 100 {
-		size = 100
+		return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_size")}, nil
 	}
 	start := 0
 	if req.PageToken != "" {
@@ -559,7 +559,7 @@ func (s *UISystemOverlayService) ListSystemWindowEvents(ctx context.Context, req
 		size = 50
 	}
 	if size > 200 {
-		size = 200
+		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_size")}, nil
 	}
 	fromTS, ok := parseRFC3339Strict(req.FromTime)
 	if !ok {
