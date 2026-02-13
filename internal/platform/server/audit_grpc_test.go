@@ -204,3 +204,40 @@ func TestAuditServiceListRemoteAccessRejectsOversizedPageSize(t *testing.T) {
 		t.Fatalf("expected invalid oversized page_size, got=%v", resp.Meta.GetResultCode())
 	}
 }
+
+func TestAuditServiceListAuditEventsRejectsNegativePageSize(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 11, 30, 0, 0, time.UTC)}
+	ledgerSvc := NewLedgerService(clk)
+	auditSvc := NewAuditService(clk, nil, ledgerSvc.AuditStore)
+
+	resp, err := auditSvc.ListAuditEvents(context.Background(), &rgsv1.ListAuditEventsRequest{
+		Meta:     meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageSize: -1,
+	})
+	if err != nil {
+		t.Fatalf("list audit events err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid negative page_size, got=%v", resp.Meta.GetResultCode())
+	}
+}
+
+func TestAuditServiceListRemoteAccessRejectsNegativePageSize(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 11, 35, 0, 0, time.UTC)}
+	guard, err := NewRemoteAccessGuard(clk, audit.NewInMemoryStore(), []string{"127.0.0.1/32"})
+	if err != nil {
+		t.Fatalf("new guard err: %v", err)
+	}
+	auditSvc := NewAuditService(clk, guard)
+
+	resp, err := auditSvc.ListRemoteAccessActivities(context.Background(), &rgsv1.ListRemoteAccessActivitiesRequest{
+		Meta:     meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		PageSize: -1,
+	})
+	if err != nil {
+		t.Fatalf("list remote access err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid negative page_size, got=%v", resp.Meta.GetResultCode())
+	}
+}

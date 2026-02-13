@@ -110,6 +110,9 @@ func (s *AuditService) ListAuditEvents(ctx context.Context, req *rgsv1.ListAudit
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
+	if req.PageSize < 0 {
+		return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "page_size must be non-negative")}, nil
+	}
 	if err := validatePageToken(req.PageToken); err != nil {
 		return &rgsv1.ListAuditEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_token")}, nil
 	}
@@ -168,6 +171,9 @@ func (s *AuditService) ListRemoteAccessActivities(ctx context.Context, req *rgsv
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
 		return &rgsv1.ListRemoteAccessActivitiesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
+	}
+	if req.PageSize < 0 {
+		return &rgsv1.ListRemoteAccessActivitiesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "page_size must be non-negative")}, nil
 	}
 	if err := validatePageToken(req.PageToken); err != nil {
 		return &rgsv1.ListRemoteAccessActivitiesResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_token")}, nil
