@@ -2,11 +2,36 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
 )
+
+func parsePromotionalAwardType(raw string) (rgsv1.PromotionalAwardType, error) {
+	v, err := strconv.Atoi(raw)
+	if err != nil {
+		return rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_UNSPECIFIED, fmt.Errorf("invalid promotional award type %q: %w", raw, err)
+	}
+	t := rgsv1.PromotionalAwardType(v)
+	if !validPromotionalAwardType(t) {
+		return rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_UNSPECIFIED, fmt.Errorf("unsupported promotional award type %q", raw)
+	}
+	return t, nil
+}
+
+func parseSystemWindowEventType(raw string) (rgsv1.SystemWindowEventType, error) {
+	v, err := strconv.Atoi(raw)
+	if err != nil {
+		return rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_UNSPECIFIED, fmt.Errorf("invalid system window event type %q: %w", raw, err)
+	}
+	t := rgsv1.SystemWindowEventType(v)
+	if !validSystemWindowEventType(t) {
+		return rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_UNSPECIFIED, fmt.Errorf("unsupported system window event type %q", raw)
+	}
+	return t, nil
+}
 
 func (s *PromotionsService) persistBonusTransaction(ctx context.Context, tx *rgsv1.BonusTransaction) error {
 	if s == nil || s.db == nil || tx == nil {
@@ -150,8 +175,11 @@ LIMIT $3 OFFSET $4
 		); err != nil {
 			return nil, "", err
 		}
-		awardTypeInt, _ := strconv.Atoi(awardTypeRaw)
-		award.AwardType = rgsv1.PromotionalAwardType(awardTypeInt)
+		awardType, err := parsePromotionalAwardType(awardTypeRaw)
+		if err != nil {
+			return nil, "", err
+		}
+		award.AwardType = awardType
 		award.Amount = &rgsv1.Money{AmountMinor: amount, Currency: currency}
 		award.OccurredAt = occurredAt.UTC().Format(time.RFC3339Nano)
 		out = append(out, &award)
@@ -232,8 +260,11 @@ LIMIT $4 OFFSET $5
 		); err != nil {
 			return nil, "", err
 		}
-		evTypeInt, _ := strconv.Atoi(evTypeRaw)
-		ev.EventType = rgsv1.SystemWindowEventType(evTypeInt)
+		evType, err := parseSystemWindowEventType(evTypeRaw)
+		if err != nil {
+			return nil, "", err
+		}
+		ev.EventType = evType
 		ev.EventTime = eventTime.UTC().Format(time.RFC3339Nano)
 		out = append(out, &ev)
 	}
