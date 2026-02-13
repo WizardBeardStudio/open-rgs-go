@@ -114,6 +114,10 @@ func TestPromotionsRecordBonusTransactionRejectsInvalidOccurredAt(t *testing.T) 
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for malformed occurred_at, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "record_bonus_transaction" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for invalid bonus request, got=%v", events)
+	}
 }
 
 func TestPromotionsRecordBonusTransactionDeniedForPlayerActor(t *testing.T) {
@@ -473,6 +477,10 @@ func TestUISystemOverlaySubmitRejectsInvalidEventTime(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for malformed event_time, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "submit_system_window_event" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for invalid ui submit request, got=%v", events)
+	}
 }
 
 func TestUISystemOverlaySubmitDeniedForPlayerActor(t *testing.T) {
@@ -566,6 +574,10 @@ func TestUISystemOverlayListRejectsInvalidPageToken(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for bad page token, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for invalid ui list request, got=%v", events)
+	}
 }
 
 func TestUISystemOverlayListRejectsNegativePageToken(t *testing.T) {
@@ -616,6 +628,10 @@ func TestPromotionsListAwardsRejectsInvalidPageToken(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for malformed page token, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_promotional_awards" || events[len(events)-1].Result != "denied" {
+		t.Fatalf("expected denied audit event for invalid awards list request, got=%v", events)
 	}
 }
 

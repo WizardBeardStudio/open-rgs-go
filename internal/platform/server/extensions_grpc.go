@@ -152,9 +152,11 @@ func cloneAward(in *rgsv1.PromotionalAward) *rgsv1.PromotionalAward {
 
 func (s *PromotionsService) RecordBonusTransaction(ctx context.Context, req *rgsv1.RecordBonusTransactionRequest) (*rgsv1.RecordBonusTransactionResponse, error) {
 	if req == nil || req.Transaction == nil || req.Transaction.EquipmentId == "" || req.Transaction.PlayerId == "" || invalidAmount(req.Transaction.Amount) {
+		_ = s.appendAudit(req.GetMeta(), "bonus_transaction", "", "record_bonus_transaction", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid request")
 		return &rgsv1.RecordBonusTransactionResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "transaction requires equipment_id, player_id, and positive amount")}, nil
 	}
 	if _, ok := parseRFC3339Strict(req.Transaction.OccurredAt); req.Transaction.OccurredAt != "" && !ok {
+		_ = s.appendAudit(req.GetMeta(), "bonus_transaction", req.Transaction.EquipmentId, "record_bonus_transaction", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid occurred_at")
 		return &rgsv1.RecordBonusTransactionResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid occurred_at")}, nil
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
@@ -196,6 +198,7 @@ func (s *PromotionsService) ListRecentBonusTransactions(ctx context.Context, req
 		return &rgsv1.ListRecentBonusTransactionsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	if req.Limit < 0 {
+		_ = s.appendAudit(req.Meta, "bonus_transaction", req.EquipmentId, "list_recent_bonus_transactions", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid limit")
 		return &rgsv1.ListRecentBonusTransactionsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid limit")}, nil
 	}
 	limit := int(req.Limit)
@@ -203,6 +206,7 @@ func (s *PromotionsService) ListRecentBonusTransactions(ctx context.Context, req
 		limit = 25
 	}
 	if limit > 100 {
+		_ = s.appendAudit(req.Meta, "bonus_transaction", req.EquipmentId, "list_recent_bonus_transactions", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid limit")
 		return &rgsv1.ListRecentBonusTransactionsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid limit")}, nil
 	}
 
@@ -235,9 +239,11 @@ func (s *PromotionsService) ListRecentBonusTransactions(ctx context.Context, req
 
 func (s *PromotionsService) RecordPromotionalAward(ctx context.Context, req *rgsv1.RecordPromotionalAwardRequest) (*rgsv1.RecordPromotionalAwardResponse, error) {
 	if req == nil || req.Award == nil || req.Award.PlayerId == "" || !validPromotionalAwardType(req.Award.AwardType) || invalidAmount(req.Award.Amount) {
+		_ = s.appendAudit(req.GetMeta(), "promotional_award", "", "record_promotional_award", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid request")
 		return &rgsv1.RecordPromotionalAwardResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "award requires player_id, award_type, and positive amount")}, nil
 	}
 	if _, ok := parseRFC3339Strict(req.Award.OccurredAt); req.Award.OccurredAt != "" && !ok {
+		_ = s.appendAudit(req.GetMeta(), "promotional_award", req.Award.PlayerId, "record_promotional_award", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid occurred_at")
 		return &rgsv1.RecordPromotionalAwardResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid occurred_at")}, nil
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
@@ -278,6 +284,7 @@ func (s *PromotionsService) ListPromotionalAwards(ctx context.Context, req *rgsv
 		return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	if req.PageSize < 0 {
+		_ = s.appendAudit(req.Meta, "promotional_award", req.PlayerId, "list_promotional_awards", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid page_size")
 		return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_size")}, nil
 	}
 	size := int(req.PageSize)
@@ -285,12 +292,14 @@ func (s *PromotionsService) ListPromotionalAwards(ctx context.Context, req *rgsv
 		size = 25
 	}
 	if size > 100 {
+		_ = s.appendAudit(req.Meta, "promotional_award", req.PlayerId, "list_promotional_awards", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid page_size")
 		return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_size")}, nil
 	}
 	start := 0
 	if req.PageToken != "" {
 		n, err := strconv.Atoi(req.PageToken)
 		if err != nil || n < 0 {
+			_ = s.appendAudit(req.Meta, "promotional_award", req.PlayerId, "list_promotional_awards", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid page_token")
 			return &rgsv1.ListPromotionalAwardsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_token")}, nil
 		}
 		start = n
@@ -504,9 +513,11 @@ func validSystemWindowEventType(t rgsv1.SystemWindowEventType) bool {
 
 func (s *UISystemOverlayService) SubmitSystemWindowEvent(ctx context.Context, req *rgsv1.SubmitSystemWindowEventRequest) (*rgsv1.SubmitSystemWindowEventResponse, error) {
 	if req == nil || req.Event == nil || req.Event.EquipmentId == "" || req.Event.WindowId == "" || !validSystemWindowEventType(req.Event.EventType) {
+		_ = s.appendAudit(req.GetMeta(), "", "submit_system_window_event", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid request")
 		return &rgsv1.SubmitSystemWindowEventResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "event requires equipment_id, window_id, and event_type")}, nil
 	}
 	if _, ok := parseRFC3339Strict(req.Event.EventTime); req.Event.EventTime != "" && !ok {
+		_ = s.appendAudit(req.GetMeta(), req.Event.EquipmentId, "submit_system_window_event", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid event_time")
 		return &rgsv1.SubmitSystemWindowEventResponse{Meta: s.responseMeta(req.GetMeta(), rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid event_time")}, nil
 	}
 	if ok, reason := s.authorize(ctx, req.Meta); !ok {
@@ -547,12 +558,14 @@ func (s *UISystemOverlayService) ListSystemWindowEvents(ctx context.Context, req
 		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	if req.PageSize < 0 {
+		_ = s.appendAudit(req.Meta, req.EquipmentId, "list_system_window_events", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid page_size")
 		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_size")}, nil
 	}
 	start := 0
 	if req.PageToken != "" {
 		v, err := strconv.Atoi(req.PageToken)
 		if err != nil || v < 0 {
+			_ = s.appendAudit(req.Meta, req.EquipmentId, "list_system_window_events", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid page_token")
 			return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_token")}, nil
 		}
 		start = v
@@ -562,17 +575,21 @@ func (s *UISystemOverlayService) ListSystemWindowEvents(ctx context.Context, req
 		size = 50
 	}
 	if size > 200 {
+		_ = s.appendAudit(req.Meta, req.EquipmentId, "list_system_window_events", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid page_size")
 		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid page_size")}, nil
 	}
 	fromTS, ok := parseRFC3339Strict(req.FromTime)
 	if !ok {
+		_ = s.appendAudit(req.Meta, req.EquipmentId, "list_system_window_events", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid from_time")
 		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid from_time")}, nil
 	}
 	toTS, ok := parseRFC3339Strict(req.ToTime)
 	if !ok {
+		_ = s.appendAudit(req.Meta, req.EquipmentId, "list_system_window_events", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid to_time")
 		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "invalid to_time")}, nil
 	}
 	if !fromTS.IsZero() && !toTS.IsZero() && fromTS.After(toTS) {
+		_ = s.appendAudit(req.Meta, req.EquipmentId, "list_system_window_events", []byte(`{}`), []byte(`{}`), audit.ResultDenied, "invalid time range")
 		return &rgsv1.ListSystemWindowEventsResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_INVALID, "from_time must be <= to_time")}, nil
 	}
 
