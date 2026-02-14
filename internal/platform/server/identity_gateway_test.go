@@ -192,6 +192,24 @@ func TestIdentityGatewayRefreshLogoutActorMismatchDenied(t *testing.T) {
 	if logoutResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
 		t.Fatalf("expected actor mismatch reason on logout, got=%q", logoutResp.GetMeta().GetDenialReason())
 	}
+
+	events := svc.AuditStore.Events()
+	var sawRefreshDenied bool
+	var sawLogoutDenied bool
+	for _, ev := range events {
+		if string(ev.Result) != "denied" || ev.Reason != "actor mismatch with token" {
+			continue
+		}
+		if ev.Action == "identity_refresh" {
+			sawRefreshDenied = true
+		}
+		if ev.Action == "identity_logout" {
+			sawLogoutDenied = true
+		}
+	}
+	if !sawRefreshDenied || !sawLogoutDenied {
+		t.Fatalf("expected denied audit coverage for refresh/logout mismatch paths, got=%v", events)
+	}
 }
 
 func TestIdentityGatewayAdminActorMismatchDenied(t *testing.T) {
