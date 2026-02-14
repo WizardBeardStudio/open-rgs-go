@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package rgs.v1;
 
-option go_package = "github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1";
+option go_package = "github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1";
 
 message RequestMeta {
   string request_id = 1;
