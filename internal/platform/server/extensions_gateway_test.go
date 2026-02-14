@@ -174,6 +174,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if awardResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid award result code, got=%s", awardResp.GetMeta().GetResultCode().String())
 	}
+	if awardResp.GetMeta().GetDenialReason() != "award requires player_id, award_type, and positive amount" {
+		t.Fatalf("expected award denial reason for invalid request, got=%q", awardResp.GetMeta().GetDenialReason())
+	}
 
 	bonusReq := &rgsv1.RecordBonusTransactionRequest{
 		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
@@ -198,6 +201,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if bonusResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid bonus result code, got=%s", bonusResp.GetMeta().GetResultCode().String())
+	}
+	if bonusResp.GetMeta().GetDenialReason() != "invalid occurred_at" {
+		t.Fatalf("expected bonus denial reason invalid occurred_at, got=%q", bonusResp.GetMeta().GetDenialReason())
 	}
 
 	awardBadTimeReq := &rgsv1.RecordPromotionalAwardRequest{
@@ -225,6 +231,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if awardBadTimeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid award bad-time result code, got=%s", awardBadTimeResp.GetMeta().GetResultCode().String())
 	}
+	if awardBadTimeResp.GetMeta().GetDenialReason() != "invalid occurred_at" {
+		t.Fatalf("expected award denial reason invalid occurred_at, got=%q", awardBadTimeResp.GetMeta().GetDenialReason())
+	}
 
 	uiReq := &rgsv1.SubmitSystemWindowEventRequest{
 		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
@@ -250,6 +259,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if uiResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid ui submit result code, got=%s", uiResp.GetMeta().GetResultCode().String())
 	}
+	if uiResp.GetMeta().GetDenialReason() != "invalid event_time" {
+		t.Fatalf("expected ui denial reason invalid event_time, got=%q", uiResp.GetMeta().GetDenialReason())
+	}
 
 	uiBadTypeReq := &rgsv1.SubmitSystemWindowEventRequest{
 		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
@@ -273,6 +285,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if uiBadTypeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid ui bad type result code, got=%s", uiBadTypeResp.GetMeta().GetResultCode().String())
+	}
+	if uiBadTypeResp.GetMeta().GetDenialReason() != "event requires equipment_id, window_id, and event_type" {
+		t.Fatalf("expected ui bad-type denial reason, got=%q", uiBadTypeResp.GetMeta().GetDenialReason())
 	}
 
 	playerBonusReq := &rgsv1.RecordBonusTransactionRequest{
@@ -435,6 +450,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if badPageResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid page token result code, got=%s", badPageResp.GetMeta().GetResultCode().String())
 	}
+	if badPageResp.GetMeta().GetDenialReason() != "invalid page_token" {
+		t.Fatalf("expected bad page token denial reason, got=%q", badPageResp.GetMeta().GetDenialReason())
+	}
 	qNegativePageToken := make(url.Values)
 	qNegativePageToken.Set("meta.actor.actorId", "op-1")
 	qNegativePageToken.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
@@ -470,6 +488,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if badRangeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid bad range result code, got=%s", badRangeResp.GetMeta().GetResultCode().String())
+	}
+	if badRangeResp.GetMeta().GetDenialReason() != "from_time must be <= to_time" {
+		t.Fatalf("expected bad range denial reason, got=%q", badRangeResp.GetMeta().GetDenialReason())
 	}
 
 	qBadFrom := make(url.Values)
@@ -525,6 +546,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if badBonusLimitResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid bonus limit result code, got=%s", badBonusLimitResp.GetMeta().GetResultCode().String())
 	}
+	if badBonusLimitResp.GetMeta().GetDenialReason() != "invalid limit" {
+		t.Fatalf("expected bonus limit denial reason, got=%q", badBonusLimitResp.GetMeta().GetDenialReason())
+	}
 
 	qOversizedBonusLimit := make(url.Values)
 	qOversizedBonusLimit.Set("meta.actor.actorId", "op-1")
@@ -560,6 +584,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if badAwardPageSizeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid awards page_size result code, got=%s", badAwardPageSizeResp.GetMeta().GetResultCode().String())
+	}
+	if badAwardPageSizeResp.GetMeta().GetDenialReason() != "invalid page_size" {
+		t.Fatalf("expected awards page_size denial reason, got=%q", badAwardPageSizeResp.GetMeta().GetDenialReason())
 	}
 
 	qOversizedAwardPageSize := make(url.Values)
@@ -631,6 +658,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if badUIPageSizeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid ui page_size result code, got=%s", badUIPageSizeResp.GetMeta().GetResultCode().String())
+	}
+	if badUIPageSizeResp.GetMeta().GetDenialReason() != "invalid page_size" {
+		t.Fatalf("expected ui page_size denial reason, got=%q", badUIPageSizeResp.GetMeta().GetDenialReason())
 	}
 
 	qOversizedUIPageSize := make(url.Values)
