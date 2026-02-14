@@ -102,6 +102,9 @@ func TestPromotionsListRecentDeniedForPlayerActor(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	if resp.GetMeta().GetDenialReason() != "unauthorized actor type" {
+		t.Fatalf("expected denial reason unauthorized actor type, got=%q", resp.GetMeta().GetDenialReason())
+	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_recent_bonus_transactions" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for bonus list access, got=%v", events)
@@ -158,6 +161,9 @@ func TestPromotionsRecordBonusTransactionDeniedForPlayerActor(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "unauthorized actor type" {
+		t.Fatalf("expected denial reason unauthorized actor type, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "record_bonus_transaction" || events[len(events)-1].Result != "denied" {
@@ -392,6 +398,9 @@ func TestPromotionsListAwardsDeniedForPlayerActor(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	if resp.GetMeta().GetDenialReason() != "unauthorized actor type" {
+		t.Fatalf("expected denial reason unauthorized actor type, got=%q", resp.GetMeta().GetDenialReason())
+	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_promotional_awards" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for awards list access, got=%v", events)
@@ -479,6 +488,9 @@ func TestPromotionsRecordPromotionalAwardDeniedForPlayerActor(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "unauthorized actor type" {
+		t.Fatalf("expected denial reason unauthorized actor type, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "record_promotional_award" || events[len(events)-1].Result != "denied" {
@@ -600,6 +612,9 @@ func TestUISystemOverlaySubmitDeniedForPlayerActor(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	if resp.GetMeta().GetDenialReason() != "unauthorized actor type" {
+		t.Fatalf("expected denial reason unauthorized actor type, got=%q", resp.GetMeta().GetDenialReason())
+	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "submit_system_window_event" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for ui submit access, got=%v", events)
@@ -670,6 +685,9 @@ func TestUISystemOverlayListDeniedForPlayerActor(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied result for player actor, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "unauthorized actor type" {
+		t.Fatalf("expected denial reason unauthorized actor type, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {

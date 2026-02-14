@@ -298,6 +298,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if playerBonusResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied player bonus result code, got=%s", playerBonusResp.GetMeta().GetResultCode().String())
 	}
+	if playerBonusResp.GetMeta().GetDenialReason() != "unauthorized actor type" {
+		t.Fatalf("expected player bonus denial reason unauthorized actor type, got=%q", playerBonusResp.GetMeta().GetDenialReason())
+	}
 
 	playerUIReq := &rgsv1.SubmitSystemWindowEventRequest{
 		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
@@ -322,6 +325,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if playerUIResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied player ui result code, got=%s", playerUIResp.GetMeta().GetResultCode().String())
+	}
+	if playerUIResp.GetMeta().GetDenialReason() != "unauthorized actor type" {
+		t.Fatalf("expected player ui denial reason unauthorized actor type, got=%q", playerUIResp.GetMeta().GetDenialReason())
 	}
 
 	playerAwardReq := &rgsv1.RecordPromotionalAwardRequest{
@@ -348,6 +354,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if playerAwardResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied player award result code, got=%s", playerAwardResp.GetMeta().GetResultCode().String())
 	}
+	if playerAwardResp.GetMeta().GetDenialReason() != "unauthorized actor type" {
+		t.Fatalf("expected player award denial reason unauthorized actor type, got=%q", playerAwardResp.GetMeta().GetDenialReason())
+	}
 
 	qPlayerBonusList := make(url.Values)
 	qPlayerBonusList.Set("meta.actor.actorId", "player-1")
@@ -364,6 +373,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if playerBonusListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied player bonus list result code, got=%s", playerBonusListResp.GetMeta().GetResultCode().String())
+	}
+	if playerBonusListResp.GetMeta().GetDenialReason() != "unauthorized actor type" {
+		t.Fatalf("expected player bonus list denial reason unauthorized actor type, got=%q", playerBonusListResp.GetMeta().GetDenialReason())
 	}
 
 	qPlayerAwardsList := make(url.Values)
@@ -382,6 +394,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if playerAwardsListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied player awards list result code, got=%s", playerAwardsListResp.GetMeta().GetResultCode().String())
 	}
+	if playerAwardsListResp.GetMeta().GetDenialReason() != "unauthorized actor type" {
+		t.Fatalf("expected player awards list denial reason unauthorized actor type, got=%q", playerAwardsListResp.GetMeta().GetDenialReason())
+	}
 
 	qPlayerUIList := make(url.Values)
 	qPlayerUIList.Set("meta.actor.actorId", "player-1")
@@ -398,6 +413,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if playerUIListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied player ui list result code, got=%s", playerUIListResp.GetMeta().GetResultCode().String())
+	}
+	if playerUIListResp.GetMeta().GetDenialReason() != "unauthorized actor type" {
+		t.Fatalf("expected player ui list denial reason unauthorized actor type, got=%q", playerUIListResp.GetMeta().GetDenialReason())
 	}
 
 	qBadPageToken := make(url.Values)
