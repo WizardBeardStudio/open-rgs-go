@@ -83,6 +83,8 @@ make all
 ./scripts/check.sh
 ```
 
+`./scripts/check.sh` runs proto freshness validation (`make proto-check`), formatting, and tests.
+
 Lint (if installed):
 
 ```bash
