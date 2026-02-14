@@ -112,11 +112,14 @@ Release metadata:
   - All sections complete in evidence checklist
   - Requirements traceability updated to release commit
   - Threat model reviewed for residual risks
+  - gRPC/REST parity negative-path evidence includes actor mismatch with token denial coverage for extension endpoints
 - Evidence:
   - `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
   - `docs/compliance/REQUIREMENTS.md`
   - `docs/compliance/THREAT_MODEL.md`
   - `docs/compliance/REPORT_CATALOG.md`
+  - `internal/platform/server/extensions_grpc_test.go`
+  - `internal/platform/server/extensions_gateway_test.go`
 
 ## Gate 8: Domain Scope Acceptance
 - Owner: Product + Compliance
