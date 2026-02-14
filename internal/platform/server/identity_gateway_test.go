@@ -10,6 +10,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -80,5 +81,42 @@ func TestIdentityGatewayParity_Workflow(t *testing.T) {
 	}
 	if logoutResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
 		t.Fatalf("unexpected logout result: %v", logoutResp.Meta.GetResultCode())
+	}
+}
+
+func TestIdentityGatewaySetCredentialActorMismatchDenied(t *testing.T) {
+	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 14, 10, 0, 0, time.UTC)}, "gateway-secret", 15*time.Minute, time.Hour)
+	gwMux := runtime.NewServeMux()
+	if err := rgsv1.RegisterIdentityServiceHandlerServer(context.Background(), gwMux, svc); err != nil {
+		t.Fatalf("register identity gateway handlers: %v", err)
+	}
+
+	reqBody := &rgsv1.SetCredentialRequest{
+		Meta:           meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:          &rgsv1.Actor{ActorId: "player-gw-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		CredentialHash: mustBcryptHash(t, "1234"),
+		Reason:         "bootstrap",
+	}
+	body, _ := protojson.Marshal(reqBody)
+	req := httptest.NewRequest(http.MethodPost, "/v1/identity/credentials:set", bytes.NewReader(body))
+	req = req.WithContext(platformauth.WithActor(req.Context(), platformauth.Actor{
+		ID:   "ctx-op",
+		Type: "ACTOR_TYPE_OPERATOR",
+	}))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	gwMux.ServeHTTP(rec, req)
+	if rec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("set credential mismatch status: got=%d body=%s", rec.Result().StatusCode, rec.Body.String())
+	}
+	var resp rgsv1.SetCredentialResponse
+	if err := protojson.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal set credential mismatch response: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied mismatch, got=%v", resp.GetMeta().GetResultCode())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch with token reason, got=%q", resp.GetMeta().GetDenialReason())
 	}
 }

@@ -206,6 +206,26 @@ func TestIdentitySetCredentialRequiresDatabase(t *testing.T) {
 	}
 }
 
+func TestIdentitySetCredentialActorMismatchDenied(t *testing.T) {
+	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 13, 30, 30, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"})
+	resp, err := svc.SetCredential(ctx, &rgsv1.SetCredentialRequest{
+		Meta:           meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:          &rgsv1.Actor{ActorId: "player-new", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		CredentialHash: mustBcryptHash(t, "new-pin"),
+		Reason:         "bootstrap",
+	})
+	if err != nil {
+		t.Fatalf("set credential err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied actor mismatch, got=%v", resp.Meta.GetResultCode())
+	}
+	if resp.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch with token reason, got=%q", resp.Meta.GetDenialReason())
+	}
+}
+
 func TestIdentitySetCredentialRejectsInvalidBcryptHash(t *testing.T) {
 	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 13, 31, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour)
 	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "op-1", Type: "ACTOR_TYPE_OPERATOR"})
