@@ -52,7 +52,10 @@ Optional but recommended:
 From `src/`:
 
 ```bash
+make check-module-path
 go test ./...
+# or
+make test
 ```
 
 PostgreSQL integration tests (restart/durability scenarios):
