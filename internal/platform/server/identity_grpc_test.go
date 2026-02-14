@@ -115,6 +115,27 @@ func TestIdentityRefreshLogoutActorMismatchDenied(t *testing.T) {
 	if logoutMismatch.Meta.GetDenialReason() != "actor mismatch with token" {
 		t.Fatalf("expected actor mismatch reason on logout, got=%q", logoutMismatch.Meta.GetDenialReason())
 	}
+
+	events := svc.AuditStore.Events()
+	if len(events) < 3 {
+		t.Fatalf("expected audit events for login and mismatch denials, got=%v", events)
+	}
+	var sawRefreshDenied bool
+	var sawLogoutDenied bool
+	for _, ev := range events {
+		if ev.Action == "identity_refresh" && string(ev.Result) == "denied" && ev.Reason == "actor mismatch with token" {
+			sawRefreshDenied = true
+		}
+		if ev.Action == "identity_logout" && string(ev.Result) == "denied" && ev.Reason == "actor mismatch with token" {
+			sawLogoutDenied = true
+		}
+	}
+	if !sawRefreshDenied {
+		t.Fatalf("expected denied identity_refresh audit with actor mismatch reason, got=%v", events)
+	}
+	if !sawLogoutDenied {
+		t.Fatalf("expected denied identity_logout audit with actor mismatch reason, got=%v", events)
+	}
 }
 
 func TestIdentityOperatorLoginDistinctFromPlayer(t *testing.T) {
