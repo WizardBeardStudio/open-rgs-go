@@ -166,7 +166,7 @@ func TestIdentityGatewayRefreshLogoutActorMismatchDenied(t *testing.T) {
 	if refreshResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied refresh mismatch, got=%v", refreshResp.GetMeta().GetResultCode())
 	}
-	if refreshResp.GetMeta().GetDenialReason() != "actor mismatch" {
+	if refreshResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
 		t.Fatalf("expected actor mismatch reason on refresh, got=%q", refreshResp.GetMeta().GetDenialReason())
 	}
 
@@ -189,7 +189,7 @@ func TestIdentityGatewayRefreshLogoutActorMismatchDenied(t *testing.T) {
 	if logoutResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied logout mismatch, got=%v", logoutResp.GetMeta().GetResultCode())
 	}
-	if logoutResp.GetMeta().GetDenialReason() != "actor mismatch" {
+	if logoutResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
 		t.Fatalf("expected actor mismatch reason on logout, got=%q", logoutResp.GetMeta().GetDenialReason())
 	}
 }

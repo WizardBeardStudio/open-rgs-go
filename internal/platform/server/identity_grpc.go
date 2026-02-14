@@ -606,8 +606,8 @@ func (s *IdentityService) Logout(ctx context.Context, req *rgsv1.LogoutRequest) 
 		return &rgsv1.LogoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "refresh token not found")}, nil
 	}
 	if sess.actorID != req.Meta.Actor.ActorId || sess.actorType != req.Meta.Actor.ActorType {
-		s.auditDenied(req.Meta, req.RefreshToken, "identity_logout", "actor mismatch")
-		return &rgsv1.LogoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "actor mismatch")}, nil
+		s.auditDenied(req.Meta, req.RefreshToken, "identity_logout", "actor mismatch with token")
+		return &rgsv1.LogoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "actor mismatch with token")}, nil
 	}
 
 	before := sessionSnapshot(sess.refreshToken, sess.actorID, sess.actorType, sess.expiresAt, sess.revoked)
@@ -652,8 +652,8 @@ func (s *IdentityService) RefreshToken(ctx context.Context, req *rgsv1.RefreshTo
 		return &rgsv1.RefreshTokenResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "invalid refresh token")}, nil
 	}
 	if sess.actorID != req.Meta.Actor.ActorId || sess.actorType != req.Meta.Actor.ActorType {
-		s.auditDenied(req.Meta, req.RefreshToken, "identity_refresh", "actor mismatch")
-		return &rgsv1.RefreshTokenResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "actor mismatch")}, nil
+		s.auditDenied(req.Meta, req.RefreshToken, "identity_refresh", "actor mismatch with token")
+		return &rgsv1.RefreshTokenResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, "actor mismatch with token")}, nil
 	}
 
 	accessToken, accessExpiry, err := s.signAccessToken(sess.actorID, sess.actorType)
