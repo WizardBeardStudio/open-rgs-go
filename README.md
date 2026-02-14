@@ -91,6 +91,7 @@ RGS_PROTO_CHECK_MODE=diff-only make proto-check
 ```
 
 CI should continue using the default strict mode (`RGS_PROTO_CHECK_MODE=full`).
+The repository CI workflow pins this mode explicitly for the proto job.
 
 Lint (if installed):
 

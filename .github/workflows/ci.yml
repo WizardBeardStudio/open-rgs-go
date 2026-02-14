@@ -20,6 +20,8 @@ jobs:
 
   proto:
     runs-on: ubuntu-latest
+    env:
+      RGS_PROTO_CHECK_MODE: full
     steps:
       - uses: actions/checkout@v4
       - uses: bufbuild/buf-setup-action@v1
