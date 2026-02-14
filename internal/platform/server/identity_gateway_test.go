@@ -331,4 +331,31 @@ func TestIdentityGatewayAdminActorMismatchDenied(t *testing.T) {
 	if resetResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
 		t.Fatalf("expected actor mismatch with token reason on reset lockout, got=%q", resetResp.GetMeta().GetDenialReason())
 	}
+
+	events := svc.AuditStore.Events()
+	var sawSetDenied bool
+	var sawDisableDenied bool
+	var sawEnableDenied bool
+	var sawGetLockoutDenied bool
+	var sawResetLockoutDenied bool
+	for _, ev := range events {
+		if string(ev.Result) != "denied" || ev.Reason != "actor mismatch with token" {
+			continue
+		}
+		switch ev.Action {
+		case "identity_set_credential":
+			sawSetDenied = true
+		case "identity_disable_credential":
+			sawDisableDenied = true
+		case "identity_enable_credential":
+			sawEnableDenied = true
+		case "identity_get_lockout":
+			sawGetLockoutDenied = true
+		case "identity_reset_lockout":
+			sawResetLockoutDenied = true
+		}
+	}
+	if !sawSetDenied || !sawDisableDenied || !sawEnableDenied || !sawGetLockoutDenied || !sawResetLockoutDenied {
+		t.Fatalf("expected denied audit coverage for all gateway admin mismatch paths, got=%v", events)
+	}
 }
