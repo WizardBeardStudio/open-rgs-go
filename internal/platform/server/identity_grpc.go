@@ -706,6 +706,7 @@ func (s *IdentityService) SetCredential(ctx context.Context, req *rgsv1.SetCrede
 		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor and credential hash are required")}, nil
 	}
 	if ok, reason := s.authorizeIdentityAdmin(ctx, req.Meta); !ok {
+		s.auditDenied(req.Meta, req.Actor.ActorId, "identity_set_credential", reason)
 		return &rgsv1.SetCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 
@@ -748,6 +749,7 @@ func (s *IdentityService) DisableCredential(ctx context.Context, req *rgsv1.Disa
 		return &rgsv1.DisableCredentialResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor is required")}, nil
 	}
 	if ok, reason := s.authorizeIdentityAdmin(ctx, req.Meta); !ok {
+		s.auditDenied(req.Meta, req.Actor.ActorId, "identity_disable_credential", reason)
 		return &rgsv1.DisableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 
@@ -774,6 +776,7 @@ func (s *IdentityService) EnableCredential(ctx context.Context, req *rgsv1.Enabl
 		return &rgsv1.EnableCredentialResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor is required")}, nil
 	}
 	if ok, reason := s.authorizeIdentityAdmin(ctx, req.Meta); !ok {
+		s.auditDenied(req.Meta, req.Actor.ActorId, "identity_enable_credential", reason)
 		return &rgsv1.EnableCredentialResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 
@@ -832,6 +835,7 @@ func (s *IdentityService) GetLockout(ctx context.Context, req *rgsv1.GetLockoutR
 		return &rgsv1.GetLockoutResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor is required")}, nil
 	}
 	if ok, reason := s.authorizeIdentityAdmin(ctx, req.Meta); !ok {
+		s.auditDenied(req.Meta, req.Actor.ActorId, "identity_get_lockout", reason)
 		return &rgsv1.GetLockoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	s.mu.Lock()
@@ -848,6 +852,7 @@ func (s *IdentityService) ResetLockout(ctx context.Context, req *rgsv1.ResetLock
 		return &rgsv1.ResetLockoutResponse{Meta: s.responseMeta(nil, rgsv1.ResultCode_RESULT_CODE_INVALID, "actor is required")}, nil
 	}
 	if ok, reason := s.authorizeIdentityAdmin(ctx, req.Meta); !ok {
+		s.auditDenied(req.Meta, req.Actor.ActorId, "identity_reset_lockout", reason)
 		return &rgsv1.ResetLockoutResponse{Meta: s.responseMeta(req.Meta, rgsv1.ResultCode_RESULT_CODE_DENIED, reason)}, nil
 	}
 	s.mu.Lock()

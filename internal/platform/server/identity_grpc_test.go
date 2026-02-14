@@ -483,6 +483,22 @@ func TestIdentityAdminActorMismatchDenied(t *testing.T) {
 	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 14, 20, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour)
 	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"})
 
+	setResp, err := svc.SetCredential(ctx, &rgsv1.SetCredentialRequest{
+		Meta:           meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:          &rgsv1.Actor{ActorId: "player-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		CredentialHash: mustBcryptHash(t, "1234"),
+		Reason:         "bootstrap",
+	})
+	if err != nil {
+		t.Fatalf("set credential err: %v", err)
+	}
+	if setResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied set mismatch, got=%v", setResp.Meta.GetResultCode())
+	}
+	if setResp.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch with token on set, got=%q", setResp.Meta.GetDenialReason())
+	}
+
 	disableResp, err := svc.DisableCredential(ctx, &rgsv1.DisableCredentialRequest{
 		Meta:  meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
 		Actor: &rgsv1.Actor{ActorId: "player-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
@@ -537,5 +553,32 @@ func TestIdentityAdminActorMismatchDenied(t *testing.T) {
 	}
 	if resetResp.Meta.GetDenialReason() != "actor mismatch with token" {
 		t.Fatalf("expected actor mismatch with token on reset lockout, got=%q", resetResp.Meta.GetDenialReason())
+	}
+
+	events := svc.AuditStore.Events()
+	var sawSetDenied bool
+	var sawDisableDenied bool
+	var sawEnableDenied bool
+	var sawGetLockoutDenied bool
+	var sawResetLockoutDenied bool
+	for _, ev := range events {
+		if string(ev.Result) != "denied" || ev.Reason != "actor mismatch with token" {
+			continue
+		}
+		switch ev.Action {
+		case "identity_set_credential":
+			sawSetDenied = true
+		case "identity_disable_credential":
+			sawDisableDenied = true
+		case "identity_enable_credential":
+			sawEnableDenied = true
+		case "identity_get_lockout":
+			sawGetLockoutDenied = true
+		case "identity_reset_lockout":
+			sawResetLockoutDenied = true
+		}
+	}
+	if !sawSetDenied || !sawDisableDenied || !sawEnableDenied || !sawGetLockoutDenied || !sawResetLockoutDenied {
+		t.Fatalf("expected denied audit coverage for all admin mismatch paths, got=%v", events)
 	}
 }
