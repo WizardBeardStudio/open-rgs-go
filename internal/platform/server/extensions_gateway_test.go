@@ -473,6 +473,68 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	assertGatewayMetaFields(t, noActorUIResp.GetMeta(), "req-missing-actor-ui-write")
 
+	invalidBindingBonusReq := &rgsv1.RecordBonusTransactionRequest{
+		Meta: &rgsv1.RequestMeta{
+			RequestId: "req-invalid-binding-bonus-write",
+			Actor:     &rgsv1.Actor{ActorId: "", ActorType: rgsv1.ActorType_ACTOR_TYPE_OPERATOR},
+		},
+		Transaction: &rgsv1.BonusTransaction{
+			EquipmentId: "eq-1",
+			PlayerId:    "player-1",
+			Amount:      &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	}
+	invalidBindingBonusBody, _ := protojson.Marshal(invalidBindingBonusReq)
+	invalidBindingBonusHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/promotions/bonus-transactions", bytes.NewReader(invalidBindingBonusBody))
+	invalidBindingBonusHTTPReq.Header.Set("Content-Type", "application/json")
+	invalidBindingBonusRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(invalidBindingBonusRec, invalidBindingBonusHTTPReq)
+	if invalidBindingBonusRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("invalid-binding bonus write status: got=%d body=%s", invalidBindingBonusRec.Result().StatusCode, invalidBindingBonusRec.Body.String())
+	}
+	var invalidBindingBonusResp rgsv1.RecordBonusTransactionResponse
+	if err := protojson.Unmarshal(invalidBindingBonusRec.Body.Bytes(), &invalidBindingBonusResp); err != nil {
+		t.Fatalf("unmarshal invalid-binding bonus write response: %v", err)
+	}
+	if invalidBindingBonusResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied invalid-binding bonus write result code, got=%s", invalidBindingBonusResp.GetMeta().GetResultCode().String())
+	}
+	if invalidBindingBonusResp.GetMeta().GetDenialReason() != "actor binding is required" {
+		t.Fatalf("expected invalid-binding bonus write denial reason actor binding is required, got=%q", invalidBindingBonusResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, invalidBindingBonusResp.GetMeta(), "req-invalid-binding-bonus-write")
+
+	invalidBindingUIReq := &rgsv1.SubmitSystemWindowEventRequest{
+		Meta: &rgsv1.RequestMeta{
+			RequestId: "req-invalid-binding-ui-write",
+			Actor:     &rgsv1.Actor{ActorId: "op-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED},
+		},
+		Event: &rgsv1.SystemWindowEvent{
+			EquipmentId: "eq-1",
+			WindowId:    "sys-menu",
+			EventType:   rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_OPENED,
+		},
+	}
+	invalidBindingUIBody, _ := protojson.Marshal(invalidBindingUIReq)
+	invalidBindingUIHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/ui/system-window-events", bytes.NewReader(invalidBindingUIBody))
+	invalidBindingUIHTTPReq.Header.Set("Content-Type", "application/json")
+	invalidBindingUIRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(invalidBindingUIRec, invalidBindingUIHTTPReq)
+	if invalidBindingUIRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("invalid-binding ui write status: got=%d body=%s", invalidBindingUIRec.Result().StatusCode, invalidBindingUIRec.Body.String())
+	}
+	var invalidBindingUIResp rgsv1.SubmitSystemWindowEventResponse
+	if err := protojson.Unmarshal(invalidBindingUIRec.Body.Bytes(), &invalidBindingUIResp); err != nil {
+		t.Fatalf("unmarshal invalid-binding ui write response: %v", err)
+	}
+	if invalidBindingUIResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied invalid-binding ui write result code, got=%s", invalidBindingUIResp.GetMeta().GetResultCode().String())
+	}
+	if invalidBindingUIResp.GetMeta().GetDenialReason() != "actor binding is required" {
+		t.Fatalf("expected invalid-binding ui write denial reason actor binding is required, got=%q", invalidBindingUIResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, invalidBindingUIResp.GetMeta(), "req-invalid-binding-ui-write")
+
 	qPlayerBonusList := make(url.Values)
 	qPlayerBonusList.Set("meta.request_id", "req-list-denied")
 	qPlayerBonusList.Set("meta.actor.actorId", "player-1")
@@ -596,6 +658,48 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 		t.Fatalf("expected no-actor ui list denial reason actor is required, got=%q", noActorUIListResp.GetMeta().GetDenialReason())
 	}
 	assertGatewayMetaFields(t, noActorUIListResp.GetMeta(), "req-missing-actor-ui-list")
+
+	qInvalidBindingAwardsList := make(url.Values)
+	qInvalidBindingAwardsList.Set("meta.request_id", "req-invalid-binding-awards-list")
+	qInvalidBindingAwardsList.Set("meta.actor.actorId", "op-1")
+	invalidBindingAwardsListReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/awards?"+qInvalidBindingAwardsList.Encode(), nil)
+	invalidBindingAwardsListRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(invalidBindingAwardsListRec, invalidBindingAwardsListReq)
+	if invalidBindingAwardsListRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("invalid-binding awards list status: got=%d body=%s", invalidBindingAwardsListRec.Result().StatusCode, invalidBindingAwardsListRec.Body.String())
+	}
+	var invalidBindingAwardsListResp rgsv1.ListPromotionalAwardsResponse
+	if err := protojson.Unmarshal(invalidBindingAwardsListRec.Body.Bytes(), &invalidBindingAwardsListResp); err != nil {
+		t.Fatalf("unmarshal invalid-binding awards list response: %v", err)
+	}
+	if invalidBindingAwardsListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied invalid-binding awards list result code, got=%s", invalidBindingAwardsListResp.GetMeta().GetResultCode().String())
+	}
+	if invalidBindingAwardsListResp.GetMeta().GetDenialReason() != "actor binding is required" {
+		t.Fatalf("expected invalid-binding awards list denial reason actor binding is required, got=%q", invalidBindingAwardsListResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, invalidBindingAwardsListResp.GetMeta(), "req-invalid-binding-awards-list")
+
+	qInvalidBindingUIList := make(url.Values)
+	qInvalidBindingUIList.Set("meta.request_id", "req-invalid-binding-ui-list")
+	qInvalidBindingUIList.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	invalidBindingUIListReq := httptest.NewRequest(http.MethodGet, "/v1/ui/system-window-events?"+qInvalidBindingUIList.Encode(), nil)
+	invalidBindingUIListRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(invalidBindingUIListRec, invalidBindingUIListReq)
+	if invalidBindingUIListRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("invalid-binding ui list status: got=%d body=%s", invalidBindingUIListRec.Result().StatusCode, invalidBindingUIListRec.Body.String())
+	}
+	var invalidBindingUIListResp rgsv1.ListSystemWindowEventsResponse
+	if err := protojson.Unmarshal(invalidBindingUIListRec.Body.Bytes(), &invalidBindingUIListResp); err != nil {
+		t.Fatalf("unmarshal invalid-binding ui list response: %v", err)
+	}
+	if invalidBindingUIListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied invalid-binding ui list result code, got=%s", invalidBindingUIListResp.GetMeta().GetResultCode().String())
+	}
+	if invalidBindingUIListResp.GetMeta().GetDenialReason() != "actor binding is required" {
+		t.Fatalf("expected invalid-binding ui list denial reason actor binding is required, got=%q", invalidBindingUIListResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, invalidBindingUIListResp.GetMeta(), "req-invalid-binding-ui-list")
 
 	qBadPageToken := make(url.Values)
 	qBadPageToken.Set("meta.request_id", "req-list-invalid")
@@ -891,6 +995,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if !hasAuditEventWithReason(promoEvents, "record_bonus_transaction", audit.ResultDenied, "actor is required") {
 		t.Fatalf("expected promo audit reason actor is required for bonus write, got=%v", promoEvents)
 	}
+	if !hasAuditEventWithReason(promoEvents, "record_bonus_transaction", audit.ResultDenied, "actor binding is required") {
+		t.Fatalf("expected promo audit reason actor binding is required for bonus write, got=%v", promoEvents)
+	}
 	if !hasAuditEventWithReason(promoEvents, "record_promotional_award", audit.ResultDenied, "invalid request") {
 		t.Fatalf("expected promo audit reason invalid request for award write, got=%v", promoEvents)
 	}
@@ -921,6 +1028,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if !hasAuditEventWithReason(promoEvents, "list_promotional_awards", audit.ResultDenied, "actor is required") {
 		t.Fatalf("expected promo audit reason actor is required for awards list, got=%v", promoEvents)
 	}
+	if !hasAuditEventWithReason(promoEvents, "list_promotional_awards", audit.ResultDenied, "actor binding is required") {
+		t.Fatalf("expected promo audit reason actor binding is required for awards list, got=%v", promoEvents)
+	}
 	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "invalid limit") {
 		t.Fatalf("expected promo audit reason invalid limit, got=%v", promoEvents)
 	}
@@ -944,6 +1054,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if !hasAuditEventWithReason(uiEvents, "submit_system_window_event", audit.ResultDenied, "actor is required") {
 		t.Fatalf("expected ui audit reason actor is required for submit, got=%v", uiEvents)
 	}
+	if !hasAuditEventWithReason(uiEvents, "submit_system_window_event", audit.ResultDenied, "actor binding is required") {
+		t.Fatalf("expected ui audit reason actor binding is required for submit, got=%v", uiEvents)
+	}
 	if !hasAuditEvent(uiEvents, "list_system_window_events", audit.ResultDenied) {
 		t.Fatalf("expected denied ui audit for invalid/unauthorized list path, got=%v", uiEvents)
 	}
@@ -955,6 +1068,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "actor is required") {
 		t.Fatalf("expected ui audit reason actor is required for list, got=%v", uiEvents)
+	}
+	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "actor binding is required") {
+		t.Fatalf("expected ui audit reason actor binding is required for list, got=%v", uiEvents)
 	}
 	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "invalid page_size") {
 		t.Fatalf("expected ui audit reason invalid page_size, got=%v", uiEvents)
