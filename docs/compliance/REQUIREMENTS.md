@@ -185,14 +185,14 @@ This document maps implemented requirements to standards references, code locati
 ## RGS-0605 Identity Credential Management and Lockout Controls
 - Standard refs: GLI-13 workstation/account controls and lockout expectations, GLI-21 unauthorized access prevention
 - Code: `api/proto/rgs/v1/identity.proto`, `internal/platform/server/identity_grpc.go`, `internal/platform/server/identity_postgres.go`, `migrations/000006_identity_auth.up.sql`, `cmd/credhash/main.go`, `cmd/rgsd/main.go`
-- Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/postgres_integration_test.go`
+- Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/identity_gateway_test.go`, `internal/platform/server/postgres_integration_test.go`
 - Status: implemented (credential set/rotation, enable/disable controls, bcrypt verification, lockout status/reset operations, failed-attempt lockout policy)
 
 ## RGS-0606 Refresh Session Revocation, Persistence, and Expiry Sweep
 - Standard refs: GLI-13 session/account control expectations and retention controls
 - Code: `internal/platform/server/identity_grpc.go`, `internal/platform/server/identity_postgres.go`, `migrations/000007_identity_sessions.up.sql`, `cmd/rgsd/main.go`
-- Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/postgres_integration_test.go`
-- Status: implemented (DB-backed refresh sessions, revoke/rotate workflow, background expiry cleanup)
+- Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/identity_gateway_test.go`, `internal/platform/server/postgres_integration_test.go`
+- Status: implemented (DB-backed refresh sessions, revoke/rotate workflow, background expiry cleanup, and actor-ownership mismatch denials for refresh/logout across gRPC and REST gateway paths)
 
 ## RGS-0607 Bootstrap Credential Enforcement in DB-backed Mode
 - Standard refs: GLI-21 restricted startup/admin access hardening expectations
