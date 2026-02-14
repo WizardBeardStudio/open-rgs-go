@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: all fmt test test-integration-postgres lint proto generate-tools dr-drill perf-qual failover-evidence keyset-evidence audit-chain-evidence soak-qual soak-qual-db soak-qual-matrix
+.PHONY: all fmt test test-integration-postgres lint proto check-module-path generate-tools dr-drill perf-qual failover-evidence keyset-evidence audit-chain-evidence soak-qual soak-qual-db soak-qual-matrix
 
 all: fmt test
 
@@ -19,6 +19,9 @@ lint:
 proto:
 	buf lint
 	buf generate
+
+check-module-path:
+	./scripts/check_module_path.sh
 
 dr-drill:
 	RGS_DATABASE_URL=$${RGS_DATABASE_URL:?set RGS_DATABASE_URL} \
