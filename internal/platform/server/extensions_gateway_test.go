@@ -389,6 +389,7 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 
 	qPlayerBonusList := make(url.Values)
+	qPlayerBonusList.Set("meta.request_id", "req-list-denied")
 	qPlayerBonusList.Set("meta.actor.actorId", "player-1")
 	qPlayerBonusList.Set("meta.actor.actorType", "ACTOR_TYPE_PLAYER")
 	playerBonusListReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/bonus-transactions?"+qPlayerBonusList.Encode(), nil)
@@ -407,7 +408,7 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if playerBonusListResp.GetMeta().GetDenialReason() != "unauthorized actor type" {
 		t.Fatalf("expected player bonus list denial reason unauthorized actor type, got=%q", playerBonusListResp.GetMeta().GetDenialReason())
 	}
-	assertGatewayMetaFields(t, playerBonusListResp.GetMeta(), "")
+	assertGatewayMetaFields(t, playerBonusListResp.GetMeta(), "req-list-denied")
 
 	qPlayerAwardsList := make(url.Values)
 	qPlayerAwardsList.Set("meta.actor.actorId", "player-1")
@@ -452,6 +453,7 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	assertGatewayMetaFields(t, playerUIListResp.GetMeta(), "")
 
 	qBadPageToken := make(url.Values)
+	qBadPageToken.Set("meta.request_id", "req-list-invalid")
 	qBadPageToken.Set("meta.actor.actorId", "op-1")
 	qBadPageToken.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
 	qBadPageToken.Set("page_token", "bad-token")
@@ -471,7 +473,7 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if badPageResp.GetMeta().GetDenialReason() != "invalid page_token" {
 		t.Fatalf("expected bad page token denial reason, got=%q", badPageResp.GetMeta().GetDenialReason())
 	}
-	assertGatewayMetaFields(t, badPageResp.GetMeta(), "")
+	assertGatewayMetaFields(t, badPageResp.GetMeta(), "req-list-invalid")
 	qNegativePageToken := make(url.Values)
 	qNegativePageToken.Set("meta.actor.actorId", "op-1")
 	qNegativePageToken.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
