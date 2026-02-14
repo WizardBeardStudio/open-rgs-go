@@ -120,6 +120,8 @@ Release metadata:
   - `docs/compliance/REPORT_CATALOG.md`
   - `internal/platform/server/extensions_grpc_test.go`
   - `internal/platform/server/extensions_gateway_test.go`
+  - `internal/platform/server/identity_grpc_test.go`
+  - `internal/platform/server/identity_gateway_test.go`
   - `internal/platform/server/ledger_grpc_test.go`
   - `internal/platform/server/ledger_gateway_test.go`
   - `internal/platform/server/wagering_grpc_test.go`
