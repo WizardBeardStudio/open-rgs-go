@@ -12,6 +12,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
 	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
+	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -504,6 +505,38 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	assertGatewayMetaFields(t, invalidBindingBonusResp.GetMeta(), "req-invalid-binding-bonus-write")
 
+	actorMismatchBonusReq := &rgsv1.RecordBonusTransactionRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, "req-actor-mismatch-bonus-write"),
+		Transaction: &rgsv1.BonusTransaction{
+			EquipmentId: "eq-1",
+			PlayerId:    "player-1",
+			Amount:      &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	}
+	actorMismatchBonusBody, _ := protojson.Marshal(actorMismatchBonusReq)
+	actorMismatchBonusHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/promotions/bonus-transactions", bytes.NewReader(actorMismatchBonusBody))
+	actorMismatchBonusHTTPReq = actorMismatchBonusHTTPReq.WithContext(platformauth.WithActor(actorMismatchBonusHTTPReq.Context(), platformauth.Actor{
+		ID:   "ctx-op",
+		Type: "ACTOR_TYPE_OPERATOR",
+	}))
+	actorMismatchBonusHTTPReq.Header.Set("Content-Type", "application/json")
+	actorMismatchBonusRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(actorMismatchBonusRec, actorMismatchBonusHTTPReq)
+	if actorMismatchBonusRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("actor-mismatch bonus write status: got=%d body=%s", actorMismatchBonusRec.Result().StatusCode, actorMismatchBonusRec.Body.String())
+	}
+	var actorMismatchBonusResp rgsv1.RecordBonusTransactionResponse
+	if err := protojson.Unmarshal(actorMismatchBonusRec.Body.Bytes(), &actorMismatchBonusResp); err != nil {
+		t.Fatalf("unmarshal actor-mismatch bonus write response: %v", err)
+	}
+	if actorMismatchBonusResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied actor-mismatch bonus write result code, got=%s", actorMismatchBonusResp.GetMeta().GetResultCode().String())
+	}
+	if actorMismatchBonusResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor-mismatch bonus write denial reason actor mismatch with token, got=%q", actorMismatchBonusResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, actorMismatchBonusResp.GetMeta(), "req-1")
+
 	invalidBindingUIReq := &rgsv1.SubmitSystemWindowEventRequest{
 		Meta: &rgsv1.RequestMeta{
 			RequestId: "req-invalid-binding-ui-write",
@@ -700,6 +733,32 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 		t.Fatalf("expected invalid-binding ui list denial reason actor binding is required, got=%q", invalidBindingUIListResp.GetMeta().GetDenialReason())
 	}
 	assertGatewayMetaFields(t, invalidBindingUIListResp.GetMeta(), "req-invalid-binding-ui-list")
+
+	qActorMismatchUIList := make(url.Values)
+	qActorMismatchUIList.Set("meta.request_id", "req-actor-mismatch-ui-list")
+	qActorMismatchUIList.Set("meta.actor.actorId", "op-1")
+	qActorMismatchUIList.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	actorMismatchUIListReq := httptest.NewRequest(http.MethodGet, "/v1/ui/system-window-events?"+qActorMismatchUIList.Encode(), nil)
+	actorMismatchUIListReq = actorMismatchUIListReq.WithContext(platformauth.WithActor(actorMismatchUIListReq.Context(), platformauth.Actor{
+		ID:   "ctx-op",
+		Type: "ACTOR_TYPE_OPERATOR",
+	}))
+	actorMismatchUIListRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(actorMismatchUIListRec, actorMismatchUIListReq)
+	if actorMismatchUIListRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("actor-mismatch ui list status: got=%d body=%s", actorMismatchUIListRec.Result().StatusCode, actorMismatchUIListRec.Body.String())
+	}
+	var actorMismatchUIListResp rgsv1.ListSystemWindowEventsResponse
+	if err := protojson.Unmarshal(actorMismatchUIListRec.Body.Bytes(), &actorMismatchUIListResp); err != nil {
+		t.Fatalf("unmarshal actor-mismatch ui list response: %v", err)
+	}
+	if actorMismatchUIListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied actor-mismatch ui list result code, got=%s", actorMismatchUIListResp.GetMeta().GetResultCode().String())
+	}
+	if actorMismatchUIListResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor-mismatch ui list denial reason actor mismatch with token, got=%q", actorMismatchUIListResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, actorMismatchUIListResp.GetMeta(), "req-actor-mismatch-ui-list")
 
 	qBadPageToken := make(url.Values)
 	qBadPageToken.Set("meta.request_id", "req-list-invalid")
@@ -998,6 +1057,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if !hasAuditEventWithReason(promoEvents, "record_bonus_transaction", audit.ResultDenied, "actor binding is required") {
 		t.Fatalf("expected promo audit reason actor binding is required for bonus write, got=%v", promoEvents)
 	}
+	if !hasAuditEventWithReason(promoEvents, "record_bonus_transaction", audit.ResultDenied, "actor mismatch with token") {
+		t.Fatalf("expected promo audit reason actor mismatch with token for bonus write, got=%v", promoEvents)
+	}
 	if !hasAuditEventWithReason(promoEvents, "record_promotional_award", audit.ResultDenied, "invalid request") {
 		t.Fatalf("expected promo audit reason invalid request for award write, got=%v", promoEvents)
 	}
@@ -1071,6 +1133,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "actor binding is required") {
 		t.Fatalf("expected ui audit reason actor binding is required for list, got=%v", uiEvents)
+	}
+	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "actor mismatch with token") {
+		t.Fatalf("expected ui audit reason actor mismatch with token for list, got=%v", uiEvents)
 	}
 	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "invalid page_size") {
 		t.Fatalf("expected ui audit reason invalid page_size, got=%v", uiEvents)
