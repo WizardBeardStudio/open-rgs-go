@@ -53,6 +53,50 @@ func TestPromotionsListRecentDefaultsTo25(t *testing.T) {
 	}
 }
 
+func TestPromotionsRecordBonusTransactionNilRequest(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 9, 55, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.RecordBonusTransaction(ctx, nil)
+	if err != nil {
+		t.Fatalf("record bonus tx err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for nil request, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "transaction requires equipment_id, player_id, and positive amount" {
+		t.Fatalf("expected invalid-request denial reason, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "record_bonus_transaction" || events[len(events)-1].Reason != "invalid request" {
+		t.Fatalf("expected invalid-request audit event, got=%v", events)
+	}
+}
+
+func TestPromotionsListRecentNilRequestDeniedActorRequired(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 9, 56, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListRecentBonusTransactions(ctx, nil)
+	if err != nil {
+		t.Fatalf("list bonus tx err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for nil request, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor is required" {
+		t.Fatalf("expected denial reason actor is required, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_recent_bonus_transactions" || events[len(events)-1].Reason != "actor is required" {
+		t.Fatalf("expected denied audit event for missing actor, got=%v", events)
+	}
+}
+
 func TestPromotionsListRecentRejectsNegativeLimit(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 2, 0, 0, time.UTC)}
 	svc := NewPromotionsService(clk)
@@ -246,6 +290,50 @@ func TestUISystemOverlaySubmitAndListPagination(t *testing.T) {
 	}
 	if len(second.Events) != 1 {
 		t.Fatalf("expected second page size 1, got=%d", len(second.Events))
+	}
+}
+
+func TestUISystemOverlaySubmitNilRequest(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 56, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.SubmitSystemWindowEvent(ctx, nil)
+	if err != nil {
+		t.Fatalf("submit window event err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
+		t.Fatalf("expected invalid result for nil request, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "event requires equipment_id, window_id, and event_type" {
+		t.Fatalf("expected invalid-request denial reason, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "submit_system_window_event" || events[len(events)-1].Reason != "invalid request" {
+		t.Fatalf("expected invalid-request audit event, got=%v", events)
+	}
+}
+
+func TestUISystemOverlayListNilRequestDeniedActorRequired(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 57, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListSystemWindowEvents(ctx, nil)
+	if err != nil {
+		t.Fatalf("list window events err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for nil request, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor is required" {
+		t.Fatalf("expected denial reason actor is required, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Reason != "actor is required" {
+		t.Fatalf("expected denied audit event for missing actor, got=%v", events)
 	}
 }
 
