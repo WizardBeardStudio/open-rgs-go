@@ -203,6 +203,46 @@ func TestRegistryGatewayActorMismatchDenied(t *testing.T) {
 	if upsertResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
 		t.Fatalf("expected actor mismatch reason on upsert, got=%q", upsertResp.GetMeta().GetDenialReason())
 	}
+
+	q := make(url.Values)
+	q.Set("meta.actor.actorId", "op-1")
+	q.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+
+	getReq := httptest.NewRequest(http.MethodGet, "/v1/registry/equipment/eq-gw-mismatch?"+q.Encode(), nil)
+	getReq = getReq.WithContext(platformauth.WithActor(getReq.Context(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"}))
+	getRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(getRec, getReq)
+	if getRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("get mismatch status: got=%d body=%s", getRec.Result().StatusCode, getRec.Body.String())
+	}
+	var getResp rgsv1.GetEquipmentResponse
+	if err := protojson.Unmarshal(getRec.Body.Bytes(), &getResp); err != nil {
+		t.Fatalf("unmarshal get mismatch response: %v", err)
+	}
+	if getResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied get mismatch, got=%v", getResp.GetMeta().GetResultCode())
+	}
+	if getResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch reason on get, got=%q", getResp.GetMeta().GetDenialReason())
+	}
+
+	listReq := httptest.NewRequest(http.MethodGet, "/v1/registry/equipment?"+q.Encode(), nil)
+	listReq = listReq.WithContext(platformauth.WithActor(listReq.Context(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"}))
+	listRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(listRec, listReq)
+	if listRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("list mismatch status: got=%d body=%s", listRec.Result().StatusCode, listRec.Body.String())
+	}
+	var listResp rgsv1.ListEquipmentResponse
+	if err := protojson.Unmarshal(listRec.Body.Bytes(), &listResp); err != nil {
+		t.Fatalf("unmarshal list mismatch response: %v", err)
+	}
+	if listResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied list mismatch, got=%v", listResp.GetMeta().GetResultCode())
+	}
+	if listResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch reason on list, got=%q", listResp.GetMeta().GetDenialReason())
+	}
 }
 
 func TestEventsGatewayActorMismatchDenied(t *testing.T) {
