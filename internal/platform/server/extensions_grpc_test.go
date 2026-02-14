@@ -104,6 +104,38 @@ func TestPromotionsRecordBonusTransactionMissingActorDenied(t *testing.T) {
 	}
 }
 
+func TestPromotionsRecordBonusTransactionActorBindingRequired(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 9, 59, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.RecordBonusTransaction(ctx, &rgsv1.RecordBonusTransactionRequest{
+		Meta: &rgsv1.RequestMeta{
+			RequestId: "req-actor-binding-bonus-write",
+			Actor:     &rgsv1.Actor{ActorId: "", ActorType: rgsv1.ActorType_ACTOR_TYPE_OPERATOR},
+		},
+		Transaction: &rgsv1.BonusTransaction{
+			EquipmentId: "eq-1",
+			PlayerId:    "player-1",
+			Amount:      &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("record bonus tx err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for invalid actor binding, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor binding is required" {
+		t.Fatalf("expected denial reason actor binding is required, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-actor-binding-bonus-write")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "record_bonus_transaction" || events[len(events)-1].Reason != "actor binding is required" {
+		t.Fatalf("expected denied audit event for invalid actor binding, got=%v", events)
+	}
+}
+
 func TestPromotionsListRecentNilRequestDeniedActorRequired(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 9, 56, 0, 0, time.UTC)}
 	svc := NewPromotionsService(clk)
@@ -147,6 +179,33 @@ func TestPromotionsListRecentMissingActorDenied(t *testing.T) {
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_recent_bonus_transactions" || events[len(events)-1].Reason != "actor is required" {
 		t.Fatalf("expected denied audit event for missing actor bonus list, got=%v", events)
+	}
+}
+
+func TestPromotionsListAwardsActorBindingRequired(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 50, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListPromotionalAwards(ctx, &rgsv1.ListPromotionalAwardsRequest{
+		Meta: &rgsv1.RequestMeta{
+			RequestId: "req-actor-binding-awards-list",
+			Actor:     &rgsv1.Actor{ActorId: "op-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED},
+		},
+	})
+	if err != nil {
+		t.Fatalf("list awards err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for invalid actor binding, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor binding is required" {
+		t.Fatalf("expected denial reason actor binding is required, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-actor-binding-awards-list")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_promotional_awards" || events[len(events)-1].Reason != "actor binding is required" {
+		t.Fatalf("expected denied audit event for invalid actor binding, got=%v", events)
 	}
 }
 
@@ -429,6 +488,38 @@ func TestUISystemOverlaySubmitMissingActorDenied(t *testing.T) {
 	}
 }
 
+func TestUISystemOverlaySubmitActorBindingRequired(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 59, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.SubmitSystemWindowEvent(ctx, &rgsv1.SubmitSystemWindowEventRequest{
+		Meta: &rgsv1.RequestMeta{
+			RequestId: "req-actor-binding-ui-write",
+			Actor:     &rgsv1.Actor{ActorId: "", ActorType: rgsv1.ActorType_ACTOR_TYPE_SERVICE},
+		},
+		Event: &rgsv1.SystemWindowEvent{
+			EquipmentId: "eq-1",
+			WindowId:    "sys-menu",
+			EventType:   rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_OPENED,
+		},
+	})
+	if err != nil {
+		t.Fatalf("submit window event err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for invalid actor binding, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor binding is required" {
+		t.Fatalf("expected denial reason actor binding is required, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-actor-binding-ui-write")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "submit_system_window_event" || events[len(events)-1].Reason != "actor binding is required" {
+		t.Fatalf("expected denied audit event for invalid actor binding, got=%v", events)
+	}
+}
+
 func TestUISystemOverlaySubmitNilRequest(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 56, 0, 0, time.UTC)}
 	svc := NewUISystemOverlayService(clk)
@@ -494,6 +585,33 @@ func TestUISystemOverlayListMissingActorDenied(t *testing.T) {
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Reason != "actor is required" {
 		t.Fatalf("expected denied audit event for missing actor ui list, got=%v", events)
+	}
+}
+
+func TestUISystemOverlayListActorBindingRequired(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 0, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListSystemWindowEvents(ctx, &rgsv1.ListSystemWindowEventsRequest{
+		Meta: &rgsv1.RequestMeta{
+			RequestId: "req-actor-binding-ui-list",
+			Actor:     &rgsv1.Actor{ActorId: "op-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_UNSPECIFIED},
+		},
+	})
+	if err != nil {
+		t.Fatalf("list window events err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for invalid actor binding, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor binding is required" {
+		t.Fatalf("expected denial reason actor binding is required, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-actor-binding-ui-list")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Reason != "actor binding is required" {
+		t.Fatalf("expected denied audit event for invalid actor binding, got=%v", events)
 	}
 }
 
