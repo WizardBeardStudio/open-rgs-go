@@ -84,6 +84,13 @@ make all
 ```
 
 `./scripts/check.sh` runs proto freshness validation (`make proto-check`), formatting, and tests.
+If Buf remote dependencies are unavailable in a local environment, use:
+
+```bash
+RGS_PROTO_CHECK_MODE=diff-only make proto-check
+```
+
+CI should continue using the default strict mode (`RGS_PROTO_CHECK_MODE=full`).
 
 Lint (if installed):
 

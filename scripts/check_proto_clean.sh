@@ -1,8 +1,21 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-buf lint
-buf generate
+mode="${RGS_PROTO_CHECK_MODE:-full}"
+
+case "${mode}" in
+  full)
+    buf lint
+    buf generate
+    ;;
+  diff-only)
+    echo "proto check running in diff-only mode (skipping buf lint/generate)"
+    ;;
+  *)
+    echo "invalid RGS_PROTO_CHECK_MODE=${mode}; expected 'full' or 'diff-only'" >&2
+    exit 1
+    ;;
+esac
 
 if ! git diff --quiet -- gen/rgs/v1; then
   echo "generated protobuf artifacts are out of date; run 'buf generate' and commit changes" >&2
@@ -10,4 +23,4 @@ if ! git diff --quiet -- gen/rgs/v1; then
   exit 1
 fi
 
-echo "proto check passed: generated artifacts are up to date"
+echo "proto check passed: generated artifacts are up to date (${mode})"
