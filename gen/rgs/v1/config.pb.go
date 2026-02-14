@@ -1210,9 +1210,9 @@ const file_rgs_v1_config_proto_rawDesc = "" +
 	"\x11ApplyConfigChange\x12 .rgs.v1.ApplyConfigChangeRequest\x1a!.rgs.v1.ApplyConfigChangeResponse\"/\x82\xd3\xe4\x93\x02):\x01*\"$/v1/config/changes/{change_id}:apply\x12t\n" +
 	"\x11ListConfigHistory\x12 .rgs.v1.ListConfigHistoryRequest\x1a!.rgs.v1.ListConfigHistoryResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/v1/config/history\x12\xa5\x01\n" +
 	"\x1bRecordDownloadLibraryChange\x12*.rgs.v1.RecordDownloadLibraryChangeRequest\x1a+.rgs.v1.RecordDownloadLibraryChangeResponse\"-\x82\xd3\xe4\x93\x02':\x01*\"\"/v1/config/download-library:record\x12\x98\x01\n" +
-	"\x1aListDownloadLibraryChanges\x12).rgs.v1.ListDownloadLibraryChangesRequest\x1a*.rgs.v1.ListDownloadLibraryChangesResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/v1/config/download-libraryB\x87\x01\n" +
+	"\x1aListDownloadLibraryChanges\x12).rgs.v1.ListDownloadLibraryChangesRequest\x1a*.rgs.v1.ListDownloadLibraryChangesResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/v1/config/download-libraryB\x8d\x01\n" +
 	"\n" +
-	"com.rgs.v1B\vConfigProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
+	"com.rgs.v1B\vConfigProtoP\x01Z9github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
 var (
 	file_rgs_v1_config_proto_rawDescOnce sync.Once

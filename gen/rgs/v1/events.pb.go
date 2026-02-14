@@ -1068,9 +1068,9 @@ const file_rgs_v1_events_proto_rawDesc = "" +
 	"\n" +
 	"ListEvents\x12\x19.rgs.v1.ListEventsRequest\x1a\x1a.rgs.v1.ListEventsResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/v1/events/significant\x12^\n" +
 	"\n" +
-	"ListMeters\x12\x19.rgs.v1.ListMetersRequest\x1a\x1a.rgs.v1.ListMetersResponse\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/v1/events/metersB\x87\x01\n" +
+	"ListMeters\x12\x19.rgs.v1.ListMetersRequest\x1a\x1a.rgs.v1.ListMetersResponse\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/v1/events/metersB\x8d\x01\n" +
 	"\n" +
-	"com.rgs.v1B\vEventsProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
+	"com.rgs.v1B\vEventsProtoP\x01Z9github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
 var (
 	file_rgs_v1_events_proto_rawDescOnce sync.Once

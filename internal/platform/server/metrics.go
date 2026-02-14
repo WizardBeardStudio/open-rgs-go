@@ -8,7 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	rgsv1 "github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

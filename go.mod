@@ -1,4 +1,4 @@
-module github.com/wizardbeard/open-rgs-go
+module github.com/wizardbeardstudio/open-rgs-go
 
 go 1.24.0
 

@@ -25,11 +25,11 @@ import (
 	healthv1 "google.golang.org/grpc/health/grpc_health_v1"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
-	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
-	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
-	"github.com/wizardbeard/open-rgs-go/internal/platform/clock"
-	"github.com/wizardbeard/open-rgs-go/internal/platform/server"
+	rgsv1 "github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1"
+	"github.com/wizardbeardstudio/open-rgs-go/internal/platform/audit"
+	platformauth "github.com/wizardbeardstudio/open-rgs-go/internal/platform/auth"
+	"github.com/wizardbeardstudio/open-rgs-go/internal/platform/clock"
+	"github.com/wizardbeardstudio/open-rgs-go/internal/platform/server"
 )
 
 func main() {

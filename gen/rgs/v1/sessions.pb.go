@@ -571,9 +571,9 @@ const file_rgs_v1_sessions_proto_rawDesc = "" +
 	"\n" +
 	"EndSession\x12\x19.rgs.v1.EndSessionRequest\x1a\x1a.rgs.v1.EndSessionResponse\"\x1b\x82\xd3\xe4\x93\x02\x15:\x01*\"\x10/v1/sessions:end\x12f\n" +
 	"\n" +
-	"GetSession\x12\x19.rgs.v1.GetSessionRequest\x1a\x1a.rgs.v1.GetSessionResponse\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/v1/sessions/{session_id}B\x89\x01\n" +
+	"GetSession\x12\x19.rgs.v1.GetSessionRequest\x1a\x1a.rgs.v1.GetSessionResponse\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/v1/sessions/{session_id}B\x8f\x01\n" +
 	"\n" +
-	"com.rgs.v1B\rSessionsProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
+	"com.rgs.v1B\rSessionsProtoP\x01Z9github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
 var (
 	file_rgs_v1_sessions_proto_rawDescOnce sync.Once

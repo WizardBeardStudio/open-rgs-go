@@ -1208,9 +1208,9 @@ const file_rgs_v1_extensions_proto_rawDesc = "" +
 	"\x15ListPromotionalAwards\x12$.rgs.v1.ListPromotionalAwardsRequest\x1a%.rgs.v1.ListPromotionalAwardsResponse\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/v1/promotions/awards2\xbc\x02\n" +
 	"\x16UISystemOverlayService\x12\x92\x01\n" +
 	"\x17SubmitSystemWindowEvent\x12&.rgs.v1.SubmitSystemWindowEventRequest\x1a'.rgs.v1.SubmitSystemWindowEventResponse\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/v1/ui/system-window-events\x12\x8c\x01\n" +
-	"\x16ListSystemWindowEvents\x12%.rgs.v1.ListSystemWindowEventsRequest\x1a&.rgs.v1.ListSystemWindowEventsResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/v1/ui/system-window-eventsB\x8b\x01\n" +
+	"\x16ListSystemWindowEvents\x12%.rgs.v1.ListSystemWindowEventsRequest\x1a&.rgs.v1.ListSystemWindowEventsResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/v1/ui/system-window-eventsB\x91\x01\n" +
 	"\n" +
-	"com.rgs.v1B\x0fExtensionsProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
+	"com.rgs.v1B\x0fExtensionsProtoP\x01Z9github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
 var (
 	file_rgs_v1_extensions_proto_rawDescOnce sync.Once

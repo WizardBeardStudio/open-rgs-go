@@ -147,9 +147,9 @@ const file_rgs_v1_system_proto_rawDesc = "" +
 	"\aversion\x18\x03 \x01(\tR\aversion\x12\x16\n" +
 	"\x06uptime\x18\x04 \x01(\tR\x06uptime2~\n" +
 	"\rSystemService\x12m\n" +
-	"\x0fGetSystemStatus\x12\x1e.rgs.v1.GetSystemStatusRequest\x1a\x1f.rgs.v1.GetSystemStatusResponse\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/v1/system/statusB\x87\x01\n" +
+	"\x0fGetSystemStatus\x12\x1e.rgs.v1.GetSystemStatusRequest\x1a\x1f.rgs.v1.GetSystemStatusResponse\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/v1/system/statusB\x8d\x01\n" +
 	"\n" +
-	"com.rgs.v1B\vSystemProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
+	"com.rgs.v1B\vSystemProtoP\x01Z9github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
 var (
 	file_rgs_v1_system_proto_rawDescOnce sync.Once

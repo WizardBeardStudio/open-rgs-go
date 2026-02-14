@@ -12,8 +12,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
-	"github.com/wizardbeard/open-rgs-go/internal/platform/clock"
+	"github.com/wizardbeardstudio/open-rgs-go/internal/platform/audit"
+	"github.com/wizardbeardstudio/open-rgs-go/internal/platform/clock"
 )
 
 type RemoteAccessActivity struct {

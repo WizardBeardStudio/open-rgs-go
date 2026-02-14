@@ -604,9 +604,9 @@ const file_rgs_v1_wagering_proto_rawDesc = "" +
 	"\n" +
 	"PlaceWager\x12\x19.rgs.v1.PlaceWagerRequest\x1a\x1a.rgs.v1.PlaceWagerResponse\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/v1/wagering/wagers\x12x\n" +
 	"\vSettleWager\x12\x1a.rgs.v1.SettleWagerRequest\x1a\x1b.rgs.v1.SettleWagerResponse\"0\x82\xd3\xe4\x93\x02*:\x01*\"%/v1/wagering/wagers/{wager_id}:settle\x12x\n" +
-	"\vCancelWager\x12\x1a.rgs.v1.CancelWagerRequest\x1a\x1b.rgs.v1.CancelWagerResponse\"0\x82\xd3\xe4\x93\x02*:\x01*\"%/v1/wagering/wagers/{wager_id}:cancelB\x89\x01\n" +
+	"\vCancelWager\x12\x1a.rgs.v1.CancelWagerRequest\x1a\x1b.rgs.v1.CancelWagerResponse\"0\x82\xd3\xe4\x93\x02*:\x01*\"%/v1/wagering/wagers/{wager_id}:cancelB\x8f\x01\n" +
 	"\n" +
-	"com.rgs.v1B\rWageringProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
+	"com.rgs.v1B\rWageringProtoP\x01Z9github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
 var (
 	file_rgs_v1_wagering_proto_rawDescOnce sync.Once

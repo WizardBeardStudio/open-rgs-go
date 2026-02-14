@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"time"
 
-	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	rgsv1 "github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1"
 )
 
 func (s *IdentityService) HasActiveCredentials(ctx context.Context) (bool, error) {

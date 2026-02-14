@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
-	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
-	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
-	"github.com/wizardbeard/open-rgs-go/internal/platform/clock"
+	rgsv1 "github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1"
+	"github.com/wizardbeardstudio/open-rgs-go/internal/platform/audit"
+	platformauth "github.com/wizardbeardstudio/open-rgs-go/internal/platform/auth"
+	"github.com/wizardbeardstudio/open-rgs-go/internal/platform/clock"
 	"golang.org/x/crypto/bcrypt"
 )
 

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
-	"github.com/wizardbeard/open-rgs-go/internal/platform/clock"
+	rgsv1 "github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1"
+	"github.com/wizardbeardstudio/open-rgs-go/internal/platform/clock"
 )
 
 func openPostgresBenchmarkDB(b *testing.B) *sql.DB {

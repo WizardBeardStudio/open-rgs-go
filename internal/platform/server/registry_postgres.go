@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	rgsv1 "github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1"
 )
 
 func (s *RegistryService) upsertEquipmentInDB(ctx context.Context, eq *rgsv1.Equipment) error {

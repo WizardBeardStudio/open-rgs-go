@@ -660,10 +660,10 @@ const file_rgs_v1_audit_proto_rawDesc = "" +
 	"\fAuditService\x12l\n" +
 	"\x0fListAuditEvents\x12\x1e.rgs.v1.ListAuditEventsRequest\x1a\x1f.rgs.v1.ListAuditEventsResponse\"\x18\x82\xd3\xe4\x93\x02\x12\x12\x10/v1/audit/events\x12\x94\x01\n" +
 	"\x1aListRemoteAccessActivities\x12).rgs.v1.ListRemoteAccessActivitiesRequest\x1a*.rgs.v1.ListRemoteAccessActivitiesResponse\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/v1/audit/remote-access\x12x\n" +
-	"\x10VerifyAuditChain\x12\x1f.rgs.v1.VerifyAuditChainRequest\x1a .rgs.v1.VerifyAuditChainResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/v1/audit/chain:verifyB\x86\x01\n" +
+	"\x10VerifyAuditChain\x12\x1f.rgs.v1.VerifyAuditChainRequest\x1a .rgs.v1.VerifyAuditChainResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/v1/audit/chain:verifyB\x8c\x01\n" +
 	"\n" +
 	"com.rgs.v1B\n" +
-	"AuditProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
+	"AuditProtoP\x01Z9github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
 var (
 	file_rgs_v1_audit_proto_rawDescOnce sync.Once

@@ -1174,9 +1174,9 @@ const file_rgs_v1_ledger_proto_rawDesc = "" +
 	"\bWithdraw\x12\x17.rgs.v1.WithdrawRequest\x1a\x18.rgs.v1.WithdrawResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/v1/ledger/withdrawals\x12}\n" +
 	"\x10TransferToDevice\x12\x1f.rgs.v1.TransferToDeviceRequest\x1a .rgs.v1.TransferToDeviceResponse\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/v1/ledger/transfers/device\x12\x81\x01\n" +
 	"\x11TransferToAccount\x12 .rgs.v1.TransferToAccountRequest\x1a!.rgs.v1.TransferToAccountResponse\"'\x82\xd3\xe4\x93\x02!:\x01*\"\x1c/v1/ledger/transfers/account\x12\x8c\x01\n" +
-	"\x10ListTransactions\x12\x1f.rgs.v1.ListTransactionsRequest\x1a .rgs.v1.ListTransactionsResponse\"5\x82\xd3\xe4\x93\x02/\x12-/v1/ledger/accounts/{account_id}/transactionsB\x87\x01\n" +
+	"\x10ListTransactions\x12\x1f.rgs.v1.ListTransactionsRequest\x1a .rgs.v1.ListTransactionsResponse\"5\x82\xd3\xe4\x93\x02/\x12-/v1/ledger/accounts/{account_id}/transactionsB\x8d\x01\n" +
 	"\n" +
-	"com.rgs.v1B\vLedgerProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
+	"com.rgs.v1B\vLedgerProtoP\x01Z9github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
 var (
 	file_rgs_v1_ledger_proto_rawDescOnce sync.Once

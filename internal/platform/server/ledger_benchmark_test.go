@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
-	"github.com/wizardbeard/open-rgs-go/internal/platform/clock"
+	rgsv1 "github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1"
+	"github.com/wizardbeardstudio/open-rgs-go/internal/platform/clock"
 )
 
 func benchmarkMeta(actorID string) *rgsv1.RequestMeta {

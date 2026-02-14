@@ -424,9 +424,9 @@ const file_rgs_v1_common_proto_rawDesc = "" +
 	"\x0eRESULT_CODE_OK\x10\x01\x12\x16\n" +
 	"\x12RESULT_CODE_DENIED\x10\x02\x12\x17\n" +
 	"\x13RESULT_CODE_INVALID\x10\x03\x12\x15\n" +
-	"\x11RESULT_CODE_ERROR\x10\x04B\x87\x01\n" +
+	"\x11RESULT_CODE_ERROR\x10\x04B\x8d\x01\n" +
 	"\n" +
-	"com.rgs.v1B\vCommonProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
+	"com.rgs.v1B\vCommonProtoP\x01Z9github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
 var (
 	file_rgs_v1_common_proto_rawDescOnce sync.Once

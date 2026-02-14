@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	rgsv1 "github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 

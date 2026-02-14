@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	rgsv1 "github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1"
 )
 
 func parsePromotionalAwardType(raw string) (rgsv1.PromotionalAwardType, error) {

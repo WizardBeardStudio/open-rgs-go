@@ -1233,9 +1233,9 @@ const file_rgs_v1_identity_proto_rawDesc = "" +
 	"\x10EnableCredential\x12\x1f.rgs.v1.EnableCredentialRequest\x1a .rgs.v1.EnableCredentialResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/v1/identity/credentials:enable\x12b\n" +
 	"\n" +
 	"GetLockout\x12\x19.rgs.v1.GetLockoutRequest\x1a\x1a.rgs.v1.GetLockoutResponse\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/v1/identity/lockouts\x12q\n" +
-	"\fResetLockout\x12\x1b.rgs.v1.ResetLockoutRequest\x1a\x1c.rgs.v1.ResetLockoutResponse\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/v1/identity/lockouts:resetB\x89\x01\n" +
+	"\fResetLockout\x12\x1b.rgs.v1.ResetLockoutRequest\x1a\x1c.rgs.v1.ResetLockoutResponse\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/v1/identity/lockouts:resetB\x8f\x01\n" +
 	"\n" +
-	"com.rgs.v1B\rIdentityProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
+	"com.rgs.v1B\rIdentityProtoP\x01Z9github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
 var (
 	file_rgs_v1_identity_proto_rawDescOnce sync.Once

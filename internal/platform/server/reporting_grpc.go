@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
-	"github.com/wizardbeard/open-rgs-go/internal/platform/audit"
-	"github.com/wizardbeard/open-rgs-go/internal/platform/clock"
+	rgsv1 "github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1"
+	"github.com/wizardbeardstudio/open-rgs-go/internal/platform/audit"
+	"github.com/wizardbeardstudio/open-rgs-go/internal/platform/clock"
 	"google.golang.org/protobuf/proto"
 )
 

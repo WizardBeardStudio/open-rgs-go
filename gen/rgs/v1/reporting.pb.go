@@ -785,9 +785,9 @@ const file_rgs_v1_reporting_proto_rawDesc = "" +
 	"\x10ReportingService\x12n\n" +
 	"\x0eGenerateReport\x12\x1d.rgs.v1.GenerateReportRequest\x1a\x1e.rgs.v1.GenerateReportResponse\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/v1/reporting/runs\x12k\n" +
 	"\x0eListReportRuns\x12\x1d.rgs.v1.ListReportRunsRequest\x1a\x1e.rgs.v1.ListReportRunsResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/v1/reporting/runs\x12u\n" +
-	"\fGetReportRun\x12\x1b.rgs.v1.GetReportRunRequest\x1a\x1c.rgs.v1.GetReportRunResponse\"*\x82\xd3\xe4\x93\x02$\x12\"/v1/reporting/runs/{report_run_id}B\x8a\x01\n" +
+	"\fGetReportRun\x12\x1b.rgs.v1.GetReportRunRequest\x1a\x1c.rgs.v1.GetReportRunResponse\"*\x82\xd3\xe4\x93\x02$\x12\"/v1/reporting/runs/{report_run_id}B\x90\x01\n" +
 	"\n" +
-	"com.rgs.v1B\x0eReportingProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
+	"com.rgs.v1B\x0eReportingProtoP\x01Z9github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
 var (
 	file_rgs_v1_reporting_proto_rawDescOnce sync.Once

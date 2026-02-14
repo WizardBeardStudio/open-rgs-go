@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
-	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
+	rgsv1 "github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1"
+	platformauth "github.com/wizardbeardstudio/open-rgs-go/internal/platform/auth"
 )
 
 func TestSessionsStartGetEndWorkflow(t *testing.T) {

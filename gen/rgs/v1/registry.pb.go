@@ -597,9 +597,9 @@ const file_rgs_v1_registry_proto_rawDesc = "" +
 	"\x0fRegistryService\x12\x8e\x01\n" +
 	"\x0fUpsertEquipment\x12\x1e.rgs.v1.UpsertEquipmentRequest\x1a\x1f.rgs.v1.UpsertEquipmentResponse\":\x82\xd3\xe4\x93\x024:\x01*\x1a//v1/registry/equipment/{equipment.equipment_id}\x12x\n" +
 	"\fGetEquipment\x12\x1b.rgs.v1.GetEquipmentRequest\x1a\x1c.rgs.v1.GetEquipmentResponse\"-\x82\xd3\xe4\x93\x02'\x12%/v1/registry/equipment/{equipment_id}\x12l\n" +
-	"\rListEquipment\x12\x1c.rgs.v1.ListEquipmentRequest\x1a\x1d.rgs.v1.ListEquipmentResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/v1/registry/equipmentB\x89\x01\n" +
+	"\rListEquipment\x12\x1c.rgs.v1.ListEquipmentRequest\x1a\x1d.rgs.v1.ListEquipmentResponse\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/v1/registry/equipmentB\x8f\x01\n" +
 	"\n" +
-	"com.rgs.v1B\rRegistryProtoP\x01Z3github.com/wizardbeard/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
+	"com.rgs.v1B\rRegistryProtoP\x01Z9github.com/wizardbeardstudio/open-rgs-go/gen/rgs/v1;rgsv1\xa2\x02\x03RXX\xaa\x02\x06Rgs.V1\xca\x02\x06Rgs\\V1\xe2\x02\x12Rgs\\V1\\GPBMetadata\xea\x02\aRgs::V1b\x06proto3"
 
 var (
 	file_rgs_v1_registry_proto_rawDescOnce sync.Once
