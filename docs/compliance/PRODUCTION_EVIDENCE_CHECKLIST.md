@@ -50,3 +50,6 @@ Release gate companion:
 - `docs/compliance/REPORT_CATALOG.md` report definitions and interval coverage.
 - `docs/compliance/THREAT_MODEL.md` updated residual risks and mitigations.
 - `docs/deployment/` deployment hardening guides.
+- Identity actor-binding mismatch denied-audit test artifacts:
+  - `internal/platform/server/identity_grpc_test.go`
+  - `internal/platform/server/identity_gateway_test.go`
