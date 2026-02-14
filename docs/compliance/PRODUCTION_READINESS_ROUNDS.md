@@ -57,3 +57,4 @@ This checklist tracks the remaining production-readiness work identified against
   - Add production evidence checklist (security, DR, chaos, perf, traceability).
   - Align README known-limitations with implemented identity/JWT behavior.
   - Update compliance requirements with new rounds and code/test pointers.
+  - Include actor-mismatch denial parity evidence (with denied-audit assertions) across identity session/admin and core service gRPC/REST paths.
