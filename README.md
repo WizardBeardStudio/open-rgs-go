@@ -213,6 +213,7 @@ Additional controls:
 - Append-only audit chain semantics
 - Core and extension services audit denied/invalid requests with explicit denial reasons (including actor-binding failures such as `actor mismatch with token`), and parity tests assert this behavior across gRPC and REST gateway paths.
 - Identity session/admin surfaces (`RefreshToken`, `Logout`, credential/lockout admin APIs) include explicit actor-ownership/binding denial checks with denied-audit assertions in gRPC and gateway tests.
+- Identity admin authorization denials now emit explicit denied audit events (`identity_set_credential`, `identity_disable_credential`, `identity_enable_credential`, `identity_get_lockout`, `identity_reset_lockout`) for traceable operator/regulator review.
 - Fail-closed behavior on critical audit unavailability for state-changing operations
 - Strict production mode fail-closes admin-path access when remote-access logging persistence is unavailable
 - Ingestion buffer exhaustion disables further ingress for affected boundary
