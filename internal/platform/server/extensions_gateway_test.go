@@ -446,6 +446,39 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	assertGatewayMetaFields(t, noActorAwardResp.GetMeta(), "req-missing-actor-award-write")
 
+	actorMismatchAwardReq := &rgsv1.RecordPromotionalAwardRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Award: &rgsv1.PromotionalAward{
+			PlayerId:   "player-1",
+			CampaignId: "camp-1",
+			AwardType:  rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_FREEPLAY,
+			Amount:     &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	}
+	actorMismatchAwardBody, _ := protojson.Marshal(actorMismatchAwardReq)
+	actorMismatchAwardHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/promotions/awards", bytes.NewReader(actorMismatchAwardBody))
+	actorMismatchAwardHTTPReq = actorMismatchAwardHTTPReq.WithContext(platformauth.WithActor(actorMismatchAwardHTTPReq.Context(), platformauth.Actor{
+		ID:   "ctx-op",
+		Type: "ACTOR_TYPE_OPERATOR",
+	}))
+	actorMismatchAwardHTTPReq.Header.Set("Content-Type", "application/json")
+	actorMismatchAwardRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(actorMismatchAwardRec, actorMismatchAwardHTTPReq)
+	if actorMismatchAwardRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("actor-mismatch award write status: got=%d body=%s", actorMismatchAwardRec.Result().StatusCode, actorMismatchAwardRec.Body.String())
+	}
+	var actorMismatchAwardResp rgsv1.RecordPromotionalAwardResponse
+	if err := protojson.Unmarshal(actorMismatchAwardRec.Body.Bytes(), &actorMismatchAwardResp); err != nil {
+		t.Fatalf("unmarshal actor-mismatch award write response: %v", err)
+	}
+	if actorMismatchAwardResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied actor-mismatch award write result code, got=%s", actorMismatchAwardResp.GetMeta().GetResultCode().String())
+	}
+	if actorMismatchAwardResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor-mismatch award write denial reason actor mismatch with token, got=%q", actorMismatchAwardResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, actorMismatchAwardResp.GetMeta(), "req-1")
+
 	noActorUIReq := &rgsv1.SubmitSystemWindowEventRequest{
 		Meta: &rgsv1.RequestMeta{RequestId: "req-missing-actor-ui-write"},
 		Event: &rgsv1.SystemWindowEvent{
@@ -473,6 +506,38 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 		t.Fatalf("expected no-actor ui write denial reason actor is required, got=%q", noActorUIResp.GetMeta().GetDenialReason())
 	}
 	assertGatewayMetaFields(t, noActorUIResp.GetMeta(), "req-missing-actor-ui-write")
+
+	actorMismatchUIWriteReq := &rgsv1.SubmitSystemWindowEventRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Event: &rgsv1.SystemWindowEvent{
+			EquipmentId: "eq-1",
+			WindowId:    "sys-menu",
+			EventType:   rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_OPENED,
+		},
+	}
+	actorMismatchUIWriteBody, _ := protojson.Marshal(actorMismatchUIWriteReq)
+	actorMismatchUIWriteHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/ui/system-window-events", bytes.NewReader(actorMismatchUIWriteBody))
+	actorMismatchUIWriteHTTPReq = actorMismatchUIWriteHTTPReq.WithContext(platformauth.WithActor(actorMismatchUIWriteHTTPReq.Context(), platformauth.Actor{
+		ID:   "ctx-op",
+		Type: "ACTOR_TYPE_OPERATOR",
+	}))
+	actorMismatchUIWriteHTTPReq.Header.Set("Content-Type", "application/json")
+	actorMismatchUIWriteRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(actorMismatchUIWriteRec, actorMismatchUIWriteHTTPReq)
+	if actorMismatchUIWriteRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("actor-mismatch ui write status: got=%d body=%s", actorMismatchUIWriteRec.Result().StatusCode, actorMismatchUIWriteRec.Body.String())
+	}
+	var actorMismatchUIWriteResp rgsv1.SubmitSystemWindowEventResponse
+	if err := protojson.Unmarshal(actorMismatchUIWriteRec.Body.Bytes(), &actorMismatchUIWriteResp); err != nil {
+		t.Fatalf("unmarshal actor-mismatch ui write response: %v", err)
+	}
+	if actorMismatchUIWriteResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied actor-mismatch ui write result code, got=%s", actorMismatchUIWriteResp.GetMeta().GetResultCode().String())
+	}
+	if actorMismatchUIWriteResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor-mismatch ui write denial reason actor mismatch with token, got=%q", actorMismatchUIWriteResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, actorMismatchUIWriteResp.GetMeta(), "req-1")
 
 	invalidBindingBonusReq := &rgsv1.RecordBonusTransactionRequest{
 		Meta: &rgsv1.RequestMeta{
@@ -652,6 +717,32 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	assertGatewayMetaFields(t, noActorBonusListResp.GetMeta(), "req-missing-actor-bonus-list")
 
+	qActorMismatchBonusList := make(url.Values)
+	qActorMismatchBonusList.Set("meta.request_id", "req-actor-mismatch-bonus-list")
+	qActorMismatchBonusList.Set("meta.actor.actorId", "op-1")
+	qActorMismatchBonusList.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	actorMismatchBonusListReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/bonus-transactions?"+qActorMismatchBonusList.Encode(), nil)
+	actorMismatchBonusListReq = actorMismatchBonusListReq.WithContext(platformauth.WithActor(actorMismatchBonusListReq.Context(), platformauth.Actor{
+		ID:   "ctx-op",
+		Type: "ACTOR_TYPE_OPERATOR",
+	}))
+	actorMismatchBonusListRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(actorMismatchBonusListRec, actorMismatchBonusListReq)
+	if actorMismatchBonusListRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("actor-mismatch bonus list status: got=%d body=%s", actorMismatchBonusListRec.Result().StatusCode, actorMismatchBonusListRec.Body.String())
+	}
+	var actorMismatchBonusListResp rgsv1.ListRecentBonusTransactionsResponse
+	if err := protojson.Unmarshal(actorMismatchBonusListRec.Body.Bytes(), &actorMismatchBonusListResp); err != nil {
+		t.Fatalf("unmarshal actor-mismatch bonus list response: %v", err)
+	}
+	if actorMismatchBonusListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied actor-mismatch bonus list result code, got=%s", actorMismatchBonusListResp.GetMeta().GetResultCode().String())
+	}
+	if actorMismatchBonusListResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor-mismatch bonus list denial reason actor mismatch with token, got=%q", actorMismatchBonusListResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, actorMismatchBonusListResp.GetMeta(), "req-actor-mismatch-bonus-list")
+
 	qNoActorAwardsList := make(url.Values)
 	qNoActorAwardsList.Set("meta.request_id", "req-missing-actor-awards-list")
 	noActorAwardsListReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/awards?"+qNoActorAwardsList.Encode(), nil)
@@ -671,6 +762,32 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 		t.Fatalf("expected no-actor awards list denial reason actor is required, got=%q", noActorAwardsListResp.GetMeta().GetDenialReason())
 	}
 	assertGatewayMetaFields(t, noActorAwardsListResp.GetMeta(), "req-missing-actor-awards-list")
+
+	qActorMismatchAwardsList := make(url.Values)
+	qActorMismatchAwardsList.Set("meta.request_id", "req-actor-mismatch-awards-list")
+	qActorMismatchAwardsList.Set("meta.actor.actorId", "op-1")
+	qActorMismatchAwardsList.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
+	actorMismatchAwardsListReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/awards?"+qActorMismatchAwardsList.Encode(), nil)
+	actorMismatchAwardsListReq = actorMismatchAwardsListReq.WithContext(platformauth.WithActor(actorMismatchAwardsListReq.Context(), platformauth.Actor{
+		ID:   "ctx-op",
+		Type: "ACTOR_TYPE_OPERATOR",
+	}))
+	actorMismatchAwardsListRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(actorMismatchAwardsListRec, actorMismatchAwardsListReq)
+	if actorMismatchAwardsListRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("actor-mismatch awards list status: got=%d body=%s", actorMismatchAwardsListRec.Result().StatusCode, actorMismatchAwardsListRec.Body.String())
+	}
+	var actorMismatchAwardsListResp rgsv1.ListPromotionalAwardsResponse
+	if err := protojson.Unmarshal(actorMismatchAwardsListRec.Body.Bytes(), &actorMismatchAwardsListResp); err != nil {
+		t.Fatalf("unmarshal actor-mismatch awards list response: %v", err)
+	}
+	if actorMismatchAwardsListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied actor-mismatch awards list result code, got=%s", actorMismatchAwardsListResp.GetMeta().GetResultCode().String())
+	}
+	if actorMismatchAwardsListResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor-mismatch awards list denial reason actor mismatch with token, got=%q", actorMismatchAwardsListResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, actorMismatchAwardsListResp.GetMeta(), "req-actor-mismatch-awards-list")
 
 	qNoActorUIList := make(url.Values)
 	qNoActorUIList.Set("meta.request_id", "req-missing-actor-ui-list")
@@ -1072,11 +1189,17 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if !hasAuditEventWithReason(promoEvents, "record_promotional_award", audit.ResultDenied, "actor is required") {
 		t.Fatalf("expected promo audit reason actor is required for award write, got=%v", promoEvents)
 	}
+	if !hasAuditEventWithReason(promoEvents, "record_promotional_award", audit.ResultDenied, "actor mismatch with token") {
+		t.Fatalf("expected promo audit reason actor mismatch with token for award write, got=%v", promoEvents)
+	}
 	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "unauthorized actor type") {
 		t.Fatalf("expected promo audit reason unauthorized actor type for bonus list, got=%v", promoEvents)
 	}
 	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "actor is required") {
 		t.Fatalf("expected promo audit reason actor is required for bonus list, got=%v", promoEvents)
+	}
+	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "actor mismatch with token") {
+		t.Fatalf("expected promo audit reason actor mismatch with token for bonus list, got=%v", promoEvents)
 	}
 	if !hasAuditEvent(promoEvents, "list_promotional_awards", audit.ResultDenied) {
 		t.Fatalf("expected denied promo audit for invalid/unauthorized awards list path, got=%v", promoEvents)
@@ -1092,6 +1215,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if !hasAuditEventWithReason(promoEvents, "list_promotional_awards", audit.ResultDenied, "actor binding is required") {
 		t.Fatalf("expected promo audit reason actor binding is required for awards list, got=%v", promoEvents)
+	}
+	if !hasAuditEventWithReason(promoEvents, "list_promotional_awards", audit.ResultDenied, "actor mismatch with token") {
+		t.Fatalf("expected promo audit reason actor mismatch with token for awards list, got=%v", promoEvents)
 	}
 	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "invalid limit") {
 		t.Fatalf("expected promo audit reason invalid limit, got=%v", promoEvents)
@@ -1118,6 +1244,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if !hasAuditEventWithReason(uiEvents, "submit_system_window_event", audit.ResultDenied, "actor binding is required") {
 		t.Fatalf("expected ui audit reason actor binding is required for submit, got=%v", uiEvents)
+	}
+	if !hasAuditEventWithReason(uiEvents, "submit_system_window_event", audit.ResultDenied, "actor mismatch with token") {
+		t.Fatalf("expected ui audit reason actor mismatch with token for submit, got=%v", uiEvents)
 	}
 	if !hasAuditEvent(uiEvents, "list_system_window_events", audit.ResultDenied) {
 		t.Fatalf("expected denied ui audit for invalid/unauthorized list path, got=%v", uiEvents)
