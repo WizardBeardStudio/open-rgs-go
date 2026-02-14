@@ -245,7 +245,7 @@ This document maps implemented requirements to standards references, code locati
 ## RGS-0706 Production Evidence Packet Index
 - Standard refs: GLI-13/GLI-21 evidence and auditability expectations
 - Code: `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`, `docs/compliance/PRODUCTION_READINESS_ROUNDS.md`
-- Tests: `go test ./...` release-gate execution
+- Tests: `make verify` release-gate execution
 - Status: implemented (release evidence checklist defined and linked)
 
 ## RGS-0707 Promotions and UI Overlay Runtime Services
@@ -281,7 +281,7 @@ This document maps implemented requirements to standards references, code locati
 ## RGS-0712 Backup/Restore Drill Evidence Automation
 - Standard refs: GLI-13 critical data retention/recovery and operational resilience expectations
 - Code: `scripts/dr_backup_restore_check.sh`, `docs/deployment/DR_DRILLS.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
-- Tests: `go test ./...` release-gate execution
+- Tests: `make verify` release-gate execution
 - Status: implemented (repeatable script-driven backup hash/count artifact pack with optional drill restore target)
 
 ## RGS-0713 Performance Qualification Baseline Evidence
@@ -293,13 +293,13 @@ This document maps implemented requirements to standards references, code locati
 ## RGS-0714 Failover/Partition RTO-RPO Evidence Snapshots
 - Standard refs: GLI-13 communication loss/recovery and critical data resilience expectations
 - Code: `scripts/failover_evidence_snapshot.sh`, `docs/deployment/FAILOVER_DRILLS.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
-- Tests: `go test ./...` release-gate execution
+- Tests: `make verify` release-gate execution
 - Status: implemented (scripted failover snapshot capture with explicit RTO/RPO computation and threshold pass/fail gate)
 
 ## RGS-0715 Key Rotation Evidence Pack for External Key Custody
 - Standard refs: GLI-21 secure key lifecycle controls and GLI-13 operational auditability expectations
 - Code: `scripts/keyset_rotation_evidence.sh`, `docs/deployment/KEY_MANAGEMENT.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
-- Tests: `go test ./...` release-gate execution
+- Tests: `make verify` release-gate execution
 - Status: implemented (scripted keyset snapshot/fingerprint evidence with active-kid rotation-state capture)
 
 ## RGS-0716 Sustained Load/Soak Qualification Evidence
@@ -323,5 +323,5 @@ This document maps implemented requirements to standards references, code locati
 ## RGS-0719 Audit Chain Verification Evidence Automation
 - Standard refs: GLI-13 audit immutability verification and regulator evidence expectations
 - Code: `scripts/audit_chain_evidence.sh`, `docs/deployment/AUDIT_CHAIN_VERIFICATION.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`, `docs/compliance/GO_LIVE_CHECKLIST.md`
-- Tests: `go test ./...` release-gate execution
+- Tests: `make verify` release-gate execution
 - Status: implemented (repeatable API-driven artifact capture for single or multi-partition audit-chain verification runs)
