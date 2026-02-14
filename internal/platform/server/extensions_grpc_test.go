@@ -6,6 +6,7 @@ import (
 	"time"
 
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 )
 
 func assertMetaFields(t *testing.T, m *rgsv1.ResponseMeta, wantRequestID string) {
@@ -133,6 +134,35 @@ func TestPromotionsRecordBonusTransactionActorBindingRequired(t *testing.T) {
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "record_bonus_transaction" || events[len(events)-1].Reason != "actor binding is required" {
 		t.Fatalf("expected denied audit event for invalid actor binding, got=%v", events)
+	}
+}
+
+func TestPromotionsRecordBonusTransactionActorMismatchDenied(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 9, 59, 30, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"})
+
+	resp, err := svc.RecordBonusTransaction(ctx, &rgsv1.RecordBonusTransactionRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Transaction: &rgsv1.BonusTransaction{
+			EquipmentId: "eq-1",
+			PlayerId:    "player-1",
+			Amount:      &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("record bonus tx err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for actor mismatch, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected denial reason actor mismatch with token, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-1")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "record_bonus_transaction" || events[len(events)-1].Reason != "actor mismatch with token" {
+		t.Fatalf("expected denied audit event for actor mismatch, got=%v", events)
 	}
 }
 
@@ -612,6 +642,30 @@ func TestUISystemOverlayListActorBindingRequired(t *testing.T) {
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Reason != "actor binding is required" {
 		t.Fatalf("expected denied audit event for invalid actor binding, got=%v", events)
+	}
+}
+
+func TestUISystemOverlayListActorMismatchDenied(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 0, 30, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"})
+
+	resp, err := svc.ListSystemWindowEvents(ctx, &rgsv1.ListSystemWindowEventsRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+	})
+	if err != nil {
+		t.Fatalf("list window events err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for actor mismatch, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected denial reason actor mismatch with token, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-1")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Reason != "actor mismatch with token" {
+		t.Fatalf("expected denied audit event for actor mismatch, got=%v", events)
 	}
 }
 
