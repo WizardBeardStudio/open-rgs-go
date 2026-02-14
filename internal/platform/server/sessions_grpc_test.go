@@ -6,6 +6,7 @@ import (
 	"time"
 
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 )
 
 func TestSessionsStartGetEndWorkflow(t *testing.T) {
@@ -120,5 +121,73 @@ func TestSessionsDisableInMemoryCacheRequiresPersistence(t *testing.T) {
 	}
 	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_ERROR {
 		t.Fatalf("expected persistence error, got=%v", resp.Meta.GetResultCode())
+	}
+}
+
+func TestSessionsActorMismatchDenied(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 17, 11, 30, 0, 0, time.UTC)}
+	svc := NewSessionsService(clk)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-player", Type: "ACTOR_TYPE_PLAYER"})
+
+	start, err := svc.StartSession(ctx, &rgsv1.StartSessionRequest{
+		Meta:     meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		PlayerId: "player-1",
+		DeviceId: "device-a",
+	})
+	if err != nil {
+		t.Fatalf("start session err: %v", err)
+	}
+	if start.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied start, got=%v", start.Meta.GetResultCode())
+	}
+	if start.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial on start, got=%q", start.Meta.GetDenialReason())
+	}
+
+	seed, err := svc.StartSession(context.Background(), &rgsv1.StartSessionRequest{
+		Meta:     meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		PlayerId: "player-1",
+		DeviceId: "device-a",
+	})
+	if err != nil {
+		t.Fatalf("seed start session err: %v", err)
+	}
+
+	got, err := svc.GetSession(ctx, &rgsv1.GetSessionRequest{
+		Meta:      meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		SessionId: seed.Session.GetSessionId(),
+	})
+	if err != nil {
+		t.Fatalf("get session err: %v", err)
+	}
+	if got.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied get, got=%v", got.Meta.GetResultCode())
+	}
+	if got.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial on get, got=%q", got.Meta.GetDenialReason())
+	}
+
+	ended, err := svc.EndSession(ctx, &rgsv1.EndSessionRequest{
+		Meta:      meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		SessionId: seed.Session.GetSessionId(),
+		Reason:    "logout",
+	})
+	if err != nil {
+		t.Fatalf("end session err: %v", err)
+	}
+	if ended.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied end, got=%v", ended.Meta.GetResultCode())
+	}
+	if ended.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial on end, got=%q", ended.Meta.GetDenialReason())
+	}
+
+	events := svc.AuditStore.Events()
+	if len(events) < 3 {
+		t.Fatalf("expected denied session audit events, got=%v", events)
+	}
+	last := events[len(events)-1]
+	if last.Action != "end_session" || last.Reason != "actor mismatch with token" {
+		t.Fatalf("expected denied end_session audit reason actor mismatch with token, got=%+v", last)
 	}
 }
