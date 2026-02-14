@@ -71,6 +71,52 @@ func TestIdentityPlayerLoginRefreshLogout(t *testing.T) {
 	}
 }
 
+func TestIdentityRefreshLogoutActorMismatchDenied(t *testing.T) {
+	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 12, 5, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour)
+	ctx := context.Background()
+
+	login, err := svc.Login(ctx, &rgsv1.LoginRequest{
+		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		Credentials: &rgsv1.LoginRequest_Player{
+			Player: &rgsv1.PlayerCredentials{PlayerId: "player-1", Pin: "1234"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("login err: %v", err)
+	}
+	if login.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_OK {
+		t.Fatalf("expected login ok, got=%v", login.Meta.GetResultCode())
+	}
+
+	refreshMismatch, err := svc.RefreshToken(ctx, &rgsv1.RefreshTokenRequest{
+		Meta:         meta("player-2", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		RefreshToken: login.Token.GetRefreshToken(),
+	})
+	if err != nil {
+		t.Fatalf("refresh mismatch err: %v", err)
+	}
+	if refreshMismatch.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied refresh mismatch, got=%v", refreshMismatch.Meta.GetResultCode())
+	}
+	if refreshMismatch.Meta.GetDenialReason() != "actor mismatch" {
+		t.Fatalf("expected actor mismatch reason on refresh, got=%q", refreshMismatch.Meta.GetDenialReason())
+	}
+
+	logoutMismatch, err := svc.Logout(ctx, &rgsv1.LogoutRequest{
+		Meta:         meta("player-2", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
+		RefreshToken: login.Token.GetRefreshToken(),
+	})
+	if err != nil {
+		t.Fatalf("logout mismatch err: %v", err)
+	}
+	if logoutMismatch.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied logout mismatch, got=%v", logoutMismatch.Meta.GetResultCode())
+	}
+	if logoutMismatch.Meta.GetDenialReason() != "actor mismatch" {
+		t.Fatalf("expected actor mismatch reason on logout, got=%q", logoutMismatch.Meta.GetDenialReason())
+	}
+}
+
 func TestIdentityOperatorLoginDistinctFromPlayer(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 13, 13, 10, 0, 0, time.UTC)}
 	svc := NewIdentityService(clk, "test-secret", 15*time.Minute, time.Hour)
