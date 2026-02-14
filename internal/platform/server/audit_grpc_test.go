@@ -321,4 +321,45 @@ func TestAuditGatewayActorMismatchDenied(t *testing.T) {
 	if out.GetMeta().GetDenialReason() != "actor mismatch with token" {
 		t.Fatalf("expected actor mismatch denial reason for gateway list audit events, got=%q", out.GetMeta().GetDenialReason())
 	}
+
+	remoteReq := httptest.NewRequest(http.MethodGet, "/v1/audit/remote-access?meta.actor.actorId=op-1&meta.actor.actorType=ACTOR_TYPE_OPERATOR", nil)
+	remoteReq = remoteReq.WithContext(platformauth.WithActor(remoteReq.Context(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"}))
+	remoteRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(remoteRec, remoteReq)
+	if remoteRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("remote activities mismatch status: got=%d body=%s", remoteRec.Result().StatusCode, remoteRec.Body.String())
+	}
+	var remoteOut rgsv1.ListRemoteAccessActivitiesResponse
+	if err := protojson.Unmarshal(remoteRec.Body.Bytes(), &remoteOut); err != nil {
+		t.Fatalf("unmarshal list remote activities mismatch response: %v", err)
+	}
+	if remoteOut.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied gateway list remote activities, got=%v", remoteOut.GetMeta().GetResultCode())
+	}
+	if remoteOut.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial reason for gateway list remote activities, got=%q", remoteOut.GetMeta().GetDenialReason())
+	}
+
+	verifyReq := &rgsv1.VerifyAuditChainRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+	}
+	verifyBody, _ := protojson.Marshal(verifyReq)
+	verifyHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/audit/chain:verify", bytes.NewReader(verifyBody))
+	verifyHTTPReq = verifyHTTPReq.WithContext(platformauth.WithActor(verifyHTTPReq.Context(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"}))
+	verifyHTTPReq.Header.Set("Content-Type", "application/json")
+	verifyRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(verifyRec, verifyHTTPReq)
+	if verifyRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("verify chain mismatch status: got=%d body=%s", verifyRec.Result().StatusCode, verifyRec.Body.String())
+	}
+	var verifyOut rgsv1.VerifyAuditChainResponse
+	if err := protojson.Unmarshal(verifyRec.Body.Bytes(), &verifyOut); err != nil {
+		t.Fatalf("unmarshal verify chain mismatch response: %v", err)
+	}
+	if verifyOut.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied gateway verify chain, got=%v", verifyOut.GetMeta().GetResultCode())
+	}
+	if verifyOut.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial reason for gateway verify chain, got=%q", verifyOut.GetMeta().GetDenialReason())
+	}
 }
