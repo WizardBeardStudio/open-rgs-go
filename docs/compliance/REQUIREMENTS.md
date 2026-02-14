@@ -192,7 +192,7 @@ This document maps implemented requirements to standards references, code locati
 - Standard refs: GLI-13 session/account control expectations and retention controls
 - Code: `internal/platform/server/identity_grpc.go`, `internal/platform/server/identity_postgres.go`, `migrations/000007_identity_sessions.up.sql`, `cmd/rgsd/main.go`
 - Tests: `internal/platform/server/identity_grpc_test.go`, `internal/platform/server/identity_gateway_test.go`, `internal/platform/server/postgres_integration_test.go`
-- Status: implemented (DB-backed refresh sessions, revoke/rotate workflow, background expiry cleanup, and actor-ownership mismatch denials for refresh/logout across gRPC and REST gateway paths)
+- Status: implemented (DB-backed refresh sessions, revoke/rotate workflow, background expiry cleanup, actor-ownership mismatch denials for refresh/logout across gRPC and REST gateway paths, and explicit denied-audit assertions for mismatch paths)
 
 ## RGS-0607 Bootstrap Credential Enforcement in DB-backed Mode
 - Standard refs: GLI-21 restricted startup/admin access hardening expectations
