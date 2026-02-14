@@ -126,6 +126,30 @@ func TestPromotionsListRecentNilRequestDeniedActorRequired(t *testing.T) {
 	}
 }
 
+func TestPromotionsListRecentMissingActorDenied(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 9, 58, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListRecentBonusTransactions(ctx, &rgsv1.ListRecentBonusTransactionsRequest{
+		Meta: &rgsv1.RequestMeta{RequestId: "req-missing-actor-bonus-list"},
+	})
+	if err != nil {
+		t.Fatalf("list bonus tx err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for missing actor, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor is required" {
+		t.Fatalf("expected denial reason actor is required, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-missing-actor-bonus-list")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_recent_bonus_transactions" || events[len(events)-1].Reason != "actor is required" {
+		t.Fatalf("expected denied audit event for missing actor bonus list, got=%v", events)
+	}
+}
+
 func TestPromotionsListRecentRejectsNegativeLimit(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 2, 0, 0, time.UTC)}
 	svc := NewPromotionsService(clk)
@@ -352,6 +376,30 @@ func TestPromotionsRecordPromotionalAwardMissingActorDenied(t *testing.T) {
 	}
 }
 
+func TestPromotionsListAwardsMissingActorDenied(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 49, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListPromotionalAwards(ctx, &rgsv1.ListPromotionalAwardsRequest{
+		Meta: &rgsv1.RequestMeta{RequestId: "req-missing-actor-awards-list"},
+	})
+	if err != nil {
+		t.Fatalf("list awards err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for missing actor, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor is required" {
+		t.Fatalf("expected denial reason actor is required, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-missing-actor-awards-list")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_promotional_awards" || events[len(events)-1].Reason != "actor is required" {
+		t.Fatalf("expected denied audit event for missing actor awards list, got=%v", events)
+	}
+}
+
 func TestUISystemOverlaySubmitMissingActorDenied(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 58, 0, 0, time.UTC)}
 	svc := NewUISystemOverlayService(clk)
@@ -422,6 +470,30 @@ func TestUISystemOverlayListNilRequestDeniedActorRequired(t *testing.T) {
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Reason != "actor is required" {
 		t.Fatalf("expected denied audit event for missing actor, got=%v", events)
+	}
+}
+
+func TestUISystemOverlayListMissingActorDenied(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 58, 0, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := context.Background()
+
+	resp, err := svc.ListSystemWindowEvents(ctx, &rgsv1.ListSystemWindowEventsRequest{
+		Meta: &rgsv1.RequestMeta{RequestId: "req-missing-actor-ui-list"},
+	})
+	if err != nil {
+		t.Fatalf("list window events err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for missing actor, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor is required" {
+		t.Fatalf("expected denial reason actor is required, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-missing-actor-ui-list")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Reason != "actor is required" {
+		t.Fatalf("expected denied audit event for missing actor ui list, got=%v", events)
 	}
 }
 
