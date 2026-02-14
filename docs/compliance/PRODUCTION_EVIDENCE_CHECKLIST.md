@@ -25,7 +25,7 @@ Release gate companion:
 - Significant event and alteration retrieval samples.
 - Remote access activity retrieval samples (DB-backed mode).
 - Change-control evidence for config and download library actions.
-- Actor-binding negative-path samples showing `actor mismatch with token` denials and corresponding denied audit events for identity session/admin operations and core service endpoints.
+- Actor-binding negative-path samples showing `actor mismatch with token` denials and corresponding denied audit events for core service endpoints beyond identity (ledger, wagering, sessions, config, reporting, audit, registry/events, extensions).
 
 ## 4. Financial and Wagering Evidence
 - Ledger invariants/property test outputs.
