@@ -211,7 +211,7 @@ Additional controls:
 - Actor-bound authZ checks in services (`player`, `operator`, `service`)
 - Protected HTTP/gRPC calls derive actor identity from JWT middleware/interceptor context; request `meta.actor` mismatch with token is denied.
 - Append-only audit chain semantics
-- Extension services (`PromotionsService`, `UISystemOverlayService`) audit both unauthorized and invalid requests with explicit denial reasons (for example missing actor, invalid timestamps/pagination tokens), and parity tests assert this behavior across gRPC and REST gateway paths.
+- Extension services (`PromotionsService`, `UISystemOverlayService`) audit both unauthorized and invalid requests with explicit denial reasons (for example missing/invalid actor bindings, invalid timestamps/pagination tokens), and parity tests assert this behavior across gRPC and REST gateway paths.
 - Fail-closed behavior on critical audit unavailability for state-changing operations
 - Strict production mode fail-closes admin-path access when remote-access logging persistence is unavailable
 - Ingestion buffer exhaustion disables further ingress for affected boundary
