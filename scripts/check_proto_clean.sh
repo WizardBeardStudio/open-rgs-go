@@ -5,8 +5,14 @@ mode="${RGS_PROTO_CHECK_MODE:-full}"
 
 case "${mode}" in
   full)
-    buf lint
-    buf generate
+    if ! buf lint; then
+      echo "buf lint failed in full mode; if running in an offline/local-restricted environment, retry with RGS_PROTO_CHECK_MODE=diff-only" >&2
+      exit 1
+    fi
+    if ! buf generate; then
+      echo "buf generate failed in full mode; if running in an offline/local-restricted environment, retry with RGS_PROTO_CHECK_MODE=diff-only" >&2
+      exit 1
+    fi
     ;;
   diff-only)
     echo "proto check running in diff-only mode (skipping buf lint/generate)"
