@@ -16,6 +16,7 @@ Release gate companion:
 - JWT keyset configuration and active key rotation procedure.
 - `make keyset-evidence` artifact pack (`keyset.json`, `summary.json`, `fingerprint.sha256`) per rotation event.
 - Identity lockout policy settings and test results.
+- Identity session/admin actor-mismatch denial samples (`RefreshToken`, `Logout`, credential/lockout admin endpoints) with corresponding denied-audit records.
 - Remote admin boundary CIDR policy and denied-attempt samples.
 
 ## 3. Audit and Immutability Evidence
