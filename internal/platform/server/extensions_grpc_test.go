@@ -55,6 +55,9 @@ func TestPromotionsListRecentRejectsNegativeLimit(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for negative limit, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	if resp.GetMeta().GetDenialReason() != "invalid limit" {
+		t.Fatalf("expected denial reason invalid limit, got=%q", resp.GetMeta().GetDenialReason())
+	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_recent_bonus_transactions" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for invalid bonus list request, got=%v", events)
@@ -78,6 +81,9 @@ func TestPromotionsListRecentRejectsOversizedLimit(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for oversized limit, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "invalid limit" {
+		t.Fatalf("expected denial reason invalid limit, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_recent_bonus_transactions" || events[len(events)-1].Result != "denied" {
@@ -133,6 +139,9 @@ func TestPromotionsRecordBonusTransactionRejectsInvalidOccurredAt(t *testing.T) 
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for malformed occurred_at, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "invalid occurred_at" {
+		t.Fatalf("expected denial reason invalid occurred_at, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "record_bonus_transaction" || events[len(events)-1].Result != "denied" {
@@ -351,6 +360,9 @@ func TestPromotionsListAwardsRejectsNegativePageSize(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for negative page_size, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	if resp.GetMeta().GetDenialReason() != "invalid page_size" {
+		t.Fatalf("expected denial reason invalid page_size, got=%q", resp.GetMeta().GetDenialReason())
+	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_promotional_awards" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for invalid awards list request, got=%v", events)
@@ -374,6 +386,9 @@ func TestPromotionsListAwardsRejectsOversizedPageSize(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for oversized page_size, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "invalid page_size" {
+		t.Fatalf("expected denial reason invalid page_size, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_promotional_awards" || events[len(events)-1].Result != "denied" {
@@ -430,6 +445,9 @@ func TestPromotionsRecordPromotionalAwardRejectsUnknownAwardType(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for unknown award type, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	if resp.GetMeta().GetDenialReason() != "award requires player_id, award_type, and positive amount" {
+		t.Fatalf("expected denial reason for invalid award request, got=%q", resp.GetMeta().GetDenialReason())
+	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "record_promotional_award" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for invalid award request, got=%v", events)
@@ -459,6 +477,9 @@ func TestPromotionsRecordPromotionalAwardRejectsInvalidOccurredAt(t *testing.T) 
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for malformed occurred_at, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "invalid occurred_at" {
+		t.Fatalf("expected denial reason invalid occurred_at, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "record_promotional_award" || events[len(events)-1].Result != "denied" {
@@ -553,6 +574,9 @@ func TestUISystemOverlaySubmitRejectsUnknownEventType(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for unknown event type, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	if resp.GetMeta().GetDenialReason() != "event requires equipment_id, window_id, and event_type" {
+		t.Fatalf("expected denial reason for invalid ui event request, got=%q", resp.GetMeta().GetDenialReason())
+	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "submit_system_window_event" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for invalid ui event type, got=%v", events)
@@ -582,6 +606,9 @@ func TestUISystemOverlaySubmitRejectsInvalidEventTime(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for malformed event_time, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "invalid event_time" {
+		t.Fatalf("expected denial reason invalid event_time, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "submit_system_window_event" || events[len(events)-1].Result != "denied" {
@@ -639,6 +666,9 @@ func TestUISystemOverlayListRejectsNegativePageSize(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for negative page_size, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	if resp.GetMeta().GetDenialReason() != "invalid page_size" {
+		t.Fatalf("expected denial reason invalid page_size, got=%q", resp.GetMeta().GetDenialReason())
+	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for negative ui page_size, got=%v", events)
@@ -662,6 +692,9 @@ func TestUISystemOverlayListRejectsOversizedPageSize(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for oversized page_size, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "invalid page_size" {
+		t.Fatalf("expected denial reason invalid page_size, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {
@@ -713,6 +746,9 @@ func TestUISystemOverlayListRejectsInvalidPageToken(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for bad page token, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	if resp.GetMeta().GetDenialReason() != "invalid page_token" {
+		t.Fatalf("expected denial reason invalid page_token, got=%q", resp.GetMeta().GetDenialReason())
+	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for invalid ui list request, got=%v", events)
@@ -736,6 +772,9 @@ func TestUISystemOverlayListRejectsNegativePageToken(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for negative page token, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "invalid page_token" {
+		t.Fatalf("expected denial reason invalid page_token, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {
@@ -761,6 +800,9 @@ func TestPromotionsListAwardsRejectsNegativePageToken(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for negative page token, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	if resp.GetMeta().GetDenialReason() != "invalid page_token" {
+		t.Fatalf("expected denial reason invalid page_token, got=%q", resp.GetMeta().GetDenialReason())
+	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_promotional_awards" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for negative page token, got=%v", events)
@@ -784,6 +826,9 @@ func TestPromotionsListAwardsRejectsInvalidPageToken(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for malformed page token, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "invalid page_token" {
+		t.Fatalf("expected denial reason invalid page_token, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_promotional_awards" || events[len(events)-1].Result != "denied" {
@@ -809,6 +854,9 @@ func TestUISystemOverlayListRejectsInvalidTimeInputs(t *testing.T) {
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for bad from_time, got=%s", resp.GetMeta().GetResultCode().String())
 	}
+	if resp.GetMeta().GetDenialReason() != "invalid from_time" {
+		t.Fatalf("expected denial reason invalid from_time, got=%q", resp.GetMeta().GetDenialReason())
+	}
 
 	resp, err = svc.ListSystemWindowEvents(ctx, &rgsv1.ListSystemWindowEventsRequest{
 		Meta:   meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
@@ -819,6 +867,9 @@ func TestUISystemOverlayListRejectsInvalidTimeInputs(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for bad to_time, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "invalid to_time" {
+		t.Fatalf("expected denial reason invalid to_time, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) < 2 {
@@ -849,6 +900,9 @@ func TestUISystemOverlayListRejectsInvertedTimeRange(t *testing.T) {
 	}
 	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid result for inverted range, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "from_time must be <= to_time" {
+		t.Fatalf("expected denial reason from_time must be <= to_time, got=%q", resp.GetMeta().GetDenialReason())
 	}
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {
