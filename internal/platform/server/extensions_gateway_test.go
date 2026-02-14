@@ -470,6 +470,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if negativePageResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid negative page token result code, got=%s", negativePageResp.GetMeta().GetResultCode().String())
 	}
+	if negativePageResp.GetMeta().GetDenialReason() != "invalid page_token" {
+		t.Fatalf("expected negative page token denial reason, got=%q", negativePageResp.GetMeta().GetDenialReason())
+	}
 
 	qBadRange := make(url.Values)
 	qBadRange.Set("meta.actor.actorId", "op-1")
@@ -510,6 +513,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if badFromResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid bad from_time result code, got=%s", badFromResp.GetMeta().GetResultCode().String())
 	}
+	if badFromResp.GetMeta().GetDenialReason() != "invalid from_time" {
+		t.Fatalf("expected bad from_time denial reason, got=%q", badFromResp.GetMeta().GetDenialReason())
+	}
 
 	qBadTo := make(url.Values)
 	qBadTo.Set("meta.actor.actorId", "op-1")
@@ -527,6 +533,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if badToResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid bad to_time result code, got=%s", badToResp.GetMeta().GetResultCode().String())
+	}
+	if badToResp.GetMeta().GetDenialReason() != "invalid to_time" {
+		t.Fatalf("expected bad to_time denial reason, got=%q", badToResp.GetMeta().GetDenialReason())
 	}
 
 	qBadBonusLimit := make(url.Values)
@@ -567,6 +576,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if oversizedBonusLimitResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid oversized bonus limit result code, got=%s", oversizedBonusLimitResp.GetMeta().GetResultCode().String())
 	}
+	if oversizedBonusLimitResp.GetMeta().GetDenialReason() != "invalid limit" {
+		t.Fatalf("expected oversized bonus limit denial reason, got=%q", oversizedBonusLimitResp.GetMeta().GetDenialReason())
+	}
 
 	qBadAwardPageSize := make(url.Values)
 	qBadAwardPageSize.Set("meta.actor.actorId", "op-1")
@@ -606,6 +618,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if oversizedAwardPageSizeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid oversized awards page_size result code, got=%s", oversizedAwardPageSizeResp.GetMeta().GetResultCode().String())
 	}
+	if oversizedAwardPageSizeResp.GetMeta().GetDenialReason() != "invalid page_size" {
+		t.Fatalf("expected oversized awards page_size denial reason, got=%q", oversizedAwardPageSizeResp.GetMeta().GetDenialReason())
+	}
 
 	qBadAwardPageToken := make(url.Values)
 	qBadAwardPageToken.Set("meta.actor.actorId", "op-1")
@@ -624,6 +639,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if badAwardPageTokenResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid awards page_token result code, got=%s", badAwardPageTokenResp.GetMeta().GetResultCode().String())
 	}
+	if badAwardPageTokenResp.GetMeta().GetDenialReason() != "invalid page_token" {
+		t.Fatalf("expected awards page_token denial reason, got=%q", badAwardPageTokenResp.GetMeta().GetDenialReason())
+	}
 	qNegativeAwardPageToken := make(url.Values)
 	qNegativeAwardPageToken.Set("meta.actor.actorId", "op-1")
 	qNegativeAwardPageToken.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
@@ -640,6 +658,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if negativeAwardPageTokenResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid negative awards page_token result code, got=%s", negativeAwardPageTokenResp.GetMeta().GetResultCode().String())
+	}
+	if negativeAwardPageTokenResp.GetMeta().GetDenialReason() != "invalid page_token" {
+		t.Fatalf("expected negative awards page_token denial reason, got=%q", negativeAwardPageTokenResp.GetMeta().GetDenialReason())
 	}
 
 	qBadUIPageSize := make(url.Values)
@@ -679,6 +700,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if oversizedUIPageSizeResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_INVALID {
 		t.Fatalf("expected invalid oversized ui page_size result code, got=%s", oversizedUIPageSizeResp.GetMeta().GetResultCode().String())
+	}
+	if oversizedUIPageSizeResp.GetMeta().GetDenialReason() != "invalid page_size" {
+		t.Fatalf("expected oversized ui page_size denial reason, got=%q", oversizedUIPageSizeResp.GetMeta().GetDenialReason())
 	}
 
 	promoEvents := promoSvc.AuditStore.Events()
