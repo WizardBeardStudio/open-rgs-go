@@ -189,6 +189,7 @@ func TestPromotionsRecordBonusTransactionDeniedForPlayerActor(t *testing.T) {
 	if resp.GetMeta().GetDenialReason() != "unauthorized actor type" {
 		t.Fatalf("expected denial reason unauthorized actor type, got=%q", resp.GetMeta().GetDenialReason())
 	}
+	assertMetaFields(t, resp.GetMeta(), "req-1")
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "record_bonus_transaction" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for bonus write access, got=%v", events)
@@ -764,6 +765,7 @@ func TestUISystemOverlayListRejectsInvalidPageToken(t *testing.T) {
 	if resp.GetMeta().GetDenialReason() != "invalid page_token" {
 		t.Fatalf("expected denial reason invalid page_token, got=%q", resp.GetMeta().GetDenialReason())
 	}
+	assertMetaFields(t, resp.GetMeta(), "req-1")
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_system_window_events" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for invalid ui list request, got=%v", events)

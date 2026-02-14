@@ -20,7 +20,7 @@ func assertGatewayMetaFields(t *testing.T, m *rgsv1.ResponseMeta, wantRequestID 
 	if m == nil {
 		t.Fatalf("expected response meta, got nil")
 	}
-	if m.GetRequestId() != wantRequestID {
+	if wantRequestID != "" && m.GetRequestId() != wantRequestID {
 		t.Fatalf("expected request_id %q, got=%q", wantRequestID, m.GetRequestId())
 	}
 	if m.GetServerTime() == "" {
@@ -407,6 +407,7 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if playerBonusListResp.GetMeta().GetDenialReason() != "unauthorized actor type" {
 		t.Fatalf("expected player bonus list denial reason unauthorized actor type, got=%q", playerBonusListResp.GetMeta().GetDenialReason())
 	}
+	assertGatewayMetaFields(t, playerBonusListResp.GetMeta(), "")
 
 	qPlayerAwardsList := make(url.Values)
 	qPlayerAwardsList.Set("meta.actor.actorId", "player-1")
@@ -427,6 +428,7 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if playerAwardsListResp.GetMeta().GetDenialReason() != "unauthorized actor type" {
 		t.Fatalf("expected player awards list denial reason unauthorized actor type, got=%q", playerAwardsListResp.GetMeta().GetDenialReason())
 	}
+	assertGatewayMetaFields(t, playerAwardsListResp.GetMeta(), "")
 
 	qPlayerUIList := make(url.Values)
 	qPlayerUIList.Set("meta.actor.actorId", "player-1")
@@ -447,6 +449,7 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if playerUIListResp.GetMeta().GetDenialReason() != "unauthorized actor type" {
 		t.Fatalf("expected player ui list denial reason unauthorized actor type, got=%q", playerUIListResp.GetMeta().GetDenialReason())
 	}
+	assertGatewayMetaFields(t, playerUIListResp.GetMeta(), "")
 
 	qBadPageToken := make(url.Values)
 	qBadPageToken.Set("meta.actor.actorId", "op-1")
@@ -468,6 +471,7 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if badPageResp.GetMeta().GetDenialReason() != "invalid page_token" {
 		t.Fatalf("expected bad page token denial reason, got=%q", badPageResp.GetMeta().GetDenialReason())
 	}
+	assertGatewayMetaFields(t, badPageResp.GetMeta(), "")
 	qNegativePageToken := make(url.Values)
 	qNegativePageToken.Set("meta.actor.actorId", "op-1")
 	qNegativePageToken.Set("meta.actor.actorType", "ACTOR_TYPE_OPERATOR")
