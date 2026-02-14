@@ -260,4 +260,82 @@ func TestEventsGatewayActorMismatchDenied(t *testing.T) {
 	if listResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
 		t.Fatalf("expected actor mismatch reason on list events, got=%q", listResp.GetMeta().GetDenialReason())
 	}
+
+	snapshotReq := &rgsv1.SubmitMeterSnapshotRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Meter: &rgsv1.MeterRecord{
+			MeterId:      "m-gw-mismatch-snapshot",
+			EquipmentId:  "eq-1",
+			MeterLabel:   "coin_in",
+			MonetaryUnit: "USD",
+			ValueMinor:   1,
+		},
+	}
+	snapshotBody, _ := protojson.Marshal(snapshotReq)
+	snapshotHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/events/meters/snapshot", bytes.NewReader(snapshotBody))
+	snapshotHTTPReq = snapshotHTTPReq.WithContext(platformauth.WithActor(snapshotHTTPReq.Context(), platformauth.Actor{ID: "ctx-svc", Type: "ACTOR_TYPE_SERVICE"}))
+	snapshotHTTPReq.Header.Set("Content-Type", "application/json")
+	snapshotRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(snapshotRec, snapshotHTTPReq)
+	if snapshotRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("submit meter snapshot mismatch status: got=%d body=%s", snapshotRec.Result().StatusCode, snapshotRec.Body.String())
+	}
+	var snapshotResp rgsv1.SubmitMeterSnapshotResponse
+	if err := protojson.Unmarshal(snapshotRec.Body.Bytes(), &snapshotResp); err != nil {
+		t.Fatalf("unmarshal submit meter snapshot mismatch response: %v", err)
+	}
+	if snapshotResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied snapshot mismatch, got=%v", snapshotResp.GetMeta().GetResultCode())
+	}
+	if snapshotResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch reason on submit meter snapshot, got=%q", snapshotResp.GetMeta().GetDenialReason())
+	}
+
+	deltaReq := &rgsv1.SubmitMeterDeltaRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Meter: &rgsv1.MeterRecord{
+			MeterId:      "m-gw-mismatch-delta",
+			EquipmentId:  "eq-1",
+			MeterLabel:   "coin_out",
+			MonetaryUnit: "USD",
+			DeltaMinor:   1,
+		},
+	}
+	deltaBody, _ := protojson.Marshal(deltaReq)
+	deltaHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/events/meters/delta", bytes.NewReader(deltaBody))
+	deltaHTTPReq = deltaHTTPReq.WithContext(platformauth.WithActor(deltaHTTPReq.Context(), platformauth.Actor{ID: "ctx-svc", Type: "ACTOR_TYPE_SERVICE"}))
+	deltaHTTPReq.Header.Set("Content-Type", "application/json")
+	deltaRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(deltaRec, deltaHTTPReq)
+	if deltaRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("submit meter delta mismatch status: got=%d body=%s", deltaRec.Result().StatusCode, deltaRec.Body.String())
+	}
+	var deltaResp rgsv1.SubmitMeterDeltaResponse
+	if err := protojson.Unmarshal(deltaRec.Body.Bytes(), &deltaResp); err != nil {
+		t.Fatalf("unmarshal submit meter delta mismatch response: %v", err)
+	}
+	if deltaResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied delta mismatch, got=%v", deltaResp.GetMeta().GetResultCode())
+	}
+	if deltaResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch reason on submit meter delta, got=%q", deltaResp.GetMeta().GetDenialReason())
+	}
+
+	metersReq := httptest.NewRequest(http.MethodGet, "/v1/events/meters?"+q.Encode(), nil)
+	metersReq = metersReq.WithContext(platformauth.WithActor(metersReq.Context(), platformauth.Actor{ID: "ctx-svc", Type: "ACTOR_TYPE_SERVICE"}))
+	metersRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(metersRec, metersReq)
+	if metersRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("list meters mismatch status: got=%d body=%s", metersRec.Result().StatusCode, metersRec.Body.String())
+	}
+	var metersResp rgsv1.ListMetersResponse
+	if err := protojson.Unmarshal(metersRec.Body.Bytes(), &metersResp); err != nil {
+		t.Fatalf("unmarshal list meters mismatch response: %v", err)
+	}
+	if metersResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied list meters mismatch, got=%v", metersResp.GetMeta().GetResultCode())
+	}
+	if metersResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch reason on list meters, got=%q", metersResp.GetMeta().GetDenialReason())
+	}
 }

@@ -331,4 +331,57 @@ func TestEventsActorMismatchDenied(t *testing.T) {
 	if listResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
 		t.Fatalf("expected actor mismatch denial on list events, got=%q", listResp.GetMeta().GetDenialReason())
 	}
+
+	snapshotResp, err := svc.SubmitMeterSnapshot(ctx, &rgsv1.SubmitMeterSnapshotRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Meter: &rgsv1.MeterRecord{
+			MeterId:      "m-mismatch-snapshot",
+			EquipmentId:  "eq-1",
+			MeterLabel:   "coin_in",
+			MonetaryUnit: "USD",
+			ValueMinor:   1,
+		},
+	})
+	if err != nil {
+		t.Fatalf("submit meter snapshot err: %v", err)
+	}
+	if snapshotResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied snapshot mismatch, got=%v", snapshotResp.GetMeta().GetResultCode())
+	}
+	if snapshotResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial on submit meter snapshot, got=%q", snapshotResp.GetMeta().GetDenialReason())
+	}
+
+	deltaResp, err := svc.SubmitMeterDelta(ctx, &rgsv1.SubmitMeterDeltaRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Meter: &rgsv1.MeterRecord{
+			MeterId:      "m-mismatch-delta",
+			EquipmentId:  "eq-1",
+			MeterLabel:   "coin_out",
+			MonetaryUnit: "USD",
+			DeltaMinor:   1,
+		},
+	})
+	if err != nil {
+		t.Fatalf("submit meter delta err: %v", err)
+	}
+	if deltaResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied delta mismatch, got=%v", deltaResp.GetMeta().GetResultCode())
+	}
+	if deltaResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial on submit meter delta, got=%q", deltaResp.GetMeta().GetDenialReason())
+	}
+
+	metersResp, err := svc.ListMeters(ctx, &rgsv1.ListMetersRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+	})
+	if err != nil {
+		t.Fatalf("list meters err: %v", err)
+	}
+	if metersResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied list meters mismatch, got=%v", metersResp.GetMeta().GetResultCode())
+	}
+	if metersResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial on list meters, got=%q", metersResp.GetMeta().GetDenialReason())
+	}
 }
