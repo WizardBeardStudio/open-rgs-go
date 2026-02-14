@@ -286,7 +286,7 @@ Identity admin flow:
 - In DB-backed mode, legacy fallback credentials are not used.
 
 ### Post-Deploy Validation
-- `go test ./...` in CI is green.
+- `make verify` in CI is green.
 - Gateway parity tests are green.
 - Remote admin path denied from untrusted source and allowed from trusted source.
 

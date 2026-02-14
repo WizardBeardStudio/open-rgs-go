@@ -7,7 +7,7 @@ Release gate companion:
 
 ## 1. Build and Release Integrity
 - Immutable source revision and signed artifact references.
-- `go test ./...` results attached for release commit.
+- `make verify` results attached for release commit.
 - `buf lint` and `buf generate` validation evidence.
 - Migration plan and target schema version evidence.
 
