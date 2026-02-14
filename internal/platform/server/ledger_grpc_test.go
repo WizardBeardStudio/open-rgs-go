@@ -7,6 +7,7 @@ import (
 	"time"
 
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 )
 
 type ledgerFixedClock struct {
@@ -152,6 +153,34 @@ func TestLedgerAuthorizationDeniedForForeignPlayerAccount(t *testing.T) {
 	}
 	if events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit result, got=%s", events[len(events)-1].Result)
+	}
+}
+
+func TestLedgerDepositActorMismatchDenied(t *testing.T) {
+	svc := NewLedgerService(ledgerFixedClock{now: time.Date(2026, 2, 11, 15, 30, 0, 0, time.UTC)})
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-player", Type: "ACTOR_TYPE_PLAYER"})
+
+	resp, err := svc.Deposit(ctx, &rgsv1.DepositRequest{
+		Meta:      meta("acct-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-mismatch"),
+		AccountId: "acct-1",
+		Amount:    &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+	})
+	if err != nil {
+		t.Fatalf("deposit err: %v", err)
+	}
+	if resp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for actor mismatch, got=%v", resp.Meta.GetResultCode())
+	}
+	if resp.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial reason, got=%q", resp.Meta.GetDenialReason())
+	}
+
+	events := svc.AuditEvents()
+	if len(events) == 0 {
+		t.Fatalf("expected denied action to be audited")
+	}
+	if events[len(events)-1].Action != "deposit" || events[len(events)-1].Reason != "actor mismatch with token" {
+		t.Fatalf("expected denied deposit audit with actor mismatch reason, got=%+v", events[len(events)-1])
 	}
 }
 

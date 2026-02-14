@@ -11,6 +11,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -135,5 +136,69 @@ func TestLedgerGatewayParity_ListTransactions(t *testing.T) {
 	}
 	if len(viaHTTP.Transactions) > 0 && viaHTTP.Transactions[0].GetTransactionId() != direct.Transactions[0].GetTransactionId() {
 		t.Fatalf("gateway/direct list parity mismatch first tx id: http=%s direct=%s", viaHTTP.Transactions[0].GetTransactionId(), direct.Transactions[0].GetTransactionId())
+	}
+}
+
+func TestLedgerGatewayActorMismatchDenied(t *testing.T) {
+	svc := NewLedgerService(ledgerFixedClock{now: time.Date(2026, 2, 11, 16, 10, 0, 0, time.UTC)})
+	gwMux := runtime.NewServeMux()
+	if err := rgsv1.RegisterLedgerServiceHandlerServer(context.Background(), gwMux, svc); err != nil {
+		t.Fatalf("register ledger gateway handlers: %v", err)
+	}
+
+	depReq := &rgsv1.DepositRequest{
+		Meta:      meta("acct-20", rgsv1.ActorType_ACTOR_TYPE_PLAYER, "idem-http-mismatch"),
+		AccountId: "acct-20",
+		Amount:    &rgsv1.Money{AmountMinor: 1200, Currency: "USD"},
+	}
+	depJSON, err := protojson.Marshal(depReq)
+	if err != nil {
+		t.Fatalf("marshal deposit req: %v", err)
+	}
+	depHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/ledger/deposits", bytes.NewReader(depJSON))
+	depHTTPReq = depHTTPReq.WithContext(platformauth.WithActor(depHTTPReq.Context(), platformauth.Actor{
+		ID:   "ctx-player",
+		Type: "ACTOR_TYPE_PLAYER",
+	}))
+	depHTTPReq.Header.Set("Content-Type", "application/json")
+	depRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(depRec, depHTTPReq)
+	if depRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("deposit actor mismatch status: got=%d body=%s", depRec.Result().StatusCode, depRec.Body.String())
+	}
+	var depResp rgsv1.DepositResponse
+	if err := protojson.Unmarshal(depRec.Body.Bytes(), &depResp); err != nil {
+		t.Fatalf("unmarshal actor mismatch deposit response: %v body=%s", err, depRec.Body.String())
+	}
+	if depResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied actor mismatch deposit, got=%v", depResp.Meta.GetResultCode())
+	}
+	if depResp.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial reason, got=%q", depResp.Meta.GetDenialReason())
+	}
+
+	q := make(url.Values)
+	q.Set("meta.request_id", "req-balance-mismatch")
+	q.Set("meta.actor.actorId", "acct-20")
+	q.Set("meta.actor.actorType", "ACTOR_TYPE_PLAYER")
+	balReq := httptest.NewRequest(http.MethodGet, "/v1/ledger/accounts/acct-20/balance?"+q.Encode(), nil)
+	balReq = balReq.WithContext(platformauth.WithActor(balReq.Context(), platformauth.Actor{
+		ID:   "ctx-player",
+		Type: "ACTOR_TYPE_PLAYER",
+	}))
+	balRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(balRec, balReq)
+	if balRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("balance actor mismatch status: got=%d body=%s", balRec.Result().StatusCode, balRec.Body.String())
+	}
+	var balResp rgsv1.GetBalanceResponse
+	if err := protojson.Unmarshal(balRec.Body.Bytes(), &balResp); err != nil {
+		t.Fatalf("unmarshal actor mismatch balance response: %v body=%s", err, balRec.Body.String())
+	}
+	if balResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied actor mismatch balance, got=%v", balResp.Meta.GetResultCode())
+	}
+	if balResp.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial reason on balance, got=%q", balResp.Meta.GetDenialReason())
 	}
 }
