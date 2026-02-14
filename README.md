@@ -56,6 +56,8 @@ make check-module-path
 go test ./...
 # or
 make test
+# or
+make verify
 ```
 
 PostgreSQL integration tests (restart/durability scenarios):
@@ -83,7 +85,8 @@ make all
 ./scripts/check.sh
 ```
 
-`./scripts/check.sh` runs proto freshness validation (`make proto-check`), formatting, and tests.
+`make verify` runs module-path checks, proto freshness validation, and tests.
+`./scripts/check.sh` runs formatting and then `make verify`.
 If Buf remote dependencies are unavailable in a local environment, use:
 
 ```bash
