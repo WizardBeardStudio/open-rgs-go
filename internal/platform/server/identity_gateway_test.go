@@ -193,3 +193,142 @@ func TestIdentityGatewayRefreshLogoutActorMismatchDenied(t *testing.T) {
 		t.Fatalf("expected actor mismatch reason on logout, got=%q", logoutResp.GetMeta().GetDenialReason())
 	}
 }
+
+func TestIdentityGatewayAdminActorMismatchDenied(t *testing.T) {
+	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 14, 20, 0, 0, time.UTC)}, "gateway-secret", 15*time.Minute, time.Hour)
+	gwMux := runtime.NewServeMux()
+	if err := rgsv1.RegisterIdentityServiceHandlerServer(context.Background(), gwMux, svc); err != nil {
+		t.Fatalf("register identity gateway handlers: %v", err)
+	}
+
+	setReq := &rgsv1.SetCredentialRequest{
+		Meta:           meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor:          &rgsv1.Actor{ActorId: "player-gw-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+		CredentialHash: mustBcryptHash(t, "1234"),
+		Reason:         "bootstrap",
+	}
+	setBody, _ := protojson.Marshal(setReq)
+	setHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/identity/credentials:set", bytes.NewReader(setBody))
+	setHTTPReq = setHTTPReq.WithContext(platformauth.WithActor(setHTTPReq.Context(), platformauth.Actor{
+		ID:   "ctx-op",
+		Type: "ACTOR_TYPE_OPERATOR",
+	}))
+	setHTTPReq.Header.Set("Content-Type", "application/json")
+	setRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(setRec, setHTTPReq)
+	if setRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("set credential mismatch status: got=%d body=%s", setRec.Result().StatusCode, setRec.Body.String())
+	}
+	var setResp rgsv1.SetCredentialResponse
+	if err := protojson.Unmarshal(setRec.Body.Bytes(), &setResp); err != nil {
+		t.Fatalf("unmarshal set credential mismatch response: %v", err)
+	}
+	if setResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied set mismatch, got=%v", setResp.GetMeta().GetResultCode())
+	}
+	if setResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch with token reason on set, got=%q", setResp.GetMeta().GetDenialReason())
+	}
+
+	disableReq := &rgsv1.DisableCredentialRequest{
+		Meta:  meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor: &rgsv1.Actor{ActorId: "player-gw-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+	}
+	disableBody, _ := protojson.Marshal(disableReq)
+	disableHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/identity/credentials:disable", bytes.NewReader(disableBody))
+	disableHTTPReq = disableHTTPReq.WithContext(platformauth.WithActor(disableHTTPReq.Context(), platformauth.Actor{
+		ID:   "ctx-op",
+		Type: "ACTOR_TYPE_OPERATOR",
+	}))
+	disableHTTPReq.Header.Set("Content-Type", "application/json")
+	disableRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(disableRec, disableHTTPReq)
+	if disableRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("disable credential mismatch status: got=%d body=%s", disableRec.Result().StatusCode, disableRec.Body.String())
+	}
+	var disableResp rgsv1.DisableCredentialResponse
+	if err := protojson.Unmarshal(disableRec.Body.Bytes(), &disableResp); err != nil {
+		t.Fatalf("unmarshal disable credential mismatch response: %v", err)
+	}
+	if disableResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied disable mismatch, got=%v", disableResp.GetMeta().GetResultCode())
+	}
+	if disableResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch with token reason on disable, got=%q", disableResp.GetMeta().GetDenialReason())
+	}
+
+	enableReq := &rgsv1.EnableCredentialRequest{
+		Meta:  meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor: &rgsv1.Actor{ActorId: "player-gw-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+	}
+	enableBody, _ := protojson.Marshal(enableReq)
+	enableHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/identity/credentials:enable", bytes.NewReader(enableBody))
+	enableHTTPReq = enableHTTPReq.WithContext(platformauth.WithActor(enableHTTPReq.Context(), platformauth.Actor{
+		ID:   "ctx-op",
+		Type: "ACTOR_TYPE_OPERATOR",
+	}))
+	enableHTTPReq.Header.Set("Content-Type", "application/json")
+	enableRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(enableRec, enableHTTPReq)
+	if enableRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("enable credential mismatch status: got=%d body=%s", enableRec.Result().StatusCode, enableRec.Body.String())
+	}
+	var enableResp rgsv1.EnableCredentialResponse
+	if err := protojson.Unmarshal(enableRec.Body.Bytes(), &enableResp); err != nil {
+		t.Fatalf("unmarshal enable credential mismatch response: %v", err)
+	}
+	if enableResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied enable mismatch, got=%v", enableResp.GetMeta().GetResultCode())
+	}
+	if enableResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch with token reason on enable, got=%q", enableResp.GetMeta().GetDenialReason())
+	}
+
+	getReq := httptest.NewRequest(http.MethodGet, "/v1/identity/lockouts?meta.actor.actorId=op-1&meta.actor.actorType=ACTOR_TYPE_OPERATOR&actor.actorId=player-gw-1&actor.actorType=ACTOR_TYPE_PLAYER", nil)
+	getReq = getReq.WithContext(platformauth.WithActor(getReq.Context(), platformauth.Actor{
+		ID:   "ctx-op",
+		Type: "ACTOR_TYPE_OPERATOR",
+	}))
+	getRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(getRec, getReq)
+	if getRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("get lockout mismatch status: got=%d body=%s", getRec.Result().StatusCode, getRec.Body.String())
+	}
+	var getResp rgsv1.GetLockoutResponse
+	if err := protojson.Unmarshal(getRec.Body.Bytes(), &getResp); err != nil {
+		t.Fatalf("unmarshal get lockout mismatch response: %v", err)
+	}
+	if getResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied get lockout mismatch, got=%v", getResp.GetMeta().GetResultCode())
+	}
+	if getResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch with token reason on get lockout, got=%q", getResp.GetMeta().GetDenialReason())
+	}
+
+	resetReq := &rgsv1.ResetLockoutRequest{
+		Meta:  meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor: &rgsv1.Actor{ActorId: "player-gw-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+	}
+	resetBody, _ := protojson.Marshal(resetReq)
+	resetHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/identity/lockouts:reset", bytes.NewReader(resetBody))
+	resetHTTPReq = resetHTTPReq.WithContext(platformauth.WithActor(resetHTTPReq.Context(), platformauth.Actor{
+		ID:   "ctx-op",
+		Type: "ACTOR_TYPE_OPERATOR",
+	}))
+	resetHTTPReq.Header.Set("Content-Type", "application/json")
+	resetRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(resetRec, resetHTTPReq)
+	if resetRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("reset lockout mismatch status: got=%d body=%s", resetRec.Result().StatusCode, resetRec.Body.String())
+	}
+	var resetResp rgsv1.ResetLockoutResponse
+	if err := protojson.Unmarshal(resetRec.Body.Bytes(), &resetResp); err != nil {
+		t.Fatalf("unmarshal reset lockout mismatch response: %v", err)
+	}
+	if resetResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied reset lockout mismatch, got=%v", resetResp.GetMeta().GetResultCode())
+	}
+	if resetResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch with token reason on reset lockout, got=%q", resetResp.GetMeta().GetDenialReason())
+	}
+}

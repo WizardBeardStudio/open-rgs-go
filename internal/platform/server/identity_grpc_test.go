@@ -478,3 +478,64 @@ func TestIdentityGetAndResetLockout(t *testing.T) {
 		t.Fatalf("expected locked=false after reset")
 	}
 }
+
+func TestIdentityAdminActorMismatchDenied(t *testing.T) {
+	svc := NewIdentityService(ledgerFixedClock{now: time.Date(2026, 2, 13, 14, 20, 0, 0, time.UTC)}, "test-secret", 15*time.Minute, time.Hour)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"})
+
+	disableResp, err := svc.DisableCredential(ctx, &rgsv1.DisableCredentialRequest{
+		Meta:  meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor: &rgsv1.Actor{ActorId: "player-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+	})
+	if err != nil {
+		t.Fatalf("disable credential err: %v", err)
+	}
+	if disableResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied disable mismatch, got=%v", disableResp.Meta.GetResultCode())
+	}
+	if disableResp.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch with token on disable, got=%q", disableResp.Meta.GetDenialReason())
+	}
+
+	enableResp, err := svc.EnableCredential(ctx, &rgsv1.EnableCredentialRequest{
+		Meta:  meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor: &rgsv1.Actor{ActorId: "player-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+	})
+	if err != nil {
+		t.Fatalf("enable credential err: %v", err)
+	}
+	if enableResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied enable mismatch, got=%v", enableResp.Meta.GetResultCode())
+	}
+	if enableResp.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch with token on enable, got=%q", enableResp.Meta.GetDenialReason())
+	}
+
+	lockoutResp, err := svc.GetLockout(ctx, &rgsv1.GetLockoutRequest{
+		Meta:  meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor: &rgsv1.Actor{ActorId: "player-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+	})
+	if err != nil {
+		t.Fatalf("get lockout err: %v", err)
+	}
+	if lockoutResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied get lockout mismatch, got=%v", lockoutResp.Meta.GetResultCode())
+	}
+	if lockoutResp.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch with token on get lockout, got=%q", lockoutResp.Meta.GetDenialReason())
+	}
+
+	resetResp, err := svc.ResetLockout(ctx, &rgsv1.ResetLockoutRequest{
+		Meta:  meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Actor: &rgsv1.Actor{ActorId: "player-1", ActorType: rgsv1.ActorType_ACTOR_TYPE_PLAYER},
+	})
+	if err != nil {
+		t.Fatalf("reset lockout err: %v", err)
+	}
+	if resetResp.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied reset lockout mismatch, got=%v", resetResp.Meta.GetResultCode())
+	}
+	if resetResp.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch with token on reset lockout, got=%q", resetResp.Meta.GetDenialReason())
+	}
+}
