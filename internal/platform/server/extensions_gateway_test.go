@@ -388,6 +388,91 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 		t.Fatalf("expected player award denial reason unauthorized actor type, got=%q", playerAwardResp.GetMeta().GetDenialReason())
 	}
 
+	noActorBonusReq := &rgsv1.RecordBonusTransactionRequest{
+		Meta: &rgsv1.RequestMeta{RequestId: "req-missing-actor-bonus-write"},
+		Transaction: &rgsv1.BonusTransaction{
+			EquipmentId: "eq-1",
+			PlayerId:    "player-1",
+			Amount:      &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	}
+	noActorBonusBody, _ := protojson.Marshal(noActorBonusReq)
+	noActorBonusHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/promotions/bonus-transactions", bytes.NewReader(noActorBonusBody))
+	noActorBonusHTTPReq.Header.Set("Content-Type", "application/json")
+	noActorBonusRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(noActorBonusRec, noActorBonusHTTPReq)
+	if noActorBonusRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("no-actor bonus write status: got=%d body=%s", noActorBonusRec.Result().StatusCode, noActorBonusRec.Body.String())
+	}
+	var noActorBonusResp rgsv1.RecordBonusTransactionResponse
+	if err := protojson.Unmarshal(noActorBonusRec.Body.Bytes(), &noActorBonusResp); err != nil {
+		t.Fatalf("unmarshal no-actor bonus response: %v", err)
+	}
+	if noActorBonusResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied no-actor bonus write result code, got=%s", noActorBonusResp.GetMeta().GetResultCode().String())
+	}
+	if noActorBonusResp.GetMeta().GetDenialReason() != "actor is required" {
+		t.Fatalf("expected no-actor bonus write denial reason actor is required, got=%q", noActorBonusResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, noActorBonusResp.GetMeta(), "req-missing-actor-bonus-write")
+
+	noActorAwardReq := &rgsv1.RecordPromotionalAwardRequest{
+		Meta: &rgsv1.RequestMeta{RequestId: "req-missing-actor-award-write"},
+		Award: &rgsv1.PromotionalAward{
+			PlayerId:   "player-1",
+			CampaignId: "camp-1",
+			AwardType:  rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_FREEPLAY,
+			Amount:     &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	}
+	noActorAwardBody, _ := protojson.Marshal(noActorAwardReq)
+	noActorAwardHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/promotions/awards", bytes.NewReader(noActorAwardBody))
+	noActorAwardHTTPReq.Header.Set("Content-Type", "application/json")
+	noActorAwardRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(noActorAwardRec, noActorAwardHTTPReq)
+	if noActorAwardRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("no-actor award write status: got=%d body=%s", noActorAwardRec.Result().StatusCode, noActorAwardRec.Body.String())
+	}
+	var noActorAwardResp rgsv1.RecordPromotionalAwardResponse
+	if err := protojson.Unmarshal(noActorAwardRec.Body.Bytes(), &noActorAwardResp); err != nil {
+		t.Fatalf("unmarshal no-actor award response: %v", err)
+	}
+	if noActorAwardResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied no-actor award write result code, got=%s", noActorAwardResp.GetMeta().GetResultCode().String())
+	}
+	if noActorAwardResp.GetMeta().GetDenialReason() != "actor is required" {
+		t.Fatalf("expected no-actor award write denial reason actor is required, got=%q", noActorAwardResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, noActorAwardResp.GetMeta(), "req-missing-actor-award-write")
+
+	noActorUIReq := &rgsv1.SubmitSystemWindowEventRequest{
+		Meta: &rgsv1.RequestMeta{RequestId: "req-missing-actor-ui-write"},
+		Event: &rgsv1.SystemWindowEvent{
+			EquipmentId: "eq-1",
+			WindowId:    "sys-menu",
+			EventType:   rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_OPENED,
+		},
+	}
+	noActorUIBody, _ := protojson.Marshal(noActorUIReq)
+	noActorUIHTTPReq := httptest.NewRequest(http.MethodPost, "/v1/ui/system-window-events", bytes.NewReader(noActorUIBody))
+	noActorUIHTTPReq.Header.Set("Content-Type", "application/json")
+	noActorUIRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(noActorUIRec, noActorUIHTTPReq)
+	if noActorUIRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("no-actor ui write status: got=%d body=%s", noActorUIRec.Result().StatusCode, noActorUIRec.Body.String())
+	}
+	var noActorUIResp rgsv1.SubmitSystemWindowEventResponse
+	if err := protojson.Unmarshal(noActorUIRec.Body.Bytes(), &noActorUIResp); err != nil {
+		t.Fatalf("unmarshal no-actor ui response: %v", err)
+	}
+	if noActorUIResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied no-actor ui write result code, got=%s", noActorUIResp.GetMeta().GetResultCode().String())
+	}
+	if noActorUIResp.GetMeta().GetDenialReason() != "actor is required" {
+		t.Fatalf("expected no-actor ui write denial reason actor is required, got=%q", noActorUIResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, noActorUIResp.GetMeta(), "req-missing-actor-ui-write")
+
 	qPlayerBonusList := make(url.Values)
 	qPlayerBonusList.Set("meta.request_id", "req-list-denied")
 	qPlayerBonusList.Set("meta.actor.actorId", "player-1")
@@ -803,6 +888,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if !hasAuditEventWithReason(promoEvents, "record_bonus_transaction", audit.ResultDenied, "unauthorized actor type") {
 		t.Fatalf("expected promo audit reason unauthorized actor type for bonus write, got=%v", promoEvents)
 	}
+	if !hasAuditEventWithReason(promoEvents, "record_bonus_transaction", audit.ResultDenied, "actor is required") {
+		t.Fatalf("expected promo audit reason actor is required for bonus write, got=%v", promoEvents)
+	}
 	if !hasAuditEventWithReason(promoEvents, "record_promotional_award", audit.ResultDenied, "invalid request") {
 		t.Fatalf("expected promo audit reason invalid request for award write, got=%v", promoEvents)
 	}
@@ -811,6 +899,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if !hasAuditEventWithReason(promoEvents, "record_promotional_award", audit.ResultDenied, "unauthorized actor type") {
 		t.Fatalf("expected promo audit reason unauthorized actor type for award write, got=%v", promoEvents)
+	}
+	if !hasAuditEventWithReason(promoEvents, "record_promotional_award", audit.ResultDenied, "actor is required") {
+		t.Fatalf("expected promo audit reason actor is required for award write, got=%v", promoEvents)
 	}
 	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "unauthorized actor type") {
 		t.Fatalf("expected promo audit reason unauthorized actor type for bonus list, got=%v", promoEvents)
@@ -849,6 +940,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if !hasAuditEventWithReason(uiEvents, "submit_system_window_event", audit.ResultDenied, "unauthorized actor type") {
 		t.Fatalf("expected ui audit reason unauthorized actor type for submit, got=%v", uiEvents)
+	}
+	if !hasAuditEventWithReason(uiEvents, "submit_system_window_event", audit.ResultDenied, "actor is required") {
+		t.Fatalf("expected ui audit reason actor is required for submit, got=%v", uiEvents)
 	}
 	if !hasAuditEvent(uiEvents, "list_system_window_events", audit.ResultDenied) {
 		t.Fatalf("expected denied ui audit for invalid/unauthorized list path, got=%v", uiEvents)
