@@ -8,6 +8,19 @@ import (
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
 )
 
+func assertMetaFields(t *testing.T, m *rgsv1.ResponseMeta, wantRequestID string) {
+	t.Helper()
+	if m == nil {
+		t.Fatalf("expected response meta, got nil")
+	}
+	if m.GetRequestId() != wantRequestID {
+		t.Fatalf("expected request_id %q, got=%q", wantRequestID, m.GetRequestId())
+	}
+	if m.GetServerTime() == "" {
+		t.Fatalf("expected non-empty server_time")
+	}
+}
+
 func TestPromotionsListRecentDefaultsTo25(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 0, 0, 0, time.UTC)}
 	svc := NewPromotionsService(clk)
@@ -58,6 +71,7 @@ func TestPromotionsListRecentRejectsNegativeLimit(t *testing.T) {
 	if resp.GetMeta().GetDenialReason() != "invalid limit" {
 		t.Fatalf("expected denial reason invalid limit, got=%q", resp.GetMeta().GetDenialReason())
 	}
+	assertMetaFields(t, resp.GetMeta(), "req-1")
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_recent_bonus_transactions" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for invalid bonus list request, got=%v", events)
@@ -111,6 +125,7 @@ func TestPromotionsListRecentDeniedForPlayerActor(t *testing.T) {
 	if resp.GetMeta().GetDenialReason() != "unauthorized actor type" {
 		t.Fatalf("expected denial reason unauthorized actor type, got=%q", resp.GetMeta().GetDenialReason())
 	}
+	assertMetaFields(t, resp.GetMeta(), "req-1")
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "list_recent_bonus_transactions" || events[len(events)-1].Result != "denied" {
 		t.Fatalf("expected denied audit event for bonus list access, got=%v", events)

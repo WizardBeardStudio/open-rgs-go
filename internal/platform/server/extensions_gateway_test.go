@@ -15,6 +15,19 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+func assertGatewayMetaFields(t *testing.T, m *rgsv1.ResponseMeta, wantRequestID string) {
+	t.Helper()
+	if m == nil {
+		t.Fatalf("expected response meta, got nil")
+	}
+	if m.GetRequestId() != wantRequestID {
+		t.Fatalf("expected request_id %q, got=%q", wantRequestID, m.GetRequestId())
+	}
+	if m.GetServerTime() == "" {
+		t.Fatalf("expected non-empty server_time")
+	}
+}
+
 func TestExtensionsGatewayParity_Workflow(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 0, 0, 0, time.UTC)}
 	promoSvc := NewPromotionsService(clk)
@@ -205,6 +218,7 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if bonusResp.GetMeta().GetDenialReason() != "invalid occurred_at" {
 		t.Fatalf("expected bonus denial reason invalid occurred_at, got=%q", bonusResp.GetMeta().GetDenialReason())
 	}
+	assertGatewayMetaFields(t, bonusResp.GetMeta(), "req-1")
 
 	awardBadTimeReq := &rgsv1.RecordPromotionalAwardRequest{
 		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
@@ -316,6 +330,7 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if playerBonusResp.GetMeta().GetDenialReason() != "unauthorized actor type" {
 		t.Fatalf("expected player bonus denial reason unauthorized actor type, got=%q", playerBonusResp.GetMeta().GetDenialReason())
 	}
+	assertGatewayMetaFields(t, playerBonusResp.GetMeta(), "req-1")
 
 	playerUIReq := &rgsv1.SubmitSystemWindowEventRequest{
 		Meta: meta("player-1", rgsv1.ActorType_ACTOR_TYPE_PLAYER, ""),
