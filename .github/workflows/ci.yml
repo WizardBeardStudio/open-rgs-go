@@ -13,10 +13,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
-      - name: verify module path
-        run: make check-module-path
-      - name: go test
-        run: go test ./...
+      - name: make test
+        run: make test
 
   proto:
     runs-on: ubuntu-latest
