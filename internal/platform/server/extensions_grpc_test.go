@@ -239,6 +239,54 @@ func TestPromotionsListAwardsActorBindingRequired(t *testing.T) {
 	}
 }
 
+func TestPromotionsListRecentActorMismatchDenied(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 51, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"})
+
+	resp, err := svc.ListRecentBonusTransactions(ctx, &rgsv1.ListRecentBonusTransactionsRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+	})
+	if err != nil {
+		t.Fatalf("list bonus tx err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for actor mismatch, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected denial reason actor mismatch with token, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-1")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_recent_bonus_transactions" || events[len(events)-1].Reason != "actor mismatch with token" {
+		t.Fatalf("expected denied audit event for actor mismatch bonus list, got=%v", events)
+	}
+}
+
+func TestPromotionsListAwardsActorMismatchDenied(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 52, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"})
+
+	resp, err := svc.ListPromotionalAwards(ctx, &rgsv1.ListPromotionalAwardsRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+	})
+	if err != nil {
+		t.Fatalf("list awards err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for actor mismatch, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected denial reason actor mismatch with token, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-1")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "list_promotional_awards" || events[len(events)-1].Reason != "actor mismatch with token" {
+		t.Fatalf("expected denied audit event for actor mismatch awards list, got=%v", events)
+	}
+}
+
 func TestPromotionsListRecentRejectsNegativeLimit(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 10, 2, 0, 0, time.UTC)}
 	svc := NewPromotionsService(clk)
@@ -465,6 +513,36 @@ func TestPromotionsRecordPromotionalAwardMissingActorDenied(t *testing.T) {
 	}
 }
 
+func TestPromotionsRecordPromotionalAwardActorMismatchDenied(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 53, 0, 0, time.UTC)}
+	svc := NewPromotionsService(clk)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"})
+
+	resp, err := svc.RecordPromotionalAward(ctx, &rgsv1.RecordPromotionalAwardRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Award: &rgsv1.PromotionalAward{
+			PlayerId:   "player-1",
+			CampaignId: "camp-1",
+			AwardType:  rgsv1.PromotionalAwardType_PROMOTIONAL_AWARD_TYPE_FREEPLAY,
+			Amount:     &rgsv1.Money{AmountMinor: 100, Currency: "USD"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("record promotional award err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for actor mismatch, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected denial reason actor mismatch with token, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-1")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "record_promotional_award" || events[len(events)-1].Reason != "actor mismatch with token" {
+		t.Fatalf("expected denied audit event for actor mismatch award write, got=%v", events)
+	}
+}
+
 func TestPromotionsListAwardsMissingActorDenied(t *testing.T) {
 	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 12, 49, 0, 0, time.UTC)}
 	svc := NewPromotionsService(clk)
@@ -547,6 +625,35 @@ func TestUISystemOverlaySubmitActorBindingRequired(t *testing.T) {
 	events := svc.AuditStore.Events()
 	if len(events) == 0 || events[len(events)-1].Action != "submit_system_window_event" || events[len(events)-1].Reason != "actor binding is required" {
 		t.Fatalf("expected denied audit event for invalid actor binding, got=%v", events)
+	}
+}
+
+func TestUISystemOverlaySubmitActorMismatchDenied(t *testing.T) {
+	clk := ledgerFixedClock{now: time.Date(2026, 2, 16, 11, 59, 30, 0, time.UTC)}
+	svc := NewUISystemOverlayService(clk)
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"})
+
+	resp, err := svc.SubmitSystemWindowEvent(ctx, &rgsv1.SubmitSystemWindowEventRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Event: &rgsv1.SystemWindowEvent{
+			EquipmentId: "eq-1",
+			WindowId:    "sys-menu",
+			EventType:   rgsv1.SystemWindowEventType_SYSTEM_WINDOW_EVENT_TYPE_OPENED,
+		},
+	})
+	if err != nil {
+		t.Fatalf("submit window event err: %v", err)
+	}
+	if resp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied result for actor mismatch, got=%s", resp.GetMeta().GetResultCode().String())
+	}
+	if resp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected denial reason actor mismatch with token, got=%q", resp.GetMeta().GetDenialReason())
+	}
+	assertMetaFields(t, resp.GetMeta(), "req-1")
+	events := svc.AuditStore.Events()
+	if len(events) == 0 || events[len(events)-1].Action != "submit_system_window_event" || events[len(events)-1].Reason != "actor mismatch with token" {
+		t.Fatalf("expected denied audit event for actor mismatch ui write, got=%v", events)
 	}
 }
 
