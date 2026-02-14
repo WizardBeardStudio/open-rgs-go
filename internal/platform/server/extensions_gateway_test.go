@@ -452,6 +452,66 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	assertGatewayMetaFields(t, playerUIListResp.GetMeta(), "")
 
+	qNoActorBonusList := make(url.Values)
+	qNoActorBonusList.Set("meta.request_id", "req-missing-actor-bonus-list")
+	noActorBonusListReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/bonus-transactions?"+qNoActorBonusList.Encode(), nil)
+	noActorBonusListRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(noActorBonusListRec, noActorBonusListReq)
+	if noActorBonusListRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("no-actor bonus list status: got=%d body=%s", noActorBonusListRec.Result().StatusCode, noActorBonusListRec.Body.String())
+	}
+	var noActorBonusListResp rgsv1.ListRecentBonusTransactionsResponse
+	if err := protojson.Unmarshal(noActorBonusListRec.Body.Bytes(), &noActorBonusListResp); err != nil {
+		t.Fatalf("unmarshal no-actor bonus list response: %v", err)
+	}
+	if noActorBonusListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied no-actor bonus list result code, got=%s", noActorBonusListResp.GetMeta().GetResultCode().String())
+	}
+	if noActorBonusListResp.GetMeta().GetDenialReason() != "actor is required" {
+		t.Fatalf("expected no-actor bonus list denial reason actor is required, got=%q", noActorBonusListResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, noActorBonusListResp.GetMeta(), "req-missing-actor-bonus-list")
+
+	qNoActorAwardsList := make(url.Values)
+	qNoActorAwardsList.Set("meta.request_id", "req-missing-actor-awards-list")
+	noActorAwardsListReq := httptest.NewRequest(http.MethodGet, "/v1/promotions/awards?"+qNoActorAwardsList.Encode(), nil)
+	noActorAwardsListRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(noActorAwardsListRec, noActorAwardsListReq)
+	if noActorAwardsListRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("no-actor awards list status: got=%d body=%s", noActorAwardsListRec.Result().StatusCode, noActorAwardsListRec.Body.String())
+	}
+	var noActorAwardsListResp rgsv1.ListPromotionalAwardsResponse
+	if err := protojson.Unmarshal(noActorAwardsListRec.Body.Bytes(), &noActorAwardsListResp); err != nil {
+		t.Fatalf("unmarshal no-actor awards list response: %v", err)
+	}
+	if noActorAwardsListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied no-actor awards list result code, got=%s", noActorAwardsListResp.GetMeta().GetResultCode().String())
+	}
+	if noActorAwardsListResp.GetMeta().GetDenialReason() != "actor is required" {
+		t.Fatalf("expected no-actor awards list denial reason actor is required, got=%q", noActorAwardsListResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, noActorAwardsListResp.GetMeta(), "req-missing-actor-awards-list")
+
+	qNoActorUIList := make(url.Values)
+	qNoActorUIList.Set("meta.request_id", "req-missing-actor-ui-list")
+	noActorUIListReq := httptest.NewRequest(http.MethodGet, "/v1/ui/system-window-events?"+qNoActorUIList.Encode(), nil)
+	noActorUIListRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(noActorUIListRec, noActorUIListReq)
+	if noActorUIListRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("no-actor ui list status: got=%d body=%s", noActorUIListRec.Result().StatusCode, noActorUIListRec.Body.String())
+	}
+	var noActorUIListResp rgsv1.ListSystemWindowEventsResponse
+	if err := protojson.Unmarshal(noActorUIListRec.Body.Bytes(), &noActorUIListResp); err != nil {
+		t.Fatalf("unmarshal no-actor ui list response: %v", err)
+	}
+	if noActorUIListResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied no-actor ui list result code, got=%s", noActorUIListResp.GetMeta().GetResultCode().String())
+	}
+	if noActorUIListResp.GetMeta().GetDenialReason() != "actor is required" {
+		t.Fatalf("expected no-actor ui list denial reason actor is required, got=%q", noActorUIListResp.GetMeta().GetDenialReason())
+	}
+	assertGatewayMetaFields(t, noActorUIListResp.GetMeta(), "req-missing-actor-ui-list")
+
 	qBadPageToken := make(url.Values)
 	qBadPageToken.Set("meta.request_id", "req-list-invalid")
 	qBadPageToken.Set("meta.actor.actorId", "op-1")
@@ -755,6 +815,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "unauthorized actor type") {
 		t.Fatalf("expected promo audit reason unauthorized actor type for bonus list, got=%v", promoEvents)
 	}
+	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "actor is required") {
+		t.Fatalf("expected promo audit reason actor is required for bonus list, got=%v", promoEvents)
+	}
 	if !hasAuditEvent(promoEvents, "list_promotional_awards", audit.ResultDenied) {
 		t.Fatalf("expected denied promo audit for invalid/unauthorized awards list path, got=%v", promoEvents)
 	}
@@ -763,6 +826,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if !hasAuditEventWithReason(promoEvents, "list_promotional_awards", audit.ResultDenied, "unauthorized actor type") {
 		t.Fatalf("expected promo audit reason unauthorized actor type for awards list, got=%v", promoEvents)
+	}
+	if !hasAuditEventWithReason(promoEvents, "list_promotional_awards", audit.ResultDenied, "actor is required") {
+		t.Fatalf("expected promo audit reason actor is required for awards list, got=%v", promoEvents)
 	}
 	if !hasAuditEventWithReason(promoEvents, "list_recent_bonus_transactions", audit.ResultDenied, "invalid limit") {
 		t.Fatalf("expected promo audit reason invalid limit, got=%v", promoEvents)
@@ -792,6 +858,9 @@ func TestExtensionsGatewayParity_ValidationErrors(t *testing.T) {
 	}
 	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "unauthorized actor type") {
 		t.Fatalf("expected ui audit reason unauthorized actor type for list, got=%v", uiEvents)
+	}
+	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "actor is required") {
+		t.Fatalf("expected ui audit reason actor is required for list, got=%v", uiEvents)
 	}
 	if !hasAuditEventWithReason(uiEvents, "list_system_window_events", audit.ResultDenied, "invalid page_size") {
 		t.Fatalf("expected ui audit reason invalid page_size, got=%v", uiEvents)
