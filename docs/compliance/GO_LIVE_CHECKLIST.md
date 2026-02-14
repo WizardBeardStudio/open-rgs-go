@@ -112,7 +112,7 @@ Release metadata:
   - All sections complete in evidence checklist
   - Requirements traceability updated to release commit
   - Threat model reviewed for residual risks
-  - gRPC/REST parity negative-path evidence includes actor mismatch with token denial coverage for extension endpoints
+  - gRPC/REST parity negative-path evidence includes actor mismatch with token denial coverage for core state and reporting/admin surfaces
 - Evidence:
   - `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
   - `docs/compliance/REQUIREMENTS.md`
@@ -120,6 +120,19 @@ Release metadata:
   - `docs/compliance/REPORT_CATALOG.md`
   - `internal/platform/server/extensions_grpc_test.go`
   - `internal/platform/server/extensions_gateway_test.go`
+  - `internal/platform/server/ledger_grpc_test.go`
+  - `internal/platform/server/ledger_gateway_test.go`
+  - `internal/platform/server/wagering_grpc_test.go`
+  - `internal/platform/server/wagering_gateway_test.go`
+  - `internal/platform/server/sessions_grpc_test.go`
+  - `internal/platform/server/sessions_gateway_test.go`
+  - `internal/platform/server/config_grpc_test.go`
+  - `internal/platform/server/config_gateway_test.go`
+  - `internal/platform/server/reporting_grpc_test.go`
+  - `internal/platform/server/reporting_gateway_test.go`
+  - `internal/platform/server/audit_grpc_test.go`
+  - `internal/platform/server/registry_events_test.go`
+  - `internal/platform/server/registry_events_gateway_test.go`
 
 ## Gate 8: Domain Scope Acceptance
 - Owner: Product + Compliance
