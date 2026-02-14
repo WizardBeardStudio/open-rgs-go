@@ -9,6 +9,7 @@ import (
 	"time"
 
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 )
 
 func TestConfigChangeWorkflow(t *testing.T) {
@@ -223,5 +224,79 @@ func TestDownloadLibraryActivateRequiresValidSignature(t *testing.T) {
 	}
 	if deniedBadSig.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
 		t.Fatalf("expected denied for invalid signature, got=%v", deniedBadSig.Meta.GetResultCode())
+	}
+}
+
+func TestConfigActorMismatchDenied(t *testing.T) {
+	svc := NewConfigService(ledgerFixedClock{now: time.Date(2026, 2, 12, 18, 0, 0, 0, time.UTC)})
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"})
+
+	proposed, err := svc.ProposeConfigChange(ctx, &rgsv1.ProposeConfigChangeRequest{
+		Meta:            meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		ConfigNamespace: "security",
+		ConfigKey:       "session_timeout",
+		ProposedValue:   "600",
+		Reason:          "mismatch",
+	})
+	if err != nil {
+		t.Fatalf("propose err: %v", err)
+	}
+	if proposed.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied propose, got=%v", proposed.Meta.GetResultCode())
+	}
+	if proposed.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch reason on propose, got=%q", proposed.Meta.GetDenialReason())
+	}
+
+	approved, err := svc.ApproveConfigChange(ctx, &rgsv1.ApproveConfigChangeRequest{
+		Meta:     meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		ChangeId: "chg-mismatch",
+		Reason:   "mismatch",
+	})
+	if err != nil {
+		t.Fatalf("approve err: %v", err)
+	}
+	if approved.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied approve, got=%v", approved.Meta.GetResultCode())
+	}
+	if approved.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch reason on approve, got=%q", approved.Meta.GetDenialReason())
+	}
+
+	applied, err := svc.ApplyConfigChange(ctx, &rgsv1.ApplyConfigChangeRequest{
+		Meta:     meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		ChangeId: "chg-mismatch",
+		Reason:   "mismatch",
+	})
+	if err != nil {
+		t.Fatalf("apply err: %v", err)
+	}
+	if applied.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied apply, got=%v", applied.Meta.GetResultCode())
+	}
+	if applied.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch reason on apply, got=%q", applied.Meta.GetDenialReason())
+	}
+
+	history, err := svc.ListConfigHistory(ctx, &rgsv1.ListConfigHistoryRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+	})
+	if err != nil {
+		t.Fatalf("list history err: %v", err)
+	}
+	if history.Meta.GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied list history, got=%v", history.Meta.GetResultCode())
+	}
+	if history.Meta.GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch reason on list history, got=%q", history.Meta.GetDenialReason())
+	}
+
+	events := svc.AuditStore.Events()
+	if len(events) == 0 {
+		t.Fatalf("expected denied config audit events")
+	}
+	last := events[len(events)-1]
+	if last.Action != "list_config_history" || last.Reason != "actor mismatch with token" {
+		t.Fatalf("expected denied list_config_history audit with actor mismatch reason, got=%+v", last)
 	}
 }
