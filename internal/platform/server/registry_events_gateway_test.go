@@ -11,6 +11,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -164,5 +165,99 @@ func TestEventsGatewayParity_SubmitAndList(t *testing.T) {
 	}
 	if len(listMetersResp.Meters) != 1 || listMetersResp.Meters[0].GetMeterId() != "m-gw-1" {
 		t.Fatalf("unexpected list meters result via gateway")
+	}
+}
+
+func TestRegistryGatewayActorMismatchDenied(t *testing.T) {
+	registrySvc := NewRegistryService(ledgerFixedClock{now: time.Date(2026, 2, 12, 12, 45, 0, 0, time.UTC)})
+	gwMux := runtime.NewServeMux()
+	if err := rgsv1.RegisterRegistryServiceHandlerServer(context.Background(), gwMux, registrySvc); err != nil {
+		t.Fatalf("register registry gateway handlers: %v", err)
+	}
+
+	upsertReq := &rgsv1.UpsertEquipmentRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Equipment: &rgsv1.Equipment{
+			EquipmentId: "eq-gw-mismatch",
+			Location:    "floor-x",
+			Status:      rgsv1.EquipmentStatus_EQUIPMENT_STATUS_ACTIVE,
+		},
+		Reason: "commission",
+	}
+	body, _ := protojson.Marshal(upsertReq)
+	req := httptest.NewRequest(http.MethodPut, "/v1/registry/equipment/eq-gw-mismatch", bytes.NewReader(body))
+	req = req.WithContext(platformauth.WithActor(req.Context(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"}))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	gwMux.ServeHTTP(rec, req)
+	if rec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("upsert mismatch status: got=%d body=%s", rec.Result().StatusCode, rec.Body.String())
+	}
+	var upsertResp rgsv1.UpsertEquipmentResponse
+	if err := protojson.Unmarshal(rec.Body.Bytes(), &upsertResp); err != nil {
+		t.Fatalf("unmarshal upsert mismatch response: %v", err)
+	}
+	if upsertResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied upsert mismatch, got=%v", upsertResp.GetMeta().GetResultCode())
+	}
+	if upsertResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch reason on upsert, got=%q", upsertResp.GetMeta().GetDenialReason())
+	}
+}
+
+func TestEventsGatewayActorMismatchDenied(t *testing.T) {
+	eventsSvc := NewEventsService(ledgerFixedClock{now: time.Date(2026, 2, 12, 12, 50, 0, 0, time.UTC)})
+	gwMux := runtime.NewServeMux()
+	if err := rgsv1.RegisterEventsServiceHandlerServer(context.Background(), gwMux, eventsSvc); err != nil {
+		t.Fatalf("register events gateway handlers: %v", err)
+	}
+
+	submitReq := &rgsv1.SubmitSignificantEventRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Event: &rgsv1.SignificantEvent{
+			EventId:     "ev-gw-mismatch",
+			EquipmentId: "eq-1",
+			EventCode:   "E901",
+		},
+	}
+	body, _ := protojson.Marshal(submitReq)
+	req := httptest.NewRequest(http.MethodPost, "/v1/events/significant", bytes.NewReader(body))
+	req = req.WithContext(platformauth.WithActor(req.Context(), platformauth.Actor{ID: "ctx-svc", Type: "ACTOR_TYPE_SERVICE"}))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	gwMux.ServeHTTP(rec, req)
+	if rec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("submit event mismatch status: got=%d body=%s", rec.Result().StatusCode, rec.Body.String())
+	}
+	var submitResp rgsv1.SubmitSignificantEventResponse
+	if err := protojson.Unmarshal(rec.Body.Bytes(), &submitResp); err != nil {
+		t.Fatalf("unmarshal submit event mismatch response: %v", err)
+	}
+	if submitResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied submit mismatch, got=%v", submitResp.GetMeta().GetResultCode())
+	}
+	if submitResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch reason on submit event, got=%q", submitResp.GetMeta().GetDenialReason())
+	}
+
+	q := make(url.Values)
+	q.Set("meta.actor.actorId", "svc-1")
+	q.Set("meta.actor.actorType", "ACTOR_TYPE_SERVICE")
+	listReq := httptest.NewRequest(http.MethodGet, "/v1/events/significant?"+q.Encode(), nil)
+	listReq = listReq.WithContext(platformauth.WithActor(listReq.Context(), platformauth.Actor{ID: "ctx-svc", Type: "ACTOR_TYPE_SERVICE"}))
+	listRec := httptest.NewRecorder()
+	gwMux.ServeHTTP(listRec, listReq)
+	if listRec.Result().StatusCode != http.StatusOK {
+		t.Fatalf("list events mismatch status: got=%d body=%s", listRec.Result().StatusCode, listRec.Body.String())
+	}
+	var listResp rgsv1.ListEventsResponse
+	if err := protojson.Unmarshal(listRec.Body.Bytes(), &listResp); err != nil {
+		t.Fatalf("unmarshal list events mismatch response: %v", err)
+	}
+	if listResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied list mismatch, got=%v", listResp.GetMeta().GetResultCode())
+	}
+	if listResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch reason on list events, got=%q", listResp.GetMeta().GetDenialReason())
 	}
 }

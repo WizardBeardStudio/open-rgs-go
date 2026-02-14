@@ -6,6 +6,7 @@ import (
 	"time"
 
 	rgsv1 "github.com/wizardbeard/open-rgs-go/gen/rgs/v1"
+	platformauth "github.com/wizardbeard/open-rgs-go/internal/platform/auth"
 )
 
 func TestRegistryUpsertAndListDeterministic(t *testing.T) {
@@ -231,5 +232,103 @@ func TestEventsDisableInMemoryCacheSkipsMirrors(t *testing.T) {
 	}
 	if len(meters.Meters) != 0 {
 		t.Fatalf("expected no in-memory meters when cache disabled, got=%d", len(meters.Meters))
+	}
+}
+
+func TestRegistryActorMismatchDenied(t *testing.T) {
+	svc := NewRegistryService(ledgerFixedClock{now: time.Date(2026, 2, 12, 11, 30, 0, 0, time.UTC)})
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-op", Type: "ACTOR_TYPE_OPERATOR"})
+
+	upsertResp, err := svc.UpsertEquipment(ctx, &rgsv1.UpsertEquipmentRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Equipment: &rgsv1.Equipment{
+			EquipmentId: "eq-mismatch",
+			Location:    "room-x",
+			Status:      rgsv1.EquipmentStatus_EQUIPMENT_STATUS_ACTIVE,
+		},
+	})
+	if err != nil {
+		t.Fatalf("upsert equipment err: %v", err)
+	}
+	if upsertResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied upsert mismatch, got=%v", upsertResp.GetMeta().GetResultCode())
+	}
+	if upsertResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial on upsert, got=%q", upsertResp.GetMeta().GetDenialReason())
+	}
+
+	_, err = svc.UpsertEquipment(context.Background(), &rgsv1.UpsertEquipmentRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		Equipment: &rgsv1.Equipment{
+			EquipmentId: "eq-seed",
+			Location:    "room-seed",
+			Status:      rgsv1.EquipmentStatus_EQUIPMENT_STATUS_ACTIVE,
+		},
+	})
+	if err != nil {
+		t.Fatalf("seed upsert equipment err: %v", err)
+	}
+
+	getResp, err := svc.GetEquipment(ctx, &rgsv1.GetEquipmentRequest{
+		Meta:        meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+		EquipmentId: "eq-seed",
+	})
+	if err != nil {
+		t.Fatalf("get equipment err: %v", err)
+	}
+	if getResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied get mismatch, got=%v", getResp.GetMeta().GetResultCode())
+	}
+	if getResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial on get, got=%q", getResp.GetMeta().GetDenialReason())
+	}
+
+	listResp, err := svc.ListEquipment(ctx, &rgsv1.ListEquipmentRequest{
+		Meta: meta("op-1", rgsv1.ActorType_ACTOR_TYPE_OPERATOR, ""),
+	})
+	if err != nil {
+		t.Fatalf("list equipment err: %v", err)
+	}
+	if listResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied list mismatch, got=%v", listResp.GetMeta().GetResultCode())
+	}
+	if listResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial on list, got=%q", listResp.GetMeta().GetDenialReason())
+	}
+}
+
+func TestEventsActorMismatchDenied(t *testing.T) {
+	svc := NewEventsService(ledgerFixedClock{now: time.Date(2026, 2, 12, 11, 45, 0, 0, time.UTC)})
+	ctx := platformauth.WithActor(context.Background(), platformauth.Actor{ID: "ctx-svc", Type: "ACTOR_TYPE_SERVICE"})
+
+	submitResp, err := svc.SubmitSignificantEvent(ctx, &rgsv1.SubmitSignificantEventRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+		Event: &rgsv1.SignificantEvent{
+			EventId:     "ev-mismatch",
+			EquipmentId: "eq-1",
+			EventCode:   "E200",
+		},
+	})
+	if err != nil {
+		t.Fatalf("submit event err: %v", err)
+	}
+	if submitResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied submit mismatch, got=%v", submitResp.GetMeta().GetResultCode())
+	}
+	if submitResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial on submit, got=%q", submitResp.GetMeta().GetDenialReason())
+	}
+
+	listResp, err := svc.ListEvents(ctx, &rgsv1.ListEventsRequest{
+		Meta: meta("svc-1", rgsv1.ActorType_ACTOR_TYPE_SERVICE, ""),
+	})
+	if err != nil {
+		t.Fatalf("list events err: %v", err)
+	}
+	if listResp.GetMeta().GetResultCode() != rgsv1.ResultCode_RESULT_CODE_DENIED {
+		t.Fatalf("expected denied list mismatch, got=%v", listResp.GetMeta().GetResultCode())
+	}
+	if listResp.GetMeta().GetDenialReason() != "actor mismatch with token" {
+		t.Fatalf("expected actor mismatch denial on list events, got=%q", listResp.GetMeta().GetDenialReason())
 	}
 }
