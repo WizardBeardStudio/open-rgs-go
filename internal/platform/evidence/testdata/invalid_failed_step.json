@@ -1,0 +1,19 @@
+{
+  "summary_schema_version": 2,
+  "timestamp_utc": "2026-02-15T00:00:00Z",
+  "run_dir": "artifacts/verify/20260215T000000Z",
+  "proto_mode": "full",
+  "require_clean_worktree": true,
+  "required_artifacts_present": true,
+  "optional_changed_files_present": false,
+  "required_artifact_count_expected": 4,
+  "required_artifact_count_present": 4,
+  "required_artifact_count_missing": 0,
+  "artifact_file_count": 5,
+  "artifact_total_bytes": 1000,
+  "proto_check_status": 1,
+  "make_verify_status": 0,
+  "overall_status": "fail",
+  "failed_step": null,
+  "changed_files_artifact": null
+}

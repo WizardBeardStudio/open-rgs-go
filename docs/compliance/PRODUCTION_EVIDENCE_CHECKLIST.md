@@ -22,6 +22,9 @@ Release gate companion:
 - CI evidence capture should enforce a clean worktree (`RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN=true`) to avoid ambiguous provenance.
 - `summary.json` should report required artifact completeness via `required_artifacts_present` and required count fields (`required_artifact_count_expected`, `required_artifact_count_present`, `required_artifact_count_missing`).
 - `summary.json` must pass schema validation via `./scripts/validate_verify_summary.sh <summary.json>` (and CI should capture this pass output).
+- Schema evolution policy (current non-frozen phase):
+  - `summary_schema_version` may change before freeze; any semantic schema change must update validator + fixtures in the same commit.
+  - Once schema/API is explicitly declared frozen, breaking summary-schema changes require a new version path and compatibility policy update.
 - `buf lint` and `buf generate` validation evidence.
 - Migration plan and target schema version evidence.
 

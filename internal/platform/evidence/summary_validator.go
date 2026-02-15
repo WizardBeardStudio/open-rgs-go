@@ -5,13 +5,26 @@ import (
 	"fmt"
 )
 
-// ValidateSummaryJSON validates schema v2 verify-evidence summary payloads.
+// ValidateSummaryJSON validates verify-evidence summary payloads.
 func ValidateSummaryJSON(data []byte) error {
 	var s map[string]any
 	if err := json.Unmarshal(data, &s); err != nil {
 		return fmt.Errorf("invalid JSON: %w", err)
 	}
 
+	version, ok := s["summary_schema_version"].(float64)
+	if !ok {
+		return fmt.Errorf("field summary_schema_version must be number")
+	}
+	switch version {
+	case 2:
+		return validateSummarySchema2(s)
+	default:
+		return fmt.Errorf("unsupported summary_schema_version: %v", version)
+	}
+}
+
+func validateSummarySchema2(s map[string]any) error {
 	if err := requireNumberEquals(s, "summary_schema_version", 2); err != nil {
 		return err
 	}

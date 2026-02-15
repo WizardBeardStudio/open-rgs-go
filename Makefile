@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: all fmt test verify verify-evidence verify-evidence-strict test-integration-postgres lint proto proto-check check-module-path generate-tools dr-drill perf-qual failover-evidence keyset-evidence audit-chain-evidence soak-qual soak-qual-db soak-qual-matrix
+.PHONY: all fmt test verify verify-summary verify-evidence verify-evidence-strict test-integration-postgres lint proto proto-check check-module-path generate-tools dr-drill perf-qual failover-evidence keyset-evidence audit-chain-evidence soak-qual soak-qual-db soak-qual-matrix
 
 all: fmt test
 
@@ -11,6 +11,9 @@ test: check-module-path
 	go test ./...
 
 verify: proto-check test
+
+verify-summary:
+	./scripts/validate_verify_summary.sh "$$(cat artifacts/verify/LATEST)/summary.json"
 
 verify-evidence:
 	./scripts/verify_evidence.sh
