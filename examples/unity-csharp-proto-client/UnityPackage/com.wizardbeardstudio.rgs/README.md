@@ -13,5 +13,6 @@ Includes:
   - `LedgerClient.GetBalanceAsync`
   - `SessionsClient.StartSessionAsync` / `EndSessionAsync`
   - `WageringClient.PlaceWagerAsync` / `SettleWagerAsync`
+- Parallel REST gateway wiring for the same methods when `RgsTransportMode.RestGateway` is selected.
 
 Next implementation rounds should wire service classes to generated protobuf clients and publish importable sample scenes.

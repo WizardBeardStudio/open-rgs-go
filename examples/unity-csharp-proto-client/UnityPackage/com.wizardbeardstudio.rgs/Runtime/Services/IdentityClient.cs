@@ -1,15 +1,18 @@
 using System;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
 using Rgs.V1;
+using WizardBeardStudio.Rgs.Core;
 using WizardBeardStudio.Rgs.Models;
 
 namespace WizardBeardStudio.Rgs.Services
 {
     public sealed class IdentityClient
     {
-        private readonly IdentityService.IdentityServiceClient _client;
+        private readonly IdentityService.IdentityServiceClient? _grpcClient;
+        private readonly IRgsTransport? _restTransport;
         private readonly string _deviceId;
         private readonly string _userAgent;
         private readonly string _geo;
@@ -20,7 +23,19 @@ namespace WizardBeardStudio.Rgs.Services
             string userAgent,
             string geo)
         {
-            _client = client;
+            _grpcClient = client;
+            _deviceId = deviceId;
+            _userAgent = userAgent;
+            _geo = geo;
+        }
+
+        public IdentityClient(
+            IRgsTransport transport,
+            string deviceId,
+            string userAgent,
+            string geo)
+        {
+            _restTransport = transport;
             _deviceId = deviceId;
             _userAgent = userAgent;
             _geo = geo;
@@ -28,6 +43,20 @@ namespace WizardBeardStudio.Rgs.Services
 
         public async Task<LoginResult> LoginPlayerAsync(string playerId, string pin, CancellationToken cancellationToken)
         {
+            if (_restTransport != null)
+            {
+                return await LoginPlayerRestAsync(playerId, pin, cancellationToken);
+            }
+            return await LoginPlayerGrpcAsync(playerId, pin, cancellationToken);
+        }
+
+        private async Task<LoginResult> LoginPlayerGrpcAsync(string playerId, string pin, CancellationToken cancellationToken)
+        {
+            if (_grpcClient == null)
+            {
+                return new LoginResult { Success = false, ResultCode = "TRANSPORT_NOT_CONFIGURED", DenialReason = "gRPC client not configured" };
+            }
+
             var request = new LoginRequest
             {
                 Meta = BuildMeta(playerId),
@@ -40,7 +69,7 @@ namespace WizardBeardStudio.Rgs.Services
 
             try
             {
-                var response = await _client.LoginAsync(request, cancellationToken: cancellationToken);
+                var response = await _grpcClient.LoginAsync(request, cancellationToken: cancellationToken);
                 if (response?.Meta == null)
                 {
                     return new LoginResult
@@ -75,6 +104,57 @@ namespace WizardBeardStudio.Rgs.Services
                     DenialReason = ex.Status.Detail,
                 };
             }
+        }
+
+        private async Task<LoginResult> LoginPlayerRestAsync(string playerId, string pin, CancellationToken cancellationToken)
+        {
+            if (_restTransport == null)
+            {
+                return new LoginResult { Success = false, ResultCode = "TRANSPORT_NOT_CONFIGURED", DenialReason = "REST transport not configured" };
+            }
+
+            var payload = new
+            {
+                meta = new
+                {
+                    requestId = Guid.NewGuid().ToString(),
+                    idempotencyKey = string.Empty,
+                    actor = new { actorId = playerId, actorType = "ACTOR_TYPE_PLAYER" },
+                    source = new { ip = string.Empty, deviceId = _deviceId, userAgent = _userAgent, geo = _geo }
+                },
+                player = new { playerId, pin }
+            };
+
+            var json = JsonSerializer.Serialize(payload);
+            var body = await _restTransport.PostJsonAsync("/v1/identity/login", json, null, cancellationToken);
+
+            using var doc = JsonDocument.Parse(body);
+            var meta = RestJson.ParseMeta(doc.RootElement);
+
+            string accessToken = string.Empty;
+            string refreshToken = string.Empty;
+            string actorId = playerId;
+            if (doc.RootElement.TryGetProperty("token", out var token))
+            {
+                accessToken = RestJson.GetString(token, "accessToken");
+                refreshToken = RestJson.GetString(token, "refreshToken");
+                if (token.TryGetProperty("actor", out var actor))
+                {
+                    actorId = RestJson.GetString(actor, "actorId");
+                }
+            }
+
+            return new LoginResult
+            {
+                Success = meta.Success,
+                ResultCode = meta.ResultCode,
+                DenialReason = meta.DenialReason,
+                RequestId = meta.RequestId,
+                ServerTime = meta.ServerTime,
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ActorId = actorId,
+            };
         }
 
         private RequestMeta BuildMeta(string playerId)

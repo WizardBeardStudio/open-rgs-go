@@ -26,6 +26,7 @@ namespace WizardBeardStudio.Rgs
 
         private readonly IRgsLogger _logger = new UnityRgsLogger();
         private GrpcChannel? _channel;
+        private IDisposable? _restTransportDisposable;
         private InMemoryTokenStore? _tokenStore;
 
         private void Awake()
@@ -37,6 +38,8 @@ namespace WizardBeardStudio.Rgs
         {
             _channel?.Dispose();
             _channel = null;
+            _restTransportDisposable?.Dispose();
+            _restTransportDisposable = null;
         }
 
         public void Initialize()
@@ -49,40 +52,42 @@ namespace WizardBeardStudio.Rgs
             }
 
             _tokenStore = new InMemoryTokenStore();
-            _channel = CreateChannel(config);
 
-            var identityStub = new IdentityService.IdentityServiceClient(_channel);
-            var ledgerStub = new LedgerService.LedgerServiceClient(_channel);
-            var sessionsStub = new SessionsService.SessionsServiceClient(_channel);
-            var wageringStub = new WageringService.WageringServiceClient(_channel);
+            IdentityClient identity;
+            SessionsClient sessions;
+            LedgerClient ledger;
+            WageringClient wagering;
 
-            var identity = new IdentityClient(identityStub, config.deviceId, config.userAgent, config.geo);
+            if (config.transportMode == RgsTransportMode.RestGateway)
+            {
+                var rest = new RestGatewayRgsTransport(config.baseUrl, config.requestTimeoutSeconds);
+                _restTransportDisposable = rest;
+
+                identity = new IdentityClient(rest, config.deviceId, config.userAgent, config.geo);
+                sessions = new SessionsClient(rest, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo);
+                ledger = new LedgerClient(rest, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo);
+                wagering = new WageringClient(rest, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo);
+                _logger.Info("RGS client configured for REST gateway transport");
+            }
+            else
+            {
+                _channel = CreateChannel(config);
+
+                var identityStub = new IdentityService.IdentityServiceClient(_channel);
+                var ledgerStub = new LedgerService.LedgerServiceClient(_channel);
+                var sessionsStub = new SessionsService.SessionsServiceClient(_channel);
+                var wageringStub = new WageringService.WageringServiceClient(_channel);
+
+                identity = new IdentityClient(identityStub, config.deviceId, config.userAgent, config.geo);
+                sessions = new SessionsClient(sessionsStub, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo);
+                ledger = new LedgerClient(ledgerStub, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo);
+                wagering = new WageringClient(wageringStub, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo);
+                _logger.Info("RGS client configured for gRPC-Web transport");
+            }
+
             var auth = new RgsAuthService(identity, _tokenStore);
-            var sessions = new SessionsClient(
-                sessionsStub,
-                () => _tokenStore.AccessToken,
-                config.playerId,
-                config.deviceId,
-                config.userAgent,
-                config.geo);
-            var ledger = new LedgerClient(
-                ledgerStub,
-                () => _tokenStore.AccessToken,
-                config.playerId,
-                config.deviceId,
-                config.userAgent,
-                config.geo);
-            var wagering = new WageringClient(
-                wageringStub,
-                () => _tokenStore.AccessToken,
-                config.playerId,
-                config.deviceId,
-                config.userAgent,
-                config.geo);
-
             AuthService = auth;
             Client = new RgsClient(config, auth, sessions, ledger, wagering);
-            _logger.Info("RGS client initialized");
             OnInitialized?.Invoke();
         }
 
@@ -117,13 +122,8 @@ namespace WizardBeardStudio.Rgs
             OnDisconnected?.Invoke();
         }
 
-        private GrpcChannel CreateChannel(RgsClientConfig cfg)
+        private static GrpcChannel CreateChannel(RgsClientConfig cfg)
         {
-            if (cfg.transportMode == RgsTransportMode.RestGateway)
-            {
-                _logger.Warn("REST transport mode selected in config; bootstrap currently uses gRPC-Web generated clients for runtime sample paths.");
-            }
-
             var handler = new GrpcWebHandler(GrpcWebMode.GrpcWebText, new HttpClientHandler());
             return GrpcChannel.ForAddress(cfg.baseUrl, new GrpcChannelOptions
             {
