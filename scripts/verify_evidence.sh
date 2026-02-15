@@ -5,6 +5,12 @@ ts="$(date -u +%Y%m%dT%H%M%SZ)"
 base_dir="${RGS_VERIFY_EVIDENCE_DIR:-artifacts/verify}"
 run_dir="${base_dir}/${ts}"
 proto_mode="${RGS_VERIFY_EVIDENCE_PROTO_MODE:-full}"
+git_commit="$(git rev-parse HEAD)"
+git_branch="$(git rev-parse --abbrev-ref HEAD)"
+ci_run_id="${GITHUB_RUN_ID:-}"
+ci_run_attempt="${GITHUB_RUN_ATTEMPT:-}"
+ci_ref="${GITHUB_REF:-}"
+ci_sha="${GITHUB_SHA:-}"
 
 mkdir -p "${run_dir}"
 
@@ -40,6 +46,12 @@ set -e
 cat >"${summary_file}" <<EOF
 {
   "timestamp_utc": "${ts}",
+  "git_commit": "${git_commit}",
+  "git_branch": "${git_branch}",
+  "ci_run_id": "${ci_run_id}",
+  "ci_run_attempt": "${ci_run_attempt}",
+  "ci_ref": "${ci_ref}",
+  "ci_sha": "${ci_sha}",
   "proto_check_command": "${proto_cmd}",
   "make_verify_command": "${verify_cmd}",
   "proto_check_status": ${proto_status},
