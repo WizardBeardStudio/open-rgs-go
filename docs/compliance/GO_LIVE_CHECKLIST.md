@@ -109,7 +109,7 @@ Release metadata:
 - Owner: Compliance/QA
 - Status: `PASS` / `FAIL`
 - Criteria:
-  - Verification command outputs attached (`make verify` and strict `make proto-check`)
+  - Verification command outputs attached (`make verify` and `make verify-evidence-strict`)
   - All sections complete in evidence checklist
   - Requirements traceability updated to release commit
   - Threat model reviewed for residual risks

@@ -7,7 +7,7 @@ Release gate companion:
 
 ## 1. Build and Release Integrity
 - Immutable source revision and signed artifact references.
-- `make verify-evidence` results attached for release commit, including:
+- `make verify-evidence-strict` results attached for release commit, including:
   - `artifacts/verify/<UTC_TIMESTAMP>/proto_check.log`
   - `artifacts/verify/<UTC_TIMESTAMP>/make_verify.log`
   - `artifacts/verify/<UTC_TIMESTAMP>/summary.json` (includes git commit/ref, worktree cleanliness metadata, CI run metadata, toolchain/runtime context, dependency + verification-script checksums, and command timing metadata)
