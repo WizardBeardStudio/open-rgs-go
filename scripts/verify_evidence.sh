@@ -273,12 +273,15 @@ artifact_total_bytes="$(find "${run_dir}" -maxdepth 1 -type f -print0 | xargs -0
 if [[ -z "${artifact_total_bytes}" ]]; then
   artifact_total_bytes="0"
 fi
+summary_validation_log_sha256_placeholder="0000000000000000000000000000000000000000000000000000000000000000"
+summary_validation_log_sha256="${summary_validation_log_sha256_placeholder}"
 
 tmp_summary="${summary_file}.tmp"
 {
   sed '$d' "${summary_file}" | sed '$s/$/,/'
   echo "  \"summary_validation_status\": 0,"
   echo "  \"summary_validation_log\": \"summary_validation.log\","
+  echo "  \"summary_validation_log_sha256\": \"${summary_validation_log_sha256}\","
   echo "  \"required_artifacts_present\": ${required_artifacts_present},"
   echo "  \"required_artifact_count_expected\": ${required_artifact_count_expected},"
   echo "  \"required_artifact_count_present\": ${required_artifact_count_present},"
@@ -291,7 +294,7 @@ tmp_summary="${summary_file}.tmp"
 mv "${tmp_summary}" "${summary_file}"
 
 set +e
-GOCACHE="${GOCACHE:-/tmp/open-rgs-go-gocache}" ./scripts/validate_verify_summary.sh "${summary_file}" >"${summary_validation_log}" 2>&1
+RGS_VALIDATE_SUMMARY_MODE=json GOCACHE="${GOCACHE:-/tmp/open-rgs-go-gocache}" ./scripts/validate_verify_summary.sh "${summary_file}" >"${summary_validation_log}" 2>&1
 summary_validation_status=$?
 set -e
 
@@ -299,6 +302,20 @@ if [[ ${summary_validation_status} -ne 0 ]]; then
   echo "verify summary validation failed; see ${summary_validation_log}" >&2
   exit 1
 fi
+
+summary_validation_log_sha256="$(checksum_file "${summary_validation_log}" | awk '{print $1}')"
+if [[ -z "${summary_validation_log_sha256}" ]]; then
+  echo "failed computing sha256 for ${summary_validation_log}" >&2
+  exit 1
+fi
+
+tmp_summary="${summary_file}.tmp"
+{
+  sed 's/"summary_validation_log_sha256":[[:space:]]*"[^"]*"/"summary_validation_log_sha256": "'"${summary_validation_log_sha256}"'"/' "${summary_file}"
+} >"${tmp_summary}"
+mv "${tmp_summary}" "${summary_file}"
+
+./scripts/validate_verify_summary.sh "${summary_file}" >/dev/null
 
 {
   echo "verify evidence artifact index"

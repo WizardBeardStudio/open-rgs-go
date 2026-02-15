@@ -3,6 +3,7 @@ package evidence
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 )
 
 // ValidateSummaryJSON validates verify-evidence summary payloads.
@@ -59,6 +60,15 @@ func validateSummarySchema2(s map[string]any) error {
 		return err
 	}
 	if err := requireNumberNonNegative(s, "artifact_total_bytes"); err != nil {
+		return err
+	}
+	if err := requireNumberEquals(s, "summary_validation_status", 0); err != nil {
+		return err
+	}
+	if err := requireNonEmptyString(s, "summary_validation_log"); err != nil {
+		return err
+	}
+	if err := requireSHA256HexString(s, "summary_validation_log_sha256"); err != nil {
 		return err
 	}
 	if err := requireNumberNonNegative(s, "proto_check_status"); err != nil {
@@ -215,6 +225,20 @@ func requireNumberNonNegative(m map[string]any, key string) error {
 	f, ok := v.(float64)
 	if !ok || f < 0 {
 		return fmt.Errorf("field %s must be non-negative number", key)
+	}
+	return nil
+}
+
+var sha256HexPattern = regexp.MustCompile(`^[A-Fa-f0-9]{64}$`)
+
+func requireSHA256HexString(m map[string]any, key string) error {
+	v, ok := m[key]
+	if !ok {
+		return fmt.Errorf("missing field: %s", key)
+	}
+	s, ok := v.(string)
+	if !ok || !sha256HexPattern.MatchString(s) {
+		return fmt.Errorf("field %s must be 64-char hex sha256", key)
 	}
 	return nil
 }

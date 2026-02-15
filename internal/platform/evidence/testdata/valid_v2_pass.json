@@ -50,5 +50,8 @@
   "required_artifact_count_missing": 0,
   "optional_changed_files_present": false,
   "artifact_file_count": 5,
-  "artifact_total_bytes": 1000
+  "artifact_total_bytes": 1000,
+  "summary_validation_status": 0,
+  "summary_validation_log": "summary_validation.log",
+  "summary_validation_log_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 }
