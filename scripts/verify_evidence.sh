@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
-summary_schema_version="1"
+summary_schema_version="2"
 base_dir="${RGS_VERIFY_EVIDENCE_DIR:-artifacts/verify}"
 run_dir="${base_dir}/${ts}"
 proto_mode="${RGS_VERIFY_EVIDENCE_PROTO_MODE:-full}"
