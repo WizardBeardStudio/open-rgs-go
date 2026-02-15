@@ -46,7 +46,12 @@ jobs:
           rg -q '"summary_validation_status":[[:space:]]*0' "${latest}/summary.json"
           rg -q '^summary_validation.log[[:space:]]+' "${latest}/index.txt"
           rg -q 'summary_validation.log$' "${latest}/manifest.sha256"
+          rg -q '^attestation.json[[:space:]]+' "${latest}/index.txt"
+          rg -q '^attestation.sig[[:space:]]+' "${latest}/index.txt"
+          rg -q 'attestation.json$' "${latest}/manifest.sha256"
+          rg -q 'attestation.sig$' "${latest}/manifest.sha256"
           echo "summary validation log: ${latest}/summary_validation.log"
+          echo "summary attestation: ${latest}/attestation.json"
       - name: upload verification evidence artifacts
         uses: actions/upload-artifact@v4
         with:

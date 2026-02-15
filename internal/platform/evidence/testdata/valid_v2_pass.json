@@ -53,5 +53,8 @@
   "artifact_total_bytes": 1000,
   "summary_validation_status": 0,
   "summary_validation_log": "summary_validation.log",
-  "summary_validation_log_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  "summary_validation_log_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "attestation_status": "signed",
+  "attestation_file": "attestation.json",
+  "attestation_signature_file": "attestation.sig"
 }

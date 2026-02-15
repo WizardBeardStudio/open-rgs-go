@@ -120,6 +120,8 @@ Release metadata:
   - `make verify` output log artifact
   - `make verify-evidence-strict` output log artifact
   - `$(cat artifacts/verify/LATEST)/summary_validation.log` validator log artifact
+  - `$(cat artifacts/verify/LATEST)/attestation.json` attestation payload artifact
+  - `$(cat artifacts/verify/LATEST)/attestation.sig` attestation signature artifact
   - `./scripts/validate_verify_summary.sh "$(cat artifacts/verify/LATEST)/summary.json"` pass output artifact
   - `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
   - `docs/compliance/REQUIREMENTS.md`

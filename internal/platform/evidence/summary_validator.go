@@ -71,6 +71,15 @@ func validateSummarySchema2(s map[string]any) error {
 	if err := requireSHA256HexString(s, "summary_validation_log_sha256"); err != nil {
 		return err
 	}
+	if err := requireInSetString(s, "attestation_status", "signed"); err != nil {
+		return err
+	}
+	if err := requireOptionalInSetString(s, "attestation_file", "attestation.json"); err != nil {
+		return err
+	}
+	if err := requireOptionalInSetString(s, "attestation_signature_file", "attestation.sig"); err != nil {
+		return err
+	}
 	if err := requireNumberNonNegative(s, "proto_check_status"); err != nil {
 		return err
 	}

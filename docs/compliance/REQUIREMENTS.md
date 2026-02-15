@@ -323,10 +323,9 @@ This document maps implemented requirements to standards references, code locati
 - Standard refs: GLI-13/GLI-21 evidence integrity and regulator-facing auditability expectations
 - Code: `scripts/verify_evidence.sh`, `scripts/validate_verify_summary.sh`, `cmd/verifysummary/main.go`, `internal/platform/evidence/summary_validator.go`, `internal/platform/evidence/summary_artifact_validator.go`, `.github/workflows/ci.yml`
 - Tests: `internal/platform/evidence/summary_validator_test.go`, `internal/platform/evidence/summary_artifact_validator_test.go`, `make verify-evidence`, `make verify-summary`
-- Status: implemented (`summary.json` records `summary_validation_log` + `summary_validation_log_sha256`; strict validation fails on missing log, checksum mismatch, stale `index.txt` entry, or missing `manifest.sha256` checksum line; CI enforces strict summary validation and explicit artifact presence checks)
-- Status: implemented (DB-enabled core services and remote-access outcomes persist audit appends to `audit_events` with hash chaining semantics, audit list endpoints enforce consistent pagination-token validation and strict non-negative/bounded page-size validation across in-memory and DB-backed paths, `AuditService/ListAuditEvents` reads DB-backed records when configured, and `AuditService/VerifyAuditChain` provides an explicit regulator/operator verification API with input validation that detects tamper/mismatch conditions)
+- Status: implemented (`summary.json` records `summary_validation_log`, `summary_validation_log_sha256`, and attestation file pointers; `verify_evidence` emits signed `attestation.json`/`attestation.sig`; strict validation fails on missing log/artifacts, checksum mismatch, stale `index.txt` entries, missing `manifest.sha256` checksum lines, or attestation signature mismatch; CI enforces strict summary validation and explicit artifact presence checks)
 
-## RGS-0719 Audit Chain Verification Evidence Automation
+## RGS-0720 Audit Chain Verification Evidence Automation
 - Standard refs: GLI-13 audit immutability verification and regulator evidence expectations
 - Code: `scripts/audit_chain_evidence.sh`, `docs/deployment/AUDIT_CHAIN_VERIFICATION.md`, `Makefile`, `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`, `docs/compliance/GO_LIVE_CHECKLIST.md`
 - Tests: `make verify` release-gate execution

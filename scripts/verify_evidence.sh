@@ -82,6 +82,8 @@ manifest_file="${run_dir}/manifest.sha256"
 changed_files_file="${run_dir}/changed_files.txt"
 index_file="${run_dir}/index.txt"
 summary_validation_log="${run_dir}/summary_validation.log"
+attestation_file="${run_dir}/attestation.json"
+attestation_sig_file="${run_dir}/attestation.sig"
 latest_file="${base_dir}/LATEST"
 
 proto_cmd="RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
@@ -131,6 +133,16 @@ checksum_file() {
   fi
   if command -v shasum >/dev/null 2>&1; then
     shasum -a 256 "${file}"
+    return 0
+  fi
+  return 1
+}
+
+hmac_file() {
+  local file="$1"
+  local key="$2"
+  if command -v openssl >/dev/null 2>&1; then
+    openssl dgst -sha256 -hmac "${key}" "${file}" | awk '{print $NF}'
     return 0
   fi
   return 1
@@ -229,12 +241,14 @@ if [[ -f "${changed_files_file}" ]]; then
 fi
 
 : >"${summary_validation_log}"
+: >"${attestation_file}"
+: >"${attestation_sig_file}"
 
 {
   echo "verify evidence artifact index"
   echo "timestamp_utc=${ts}"
   echo "run_dir=${run_dir}"
-  for f in "${proto_log}" "${verify_log}" "${summary_file}" "${summary_validation_log}" "${changed_files_file}"; do
+  for f in "${proto_log}" "${verify_log}" "${summary_file}" "${summary_validation_log}" "${attestation_file}" "${attestation_sig_file}" "${changed_files_file}"; do
     if [[ -f "${f}" ]]; then
       # Format: relative_path<TAB>bytes
       rel="${f#${run_dir}/}"
@@ -245,11 +259,11 @@ fi
 } >"${index_file}"
 
 required_artifacts_present=true
-if [[ ! -f "${proto_log}" || ! -f "${verify_log}" || ! -f "${summary_file}" || ! -f "${index_file}" || ! -f "${summary_validation_log}" ]]; then
+if [[ ! -f "${proto_log}" || ! -f "${verify_log}" || ! -f "${summary_file}" || ! -f "${index_file}" || ! -f "${summary_validation_log}" || ! -f "${attestation_file}" || ! -f "${attestation_sig_file}" ]]; then
   required_artifacts_present=false
 fi
 
-required_artifact_count_expected=5
+required_artifact_count_expected=7
 required_artifact_count_present=0
 if [[ -f "${proto_log}" ]]; then
   required_artifact_count_present=$((required_artifact_count_present + 1))
@@ -264,6 +278,12 @@ if [[ -f "${index_file}" ]]; then
   required_artifact_count_present=$((required_artifact_count_present + 1))
 fi
 if [[ -f "${summary_validation_log}" ]]; then
+  required_artifact_count_present=$((required_artifact_count_present + 1))
+fi
+if [[ -f "${attestation_file}" ]]; then
+  required_artifact_count_present=$((required_artifact_count_present + 1))
+fi
+if [[ -f "${attestation_sig_file}" ]]; then
   required_artifact_count_present=$((required_artifact_count_present + 1))
 fi
 required_artifact_count_missing=$((required_artifact_count_expected - required_artifact_count_present))
@@ -282,6 +302,9 @@ tmp_summary="${summary_file}.tmp"
   echo "  \"summary_validation_status\": 0,"
   echo "  \"summary_validation_log\": \"summary_validation.log\","
   echo "  \"summary_validation_log_sha256\": \"${summary_validation_log_sha256}\","
+  echo "  \"attestation_status\": \"signed\","
+  echo "  \"attestation_file\": \"attestation.json\","
+  echo "  \"attestation_signature_file\": \"attestation.sig\","
   echo "  \"required_artifacts_present\": ${required_artifacts_present},"
   echo "  \"required_artifact_count_expected\": ${required_artifact_count_expected},"
   echo "  \"required_artifact_count_present\": ${required_artifact_count_present},"
@@ -315,11 +338,38 @@ tmp_summary="${summary_file}.tmp"
 } >"${tmp_summary}"
 mv "${tmp_summary}" "${summary_file}"
 
+summary_sha256="$(checksum_file "${summary_file}" | awk '{print $1}')"
+if [[ -z "${summary_sha256}" ]]; then
+  echo "failed computing sha256 for ${summary_file}" >&2
+  exit 1
+fi
+
+cat >"${attestation_file}" <<EOF
+{
+  "attestation_schema_version": 1,
+  "generated_at": "${ts}",
+  "run_dir": "${run_dir}",
+  "git_commit": "${git_commit}",
+  "git_branch": "${git_branch}",
+  "summary_sha256": "${summary_sha256}",
+  "go_version": "${go_version}",
+  "buf_version": "${buf_version}"
+}
+EOF
+
+attestation_key="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-open-rgs-go-dev-attestation-key}"
+attestation_sig="$(hmac_file "${attestation_file}" "${attestation_key}")"
+if [[ -z "${attestation_sig}" ]]; then
+  echo "failed creating attestation signature: openssl not available" >&2
+  exit 1
+fi
+printf '%s\n' "${attestation_sig}" >"${attestation_sig_file}"
+
 {
   echo "verify evidence artifact index"
   echo "timestamp_utc=${ts}"
   echo "run_dir=${run_dir}"
-  for f in "${proto_log}" "${verify_log}" "${summary_file}" "${summary_validation_log}" "${changed_files_file}"; do
+  for f in "${proto_log}" "${verify_log}" "${summary_file}" "${summary_validation_log}" "${attestation_file}" "${attestation_sig_file}" "${changed_files_file}"; do
     if [[ -f "${f}" ]]; then
       rel="${f#${run_dir}/}"
       bytes="$(wc -c <"${f}" | tr -d ' ')"
@@ -357,6 +407,8 @@ mv "${tmp_summary}" "${summary_file}"
   checksum_file "${verify_log}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${summary_file}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${summary_validation_log}" || { echo "no sha256 tool available" >&2; exit 1; }
+  checksum_file "${attestation_file}" || { echo "no sha256 tool available" >&2; exit 1; }
+  checksum_file "${attestation_sig_file}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${index_file}" || { echo "no sha256 tool available" >&2; exit 1; }
   if [[ -f "${changed_files_file}" ]]; then
     checksum_file "${changed_files_file}" || { echo "no sha256 tool available" >&2; exit 1; }

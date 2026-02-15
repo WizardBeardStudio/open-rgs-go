@@ -12,6 +12,8 @@ Release gate companion:
   - `artifacts/verify/<UTC_TIMESTAMP>/proto_check.log`
   - `artifacts/verify/<UTC_TIMESTAMP>/make_verify.log`
   - `artifacts/verify/<UTC_TIMESTAMP>/summary_validation.log` (validator output for `summary.json`)
+  - `artifacts/verify/<UTC_TIMESTAMP>/attestation.json` (signed attestation payload bound to `summary.json`)
+  - `artifacts/verify/<UTC_TIMESTAMP>/attestation.sig` (HMAC-SHA256 signature for `attestation.json`)
   - `artifacts/verify/<UTC_TIMESTAMP>/summary.json` (includes numeric `summary_schema_version`, explicit run-directory identity, verification mode/policy fields, git commit/ref/describe lineage, pre/post worktree cleanliness metadata, CI run metadata, toolchain/runtime context, dependency + verification/build-policy script checksums, command timing metadata, explicit failure-step attribution, and artifact presence/count metrics including required expected/present/missing counts)
   - Current expected `summary_schema_version`: `2`
   - `artifacts/verify/<UTC_TIMESTAMP>/index.txt` (artifact inventory with per-file byte sizes)
@@ -23,7 +25,7 @@ Release gate companion:
 - CI evidence capture should enforce a clean worktree (`RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN=true`) to avoid ambiguous provenance.
 - `summary.json` should report required artifact completeness via `required_artifacts_present` and required count fields (`required_artifact_count_expected`, `required_artifact_count_present`, `required_artifact_count_missing`).
 - `summary.json` must pass schema validation via `./scripts/validate_verify_summary.sh <summary.json>` (and CI should capture this pass output).
-- `summary.json` must include validator metadata fields: `summary_validation_status` and `summary_validation_log`.
+- `summary.json` must include validator metadata fields: `summary_validation_status`, `summary_validation_log`, `summary_validation_log_sha256`, `attestation_file`, and `attestation_signature_file`.
 - Schema evolution policy (current non-frozen phase):
   - `summary_schema_version` may change before freeze; any semantic schema change must update validator + fixtures in the same commit.
   - Once schema/API is explicitly declared frozen, breaking summary-schema changes require a new version path and compatibility policy update.
