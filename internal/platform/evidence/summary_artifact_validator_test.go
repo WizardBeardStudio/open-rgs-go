@@ -13,6 +13,8 @@ import (
 )
 
 func TestValidateSummaryArtifactStrict(t *testing.T) {
+	t.Setenv("GITHUB_ACTIONS", "")
+
 	summaryPath, summary := writeValidSummaryArtifact(t)
 	if err := ValidateSummaryArtifact(summaryPath, "strict"); err != nil {
 		t.Fatalf("expected strict validation to pass: %v", err)
