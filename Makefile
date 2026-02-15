@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: all fmt test verify verify-evidence test-integration-postgres lint proto proto-check check-module-path generate-tools dr-drill perf-qual failover-evidence keyset-evidence audit-chain-evidence soak-qual soak-qual-db soak-qual-matrix
+.PHONY: all fmt test verify verify-evidence verify-evidence-strict test-integration-postgres lint proto proto-check check-module-path generate-tools dr-drill perf-qual failover-evidence keyset-evidence audit-chain-evidence soak-qual soak-qual-db soak-qual-matrix
 
 all: fmt test
 
@@ -14,6 +14,9 @@ verify: proto-check test
 
 verify-evidence:
 	./scripts/verify_evidence.sh
+
+verify-evidence-strict:
+	RGS_VERIFY_EVIDENCE_PROTO_MODE=full RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN=true ./scripts/verify_evidence.sh
 
 test-integration-postgres:
 	RGS_TEST_DATABASE_URL=$${RGS_TEST_DATABASE_URL:?set RGS_TEST_DATABASE_URL} go test ./internal/platform/server -run '^TestPostgres'
