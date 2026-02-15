@@ -113,6 +113,18 @@ func ValidateSummaryArtifact(summaryPath, mode string) error {
 
 	attestationSig := strings.TrimSpace(string(attestationSigData))
 	key := os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY")
+	enforceKey := os.Getenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
+	if enforceKey {
+		if key == "" {
+			return fmt.Errorf("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must be set in strict/CI validation")
+		}
+		if key == DefaultVerifyEvidenceAttestationKey {
+			return fmt.Errorf("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must not use default development key in strict/CI validation")
+		}
+		if len(key) < 32 {
+			return fmt.Errorf("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must be at least 32 characters in strict/CI validation")
+		}
+	}
 	if key == "" {
 		key = DefaultVerifyEvidenceAttestationKey
 	}

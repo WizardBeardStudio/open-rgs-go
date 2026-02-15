@@ -38,8 +38,13 @@ jobs:
           go-version-file: go.mod
       - uses: bufbuild/buf-setup-action@v1
       - name: generate verification evidence logs
+        env:
+          RGS_VERIFY_EVIDENCE_ATTESTATION_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_KEY }}
         run: make verify-evidence-strict
       - name: validate generated summary artifact
+        env:
+          RGS_VERIFY_EVIDENCE_ATTESTATION_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_KEY }}
+          RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY: true
         run: |
           latest="$(cat artifacts/verify/LATEST)"
           ./scripts/validate_verify_summary.sh "${latest}/summary.json"

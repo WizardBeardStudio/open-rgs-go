@@ -3,10 +3,12 @@ set -euo pipefail
 
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
 summary_schema_version="2"
+default_attestation_key="open-rgs-go-dev-attestation-key"
 base_dir="${RGS_VERIFY_EVIDENCE_DIR:-artifacts/verify}"
 run_dir="${base_dir}/${ts}"
 proto_mode="${RGS_VERIFY_EVIDENCE_PROTO_MODE:-full}"
 require_clean="${RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN:-false}"
+enforce_attestation_key="${RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY:-false}"
 git_commit="$(git rev-parse HEAD)"
 git_branch="$(git rev-parse --abbrev-ref HEAD)"
 git_describe="$(git describe --tags --always --dirty 2>/dev/null || true)"
@@ -44,10 +46,31 @@ if [[ "${require_clean}" != "true" && "${require_clean}" != "false" ]]; then
   exit 1
 fi
 
+if [[ "${enforce_attestation_key}" != "true" && "${enforce_attestation_key}" != "false" ]]; then
+  echo "RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY must be 'true' or 'false', got '${enforce_attestation_key}'" >&2
+  exit 1
+fi
+
 if [[ "${require_clean}" == "true" && "${git_worktree_clean_before}" != "true" ]]; then
   echo "verify evidence requires a clean worktree, but detected ${git_changed_files_count_before} changed file(s)" >&2
   git status --short >&2
   exit 1
+fi
+
+attestation_key="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-${default_attestation_key}}"
+if [[ "${GITHUB_ACTIONS:-}" == "true" || "${require_clean}" == "true" || "${enforce_attestation_key}" == "true" ]]; then
+  if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" ]]; then
+    echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must be set for strict/CI evidence runs" >&2
+    exit 1
+  fi
+  if [[ "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY}" == "${default_attestation_key}" ]]; then
+    echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must not use default development key in strict/CI runs" >&2
+    exit 1
+  fi
+  if [[ ${#RGS_VERIFY_EVIDENCE_ATTESTATION_KEY} -lt 32 ]]; then
+    echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must be at least 32 characters in strict/CI runs" >&2
+    exit 1
+  fi
 fi
 
 if [[ -e "${run_dir}" ]]; then
@@ -86,8 +109,8 @@ attestation_file="${run_dir}/attestation.json"
 attestation_sig_file="${run_dir}/attestation.sig"
 latest_file="${base_dir}/LATEST"
 
-proto_cmd="RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
-verify_cmd="RGS_PROTO_CHECK_MODE=${proto_mode} make verify"
+proto_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
+verify_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make verify"
 
 proto_status=0
 verify_status=0
@@ -357,7 +380,6 @@ cat >"${attestation_file}" <<EOF
 }
 EOF
 
-attestation_key="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-open-rgs-go-dev-attestation-key}"
 attestation_sig="$(hmac_file "${attestation_file}" "${attestation_key}")"
 if [[ -z "${attestation_sig}" ]]; then
   echo "failed creating attestation signature: openssl not available" >&2
@@ -415,7 +437,7 @@ printf '%s\n' "${attestation_sig}" >"${attestation_sig_file}"
   fi
 } >"${manifest_file}"
 
-./scripts/validate_verify_summary.sh "${summary_file}" >/dev/null
+RGS_VERIFY_EVIDENCE_ATTESTATION_KEY="${attestation_key}" ./scripts/validate_verify_summary.sh "${summary_file}" >/dev/null
 
 printf '%s\n' "${run_dir}" >"${latest_file}"
 
