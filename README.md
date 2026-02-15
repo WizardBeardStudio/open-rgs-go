@@ -409,3 +409,7 @@ Recommended next steps:
 - Execute `make soak-qual-db` and `make soak-qual-matrix` in each DB-backed deployment tier and attach per-profile thresholds/baselines as release evidence.
 - Execute `make keyset-evidence` for the active release cycle and attach sign-off notes.
 - Complete Gate 8 and Gate 9 in `docs/compliance/GO_LIVE_CHECKLIST.md` with `PASS` status and linked artifacts.
+- Optional helper for Gate 10 artifact collection:
+  - `make gate10-evidence`
+  - Strict mode (exit non-zero unless all Gate 10 inputs pass): `RGS_GATE10_FAIL_ON_INCOMPLETE=true make gate10-evidence`
+  - Partial/local dry-run mode: `RGS_GATE10_SKIP_SOAK_DB=true RGS_GATE10_SKIP_SOAK_MATRIX=true RGS_GATE10_SKIP_KEYSET=true make gate10-evidence`

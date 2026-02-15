@@ -1,6 +1,6 @@
 SHELL := /usr/bin/env bash
 
-.PHONY: all fmt test verify verify-summary verify-evidence verify-evidence-strict test-integration-postgres lint proto proto-check check-module-path generate-tools dr-drill perf-qual failover-evidence keyset-evidence audit-chain-evidence soak-qual soak-qual-db soak-qual-matrix
+.PHONY: all fmt test verify verify-summary verify-evidence verify-evidence-strict test-integration-postgres lint proto proto-check check-module-path generate-tools dr-drill perf-qual failover-evidence keyset-evidence audit-chain-evidence soak-qual soak-qual-db soak-qual-matrix gate10-evidence
 
 all: fmt test
 
@@ -93,3 +93,9 @@ soak-qual-matrix:
 	RGS_SOAK_MATRIX_WORKDIR=$${RGS_SOAK_MATRIX_WORKDIR:-} \
 	RGS_SOAK_PROFILE_SET=$${RGS_SOAK_PROFILE_SET:-us-regulated-small,us-regulated-medium,us-regulated-large} \
 	./scripts/load_soak_matrix.sh
+
+gate10-evidence:
+	RGS_GATE10_SKIP_SOAK_DB=$${RGS_GATE10_SKIP_SOAK_DB:-false} \
+	RGS_GATE10_SKIP_SOAK_MATRIX=$${RGS_GATE10_SKIP_SOAK_MATRIX:-false} \
+	RGS_GATE10_SKIP_KEYSET=$${RGS_GATE10_SKIP_KEYSET:-false} \
+	./scripts/collect_gate10_evidence.sh

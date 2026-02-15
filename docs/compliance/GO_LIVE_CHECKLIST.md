@@ -173,6 +173,9 @@ Release metadata:
 ## Gate 10: Known-Limitations Closure Check
 - Owner: Release Manager + Compliance
 - Status: `PASS` / `FAIL`
+- Helper command:
+  - `make gate10-evidence`
+  - strict mode: `RGS_GATE10_FAIL_ON_INCOMPLETE=true make gate10-evidence`
 - Criteria:
   - README limitation #1 (in-memory mirrors) closure evidence attached:
     - production config snapshot with `RGS_STRICT_PRODUCTION_MODE=true`
