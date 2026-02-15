@@ -2,7 +2,7 @@ SHELL := /usr/bin/env bash
 
 .PHONY: all fmt test verify verify-evidence test-integration-postgres lint proto proto-check check-module-path generate-tools dr-drill perf-qual failover-evidence keyset-evidence audit-chain-evidence soak-qual soak-qual-db soak-qual-matrix
 
-all: check-module-path fmt test
+all: fmt test
 
 fmt:
 	gofmt -w $$(find . -type f -name '*.go' -not -path './gen/*')
@@ -10,7 +10,7 @@ fmt:
 test: check-module-path
 	go test ./...
 
-verify: check-module-path proto-check test
+verify: proto-check test
 
 verify-evidence:
 	./scripts/verify_evidence.sh
