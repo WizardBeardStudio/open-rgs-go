@@ -2,6 +2,9 @@
 
 This guide shows one practical way to build a Unity-compatible C# client for `open-rgs-go` APIs.
 
+Runnable example project:
+- `examples/unity-csharp-proto-client/`
+
 ## Scope
 
 - Proto source of truth: `api/proto/rgs/v1/*.proto`

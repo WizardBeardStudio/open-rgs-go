@@ -37,6 +37,7 @@ Current persistence model:
 - `docs/compliance/`: traceability, report catalog, threat model
 - `docs/deployment/`: deployment hardening guidance
 - `docs/integration/`: client integration guides
+- `examples/`: runnable integration examples
 
 ## 3. Prerequisites
 
@@ -386,6 +387,7 @@ Chaos tests:
 - Go-live release gates: `docs/compliance/GO_LIVE_CHECKLIST.md`
 - GLI gap analysis: `docs/compliance/GLI_GAP_ANALYSIS.md`
 - Unity/C# protobuf client guide: `docs/integration/UNITY_CSHARP_PROTO_CLIENT.md`
+- Unity/C# runnable sample: `examples/unity-csharp-proto-client/README.md`
 
 ## 13. Known Limitations and Next Work
 
