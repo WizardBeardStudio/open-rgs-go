@@ -131,9 +131,8 @@ RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS='active:<base64_public>,prev
 make verify-evidence-strict
 ```
 
-Compatibility note:
-- `hmac-sha256` attestation remains available for non-strict local compatibility only.
-- Plan is to retire HMAC attestation at API freeze and require `ed25519` everywhere.
+Attestation mode:
+- Evidence attestation uses `ed25519`.
 
 If Buf remote dependencies are unavailable in a local environment, use:
 

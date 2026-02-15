@@ -2,7 +2,6 @@ package evidence
 
 import (
 	"crypto/ed25519"
-	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -15,8 +14,8 @@ import (
 	"strings"
 )
 
-const DefaultVerifyEvidenceAttestationKey = "open-rgs-go-dev-attestation-key"
 const DefaultVerifyEvidenceAttestationKeyID = "dev-default"
+const defaultDevSeedContext = "open-rgs-go-dev-attestation-seed"
 
 // ValidateSummaryArtifact validates summary.json plus linked artifact files.
 // mode accepts "json" (schema/consistency only) or "strict" (with file checks).
@@ -135,7 +134,7 @@ func ValidateSummaryArtifact(summaryPath, mode string) error {
 	if err := requireNonEmptyString(a, "key_id"); err != nil {
 		return err
 	}
-	if err := requireInSetString(a, "alg", "hmac-sha256", "ed25519"); err != nil {
+	if err := requireInSetString(a, "alg", "ed25519"); err != nil {
 		return err
 	}
 	attKeyID, _ := a["key_id"].(string)
@@ -197,23 +196,8 @@ func ValidateSummaryArtifact(summaryPath, mode string) error {
 	return nil
 }
 
-func verifyAttestationSignature(alg, keyID string, attestationData []byte, attestationSig string, enforceKey bool) error {
+func verifyAttestationSignature(alg, keyID string, attestationData []byte, attestationSig string, _ bool) error {
 	switch alg {
-	case "hmac-sha256":
-		key, err := resolveAttestationKey(keyID)
-		if err != nil {
-			return err
-		}
-		if enforceKey && (key == DefaultVerifyEvidenceAttestationKey || len(key) < 32) {
-			return fmt.Errorf("attestation key policy violation in strict/CI validation")
-		}
-		mac := hmac.New(sha256.New, []byte(key))
-		mac.Write(attestationData)
-		wantSig := hex.EncodeToString(mac.Sum(nil))
-		if !strings.EqualFold(attestationSig, wantSig) {
-			return fmt.Errorf("attestation signature mismatch")
-		}
-		return nil
 	case "ed25519":
 		pub, err := resolveEd25519PublicKey(keyID)
 		if err != nil {
@@ -232,72 +216,8 @@ func verifyAttestationSignature(alg, keyID string, attestationData []byte, attes
 	}
 }
 
-func resolveAttestationKey(keyID string) (string, error) {
-	// Preferred source: comma-separated key ring "key_id:key,key_id2:key2".
-	// This supports active+previous keys during rotation windows.
-	keyRingRaw, err := resolveValueSource(
-		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS",
-		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_FILE",
-		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_COMMAND",
-	)
-	if err != nil {
-		return "", err
-	}
-	if keyRingRaw != "" {
-		keyRing := map[string]string{}
-		for _, part := range strings.Split(keyRingRaw, ",") {
-			p := strings.TrimSpace(part)
-			if p == "" {
-				continue
-			}
-			idx := strings.IndexByte(p, ':')
-			if idx <= 0 || idx >= len(p)-1 {
-				return "", fmt.Errorf("invalid RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS entry: %q", p)
-			}
-			id := strings.TrimSpace(p[:idx])
-			val := strings.TrimSpace(p[idx+1:])
-			if id == "" || val == "" {
-				return "", fmt.Errorf("invalid RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS entry: %q", p)
-			}
-			keyRing[id] = val
-		}
-		if key, ok := keyRing[keyID]; ok {
-			return key, nil
-		}
-		ids := make([]string, 0, len(keyRing))
-		for id := range keyRing {
-			ids = append(ids, id)
-		}
-		sort.Strings(ids)
-		return "", fmt.Errorf("no attestation key for key_id=%q in RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS (available: %s)", keyID, strings.Join(ids, ","))
-	}
-
-	// Backwards-compatible single-key mode.
-	key, err := resolveValueSource(
-		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEY",
-		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_FILE",
-		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_COMMAND",
-	)
-	if err != nil {
-		return "", err
-	}
-	if key == "" {
-		if keyID != DefaultVerifyEvidenceAttestationKeyID {
-			return "", fmt.Errorf("no attestation key available for key_id=%q", keyID)
-		}
-		return DefaultVerifyEvidenceAttestationKey, nil
-	}
-	singleID := os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID")
-	if singleID == "" {
-		singleID = DefaultVerifyEvidenceAttestationKeyID
-	}
-	if singleID != keyID {
-		return "", fmt.Errorf("attestation key_id mismatch: attestation=%q configured=%q", keyID, singleID)
-	}
-	return key, nil
-}
-
 func resolveEd25519PublicKey(keyID string) (ed25519.PublicKey, error) {
+	enforce := os.Getenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
 	keyRingRaw, err := resolveValueSource(
 		"RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS",
 		"RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_FILE",
@@ -345,6 +265,9 @@ func resolveEd25519PublicKey(keyID string) (ed25519.PublicKey, error) {
 		return nil, err
 	}
 	if raw == "" {
+		if !enforce && keyID == DefaultVerifyEvidenceAttestationKeyID {
+			return defaultDevEd25519PublicKey(), nil
+		}
 		return nil, fmt.Errorf("RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY or RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS is required for ed25519")
 	}
 	singleID := os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID")
@@ -366,6 +289,11 @@ func parseEd25519PublicKey(raw string) (ed25519.PublicKey, error) {
 		return nil, fmt.Errorf("invalid ed25519 public key length: %d", len(decoded))
 	}
 	return ed25519.PublicKey(decoded), nil
+}
+
+func defaultDevEd25519PublicKey() ed25519.PublicKey {
+	sum := sha256.Sum256([]byte(defaultDevSeedContext))
+	return ed25519.NewKeyFromSeed(sum[:ed25519.SeedSize]).Public().(ed25519.PublicKey)
 }
 
 func resolveValueSource(valueEnv, fileEnv, commandEnv string) (string, error) {

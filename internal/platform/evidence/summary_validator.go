@@ -74,7 +74,7 @@ func validateSummarySchema2(s map[string]any) error {
 	if err := requireInSetString(s, "attestation_status", "signed"); err != nil {
 		return err
 	}
-	if err := requireInSetString(s, "attestation_alg", "hmac-sha256", "ed25519"); err != nil {
+	if err := requireInSetString(s, "attestation_alg", "ed25519"); err != nil {
 		return err
 	}
 	if err := requireOptionalInSetString(s, "attestation_file", "attestation.json"); err != nil {

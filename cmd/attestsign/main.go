@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/ed25519"
-	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -15,21 +14,20 @@ import (
 )
 
 const (
-	defaultKeyID  = "dev-default"
-	defaultHMAC   = "open-rgs-go-dev-attestation-key"
-	algHMACSHA256 = "hmac-sha256"
-	algEd25519    = "ed25519"
+	defaultKeyID          = "dev-default"
+	algEd25519            = "ed25519"
+	defaultDevSeedContext = "open-rgs-go-dev-attestation-seed"
 )
 
 func main() {
 	in := flag.String("in", "", "input attestation file")
 	out := flag.String("out", "", "output signature file")
-	alg := flag.String("alg", algHMACSHA256, "signature algorithm: hmac-sha256|ed25519")
+	alg := flag.String("alg", algEd25519, "signature algorithm: ed25519")
 	keyID := flag.String("key-id", defaultKeyID, "attestation key id")
 	flag.Parse()
 
 	if *in == "" || *out == "" {
-		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/attestsign --in <attestation.json> --out <attestation.sig> [--alg hmac-sha256|ed25519] [--key-id <id>]")
+		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/attestsign --in <attestation.json> --out <attestation.sig> [--alg ed25519] [--key-id <id>]")
 		os.Exit(2)
 	}
 
@@ -41,15 +39,6 @@ func main() {
 
 	var sigHex string
 	switch *alg {
-	case algHMACSHA256:
-		key, err := resolveHMACKey(*keyID)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "resolve hmac key: %v\n", err)
-			os.Exit(1)
-		}
-		mac := hmac.New(sha256.New, []byte(key))
-		mac.Write(data)
-		sigHex = hex.EncodeToString(mac.Sum(nil))
 	case algEd25519:
 		priv, err := resolveEd25519PrivateKey(*keyID)
 		if err != nil {
@@ -67,68 +56,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "write signature: %v\n", err)
 		os.Exit(1)
 	}
-}
-
-func resolveHMACKey(keyID string) (string, error) {
-	keyRingRaw, err := resolveValueSource(
-		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS",
-		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_FILE",
-		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_COMMAND",
-	)
-	if err != nil {
-		return "", err
-	}
-	if keyRingRaw != "" {
-		keyRing := map[string]string{}
-		for _, part := range strings.Split(keyRingRaw, ",") {
-			p := strings.TrimSpace(part)
-			if p == "" {
-				continue
-			}
-			idx := strings.IndexByte(p, ':')
-			if idx <= 0 || idx >= len(p)-1 {
-				return "", fmt.Errorf("invalid RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS entry: %q", p)
-			}
-			id := strings.TrimSpace(p[:idx])
-			val := strings.TrimSpace(p[idx+1:])
-			if id == "" || val == "" {
-				return "", fmt.Errorf("invalid RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS entry: %q", p)
-			}
-			keyRing[id] = val
-		}
-		if key, ok := keyRing[keyID]; ok {
-			return key, nil
-		}
-		ids := make([]string, 0, len(keyRing))
-		for id := range keyRing {
-			ids = append(ids, id)
-		}
-		sort.Strings(ids)
-		return "", fmt.Errorf("no hmac key for key_id=%q in RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS (available: %s)", keyID, strings.Join(ids, ","))
-	}
-
-	key, err := resolveValueSource(
-		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEY",
-		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_FILE",
-		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_COMMAND",
-	)
-	if err != nil {
-		return "", err
-	}
-	if key == "" {
-		if keyID != defaultKeyID {
-			return "", fmt.Errorf("no hmac key available for key_id=%q", keyID)
-		}
-		return defaultHMAC, nil
-	}
-	singleID := os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID")
-	if singleID == "" {
-		singleID = defaultKeyID
-	}
-	if singleID != keyID {
-		return "", fmt.Errorf("hmac key_id mismatch: requested=%q configured=%q", keyID, singleID)
-	}
-	return key, nil
 }
 
 func resolveEd25519PrivateKey(keyID string) (ed25519.PrivateKey, error) {
@@ -187,6 +114,9 @@ func resolveEd25519PrivateKey(keyID string) (ed25519.PrivateKey, error) {
 		return nil, err
 	}
 	if raw == "" {
+		if !enforce && keyID == defaultKeyID {
+			return defaultDevEd25519PrivateKey(), nil
+		}
 		return nil, fmt.Errorf("RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY or RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS is required for ed25519")
 	}
 	singleID := os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID")
@@ -233,4 +163,9 @@ func parseEd25519PrivateKey(raw string) (ed25519.PrivateKey, error) {
 	default:
 		return nil, fmt.Errorf("invalid ed25519 private key length: %d", len(decoded))
 	}
+}
+
+func defaultDevEd25519PrivateKey() ed25519.PrivateKey {
+	sum := sha256.Sum256([]byte(defaultDevSeedContext))
+	return ed25519.NewKeyFromSeed(sum[:ed25519.SeedSize])
 }

@@ -3,7 +3,6 @@ set -euo pipefail
 
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
 summary_schema_version="2"
-default_attestation_key="open-rgs-go-dev-attestation-key"
 default_attestation_key_id="dev-default"
 base_dir="${RGS_VERIFY_EVIDENCE_DIR:-artifacts/verify}"
 run_dir="${base_dir}/${ts}"
@@ -11,9 +10,8 @@ proto_mode="${RGS_VERIFY_EVIDENCE_PROTO_MODE:-full}"
 require_clean="${RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN:-false}"
 enforce_attestation_key="${RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY:-false}"
 allow_inline_private_key="${RGS_VERIFY_EVIDENCE_ALLOW_INLINE_PRIVATE_KEY:-false}"
-attestation_alg="${RGS_VERIFY_EVIDENCE_ATTESTATION_ALG:-hmac-sha256}"
+attestation_alg="${RGS_VERIFY_EVIDENCE_ATTESTATION_ALG:-ed25519}"
 attestation_key_id="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID:-${default_attestation_key_id}}"
-attestation_key_ring="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS:-}"
 git_commit="$(git rev-parse HEAD)"
 git_branch="$(git rev-parse --abbrev-ref HEAD)"
 git_describe="$(git describe --tags --always --dirty 2>/dev/null || true)"
@@ -59,8 +57,8 @@ if [[ "${allow_inline_private_key}" != "true" && "${allow_inline_private_key}" !
   echo "RGS_VERIFY_EVIDENCE_ALLOW_INLINE_PRIVATE_KEY must be 'true' or 'false', got '${allow_inline_private_key}'" >&2
   exit 1
 fi
-if [[ "${attestation_alg}" != "hmac-sha256" && "${attestation_alg}" != "ed25519" ]]; then
-  echo "RGS_VERIFY_EVIDENCE_ATTESTATION_ALG must be 'hmac-sha256' or 'ed25519', got '${attestation_alg}'" >&2
+if [[ "${attestation_alg}" != "ed25519" ]]; then
+  echo "RGS_VERIFY_EVIDENCE_ATTESTATION_ALG must be 'ed25519', got '${attestation_alg}'" >&2
   exit 1
 fi
 
@@ -70,79 +68,18 @@ if [[ "${require_clean}" == "true" && "${git_worktree_clean_before}" != "true" ]
   exit 1
 fi
 
-resolve_attestation_key() {
-  local key_id="$1"
-  local key_ring="$2"
-  local single_key="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}"
-  if [[ -n "${key_ring}" ]]; then
-    IFS=',' read -r -a entries <<<"${key_ring}"
-    for entry in "${entries[@]}"; do
-      item="$(echo "${entry}" | tr -d ' ')"
-      [[ -z "${item}" ]] && continue
-      id="${item%%:*}"
-      key="${item#*:}"
-      if [[ "${id}" == "${key_id}" && -n "${key}" && "${key}" != "${id}" ]]; then
-        printf '%s' "${key}"
-        return 0
-      fi
-    done
-    return 1
-  fi
-  if [[ -n "${single_key}" ]]; then
-    printf '%s' "${single_key}"
-    return 0
-  fi
-  if [[ "${key_id}" == "${default_attestation_key_id}" ]]; then
-    printf '%s' "${default_attestation_key}"
-    return 0
-  fi
-  return 1
-}
-
-attestation_key=""
-if [[ "${attestation_alg}" == "hmac-sha256" ]]; then
-  attestation_key="$(resolve_attestation_key "${attestation_key_id}" "${attestation_key_ring}" || true)"
-  if [[ -z "${attestation_key}" ]]; then
-    echo "unable to resolve hmac attestation key for key_id='${attestation_key_id}'" >&2
-    exit 1
-  fi
-fi
-
 if [[ "${GITHUB_ACTIONS:-}" == "true" || "${require_clean}" == "true" || "${enforce_attestation_key}" == "true" ]]; then
-  if [[ "${attestation_alg}" != "ed25519" ]]; then
-    echo "strict/CI evidence runs require RGS_VERIFY_EVIDENCE_ATTESTATION_ALG=ed25519" >&2
+  if [[ "${allow_inline_private_key}" != "true" && ( -n "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY:-}" || -n "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS:-}" ) ]]; then
+    echo "strict/CI ed25519 runs reject inline private-key env vars; use *_FILE/*_COMMAND sources or set RGS_VERIFY_EVIDENCE_ALLOW_INLINE_PRIVATE_KEY=true for local exceptions" >&2
     exit 1
   fi
-  if [[ "${attestation_alg}" == "hmac-sha256" ]]; then
-    if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" && -z "${attestation_key_ring}" ]]; then
-      echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY or RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS must be set for strict/CI hmac evidence runs" >&2
-      exit 1
-    fi
-    if [[ "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" == "${default_attestation_key}" ]]; then
-      echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must not use default development key in strict/CI runs" >&2
-      exit 1
-    fi
-    if [[ -n "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" && ${#RGS_VERIFY_EVIDENCE_ATTESTATION_KEY} -lt 32 ]]; then
-      echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must be at least 32 characters in strict/CI runs" >&2
-      exit 1
-    fi
-    if [[ -n "${attestation_key_ring}" && ${#attestation_key} -lt 32 ]]; then
-      echo "resolved attestation key from RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS must be at least 32 characters in strict/CI runs" >&2
-      exit 1
-    fi
-  else
-    if [[ "${allow_inline_private_key}" != "true" && ( -n "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY:-}" || -n "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS:-}" ) ]]; then
-      echo "strict/CI ed25519 runs reject inline private-key env vars; use *_FILE/*_COMMAND sources or set RGS_VERIFY_EVIDENCE_ALLOW_INLINE_PRIVATE_KEY=true for local exceptions" >&2
-      exit 1
-    fi
-    if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_FILE:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_COMMAND:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_FILE:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_COMMAND:-}" ]]; then
-      echo "ed25519 private key source must be set for strict/CI evidence runs" >&2
-      exit 1
-    fi
-    if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_FILE:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_COMMAND:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_FILE:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_COMMAND:-}" ]]; then
-      echo "ed25519 public key source must be set for strict/CI verification" >&2
-      exit 1
-    fi
+  if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_FILE:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_COMMAND:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_FILE:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_COMMAND:-}" ]]; then
+    echo "ed25519 private key source must be set for strict/CI evidence runs" >&2
+    exit 1
+  fi
+  if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_FILE:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_COMMAND:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_FILE:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_COMMAND:-}" ]]; then
+    echo "ed25519 public key source must be set for strict/CI verification" >&2
+    exit 1
   fi
 fi
 
@@ -182,8 +119,8 @@ attestation_file="${run_dir}/attestation.json"
 attestation_sig_file="${run_dir}/attestation.sig"
 latest_file="${base_dir}/LATEST"
 
-proto_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ALG -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_COMMAND -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
-verify_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ALG -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_COMMAND -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make verify"
+proto_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID -u RGS_VERIFY_EVIDENCE_ATTESTATION_ALG -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_COMMAND -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
+verify_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID -u RGS_VERIFY_EVIDENCE_ATTESTATION_ALG -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_COMMAND -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_FILE -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_COMMAND -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make verify"
 
 proto_status=0
 verify_status=0
@@ -229,16 +166,6 @@ checksum_file() {
   fi
   if command -v shasum >/dev/null 2>&1; then
     shasum -a 256 "${file}"
-    return 0
-  fi
-  return 1
-}
-
-hmac_file() {
-  local file="$1"
-  local key="$2"
-  if command -v openssl >/dev/null 2>&1; then
-    openssl dgst -sha256 -hmac "${key}" "${file}" | awk '{print $NF}'
     return 0
   fi
   return 1
@@ -458,16 +385,7 @@ cat >"${attestation_file}" <<EOF
 }
 EOF
 
-if [[ "${attestation_alg}" == "hmac-sha256" ]]; then
-  attestation_sig="$(hmac_file "${attestation_file}" "${attestation_key}")"
-  if [[ -z "${attestation_sig}" ]]; then
-    echo "failed creating hmac attestation signature: openssl not available" >&2
-    exit 1
-  fi
-  printf '%s\n' "${attestation_sig}" >"${attestation_sig_file}"
-else
-  go run ./cmd/attestsign --in "${attestation_file}" --out "${attestation_sig_file}" --alg "${attestation_alg}" --key-id "${attestation_key_id}"
-fi
+go run ./cmd/attestsign --in "${attestation_file}" --out "${attestation_sig_file}" --alg "${attestation_alg}" --key-id "${attestation_key_id}"
 
 {
   echo "verify evidence artifact index"
@@ -519,13 +437,7 @@ fi
   fi
 } >"${manifest_file}"
 
-RGS_VERIFY_EVIDENCE_ATTESTATION_KEY="${attestation_key}" \
-RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_FILE="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_FILE:-}" \
-RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_COMMAND="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_COMMAND:-}" \
 RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID="${attestation_key_id}" \
-RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS="${attestation_key_ring}" \
-RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_FILE="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_FILE:-}" \
-RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_COMMAND="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_COMMAND:-}" \
 RGS_VERIFY_EVIDENCE_ATTESTATION_ALG="${attestation_alg}" \
 RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY="${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY:-}" \
 RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_FILE="${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_FILE:-}" \

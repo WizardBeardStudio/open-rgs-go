@@ -93,10 +93,6 @@ Required runtime variables for strict/CI evidence:
     - `active:<base64_public>,previous:<base64_public>`
 - `RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY=true` (enabled by `make verify-evidence-strict`)
 
-Compatibility mode:
-- `hmac-sha256` can still be used for non-strict local verification compatibility.
-- HMAC mode is scheduled for retirement at API freeze.
-
 ### Secret Source Patterns
 
 1. GitHub Actions secrets:
@@ -106,7 +102,7 @@ Compatibility mode:
 
 2. Vault injection:
 - sidecar/agent renders env vars at runtime
-- runner exports `RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS` with active+previous entries
+- runner exports `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS` with active+previous entries
 
 3. KMS-wrapped secret material:
 - decrypt key material at runtime in CI bootstrap
