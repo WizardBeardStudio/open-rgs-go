@@ -53,10 +53,18 @@ namespace WizardBeardStudio.Rgs
 
             var identityStub = new IdentityService.IdentityServiceClient(_channel);
             var ledgerStub = new LedgerService.LedgerServiceClient(_channel);
+            var sessionsStub = new SessionsService.SessionsServiceClient(_channel);
+            var wageringStub = new WageringService.WageringServiceClient(_channel);
 
             var identity = new IdentityClient(identityStub, config.deviceId, config.userAgent, config.geo);
             var auth = new RgsAuthService(identity, _tokenStore);
-            var sessions = new SessionsClient();
+            var sessions = new SessionsClient(
+                sessionsStub,
+                () => _tokenStore.AccessToken,
+                config.playerId,
+                config.deviceId,
+                config.userAgent,
+                config.geo);
             var ledger = new LedgerClient(
                 ledgerStub,
                 () => _tokenStore.AccessToken,
@@ -64,7 +72,13 @@ namespace WizardBeardStudio.Rgs
                 config.deviceId,
                 config.userAgent,
                 config.geo);
-            var wagering = new WageringClient();
+            var wagering = new WageringClient(
+                wageringStub,
+                () => _tokenStore.AccessToken,
+                config.playerId,
+                config.deviceId,
+                config.userAgent,
+                config.geo);
 
             AuthService = auth;
             Client = new RgsClient(config, auth, sessions, ledger, wagering);

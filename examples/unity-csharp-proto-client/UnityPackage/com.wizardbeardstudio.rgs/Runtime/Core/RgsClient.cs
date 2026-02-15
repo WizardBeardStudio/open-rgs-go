@@ -38,7 +38,7 @@ namespace WizardBeardStudio.Rgs.Core
         public Task<SessionResult> StartSessionAsync(string deviceId, CancellationToken cancellationToken)
             => _sessions.StartSessionAsync(deviceId, cancellationToken);
 
-        public Task<WagerResult> PlaceWagerAsync(string sessionId, long amountMinor, string currency, string? idempotencyKey, CancellationToken cancellationToken)
+        public Task<WagerResult> PlaceWagerAsync(string gameId, long amountMinor, string currency, string? idempotencyKey, CancellationToken cancellationToken)
         {
             var idem = idempotencyKey;
             if (string.IsNullOrWhiteSpace(idem) && _config.autoGenerateIdempotencyKey)
@@ -49,7 +49,7 @@ namespace WizardBeardStudio.Rgs.Core
             {
                 throw new RgsValidationException("Idempotency key is required for financial operations.");
             }
-            return _wagering.PlaceWagerAsync(sessionId, amountMinor, currency, idem, cancellationToken);
+            return _wagering.PlaceWagerAsync(gameId, amountMinor, currency, idem, cancellationToken);
         }
 
         public Task<OutcomeResult> SettleWagerAsync(string wagerId, long payoutMinor, string currency, CancellationToken cancellationToken)

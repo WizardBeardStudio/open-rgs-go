@@ -11,5 +11,7 @@ Includes:
 - Initial gRPC wiring for:
   - `IdentityClient.LoginPlayerAsync`
   - `LedgerClient.GetBalanceAsync`
+  - `SessionsClient.StartSessionAsync` / `EndSessionAsync`
+  - `WageringClient.PlaceWagerAsync` / `SettleWagerAsync`
 
 Next implementation rounds should wire service classes to generated protobuf clients and publish importable sample scenes.

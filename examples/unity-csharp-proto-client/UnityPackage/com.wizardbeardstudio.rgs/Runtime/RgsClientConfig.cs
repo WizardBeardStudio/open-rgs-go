@@ -1,5 +1,4 @@
 using System;
-using UnityEngine;
 
 namespace WizardBeardStudio.Rgs
 {
@@ -18,6 +17,7 @@ namespace WizardBeardStudio.Rgs
         public string deviceId = "unity-slot-client-01";
         public string userAgent = "unity-slot-client";
         public string geo = string.Empty;
+        public string defaultGameId = "slot-default";
         public int requestTimeoutSeconds = 30;
         public bool autoGenerateIdempotencyKey = true;
 
@@ -31,6 +31,11 @@ namespace WizardBeardStudio.Rgs
             if (string.IsNullOrWhiteSpace(playerId))
             {
                 error = "Player ID is required.";
+                return false;
+            }
+            if (string.IsNullOrWhiteSpace(defaultGameId))
+            {
+                error = "Default game ID is required.";
                 return false;
             }
             if (requestTimeoutSeconds <= 0)
