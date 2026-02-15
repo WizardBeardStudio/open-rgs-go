@@ -43,6 +43,9 @@ jobs:
         run: |
           latest="$(cat artifacts/verify/LATEST)"
           ./scripts/validate_verify_summary.sh "${latest}/summary.json"
+          rg -q '"summary_validation_status":[[:space:]]*0' "${latest}/summary.json"
+          rg -q '^summary_validation.log[[:space:]]+' "${latest}/index.txt"
+          rg -q 'summary_validation.log$' "${latest}/manifest.sha256"
           echo "summary validation log: ${latest}/summary_validation.log"
       - name: upload verification evidence artifacts
         uses: actions/upload-artifact@v4
