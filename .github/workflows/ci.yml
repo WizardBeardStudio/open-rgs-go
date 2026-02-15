@@ -42,6 +42,7 @@ jobs:
           RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY }}
           RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS }}
         run: |
+          set -euo pipefail
           if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY}" ]]; then
             echo "missing required secret: RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY" >&2
             exit 1
@@ -50,19 +51,22 @@ jobs:
             echo "missing required secret: RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS" >&2
             exit 1
           fi
+          umask 077
+          priv_file="${RUNNER_TEMP}/rgs-attestation-ed25519-private.b64"
+          pub_ring_file="${RUNNER_TEMP}/rgs-attestation-ed25519-public-keys.txt"
+          printf '%s\n' "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY}" >"${priv_file}"
+          printf '%s\n' "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS}" >"${pub_ring_file}"
+          {
+            echo "RGS_VERIFY_EVIDENCE_ATTESTATION_ALG=ed25519"
+            echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=ci-active"
+            echo "RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY=true"
+            echo "RGS_VERIFY_EVIDENCE_ALLOW_INLINE_PRIVATE_KEY=false"
+            echo "RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_FILE=${priv_file}"
+            echo "RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_FILE=${pub_ring_file}"
+          } >>"${GITHUB_ENV}"
       - name: generate verification evidence logs
-        env:
-          RGS_VERIFY_EVIDENCE_ATTESTATION_ALG: ed25519
-          RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY }}
-          RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS }}
-          RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID: ci-active
         run: make verify-evidence-strict
       - name: validate generated summary artifact
-        env:
-          RGS_VERIFY_EVIDENCE_ATTESTATION_ALG: ed25519
-          RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS }}
-          RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID: ci-active
-          RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY: true
         run: |
           latest="$(cat artifacts/verify/LATEST)"
           ./scripts/validate_verify_summary.sh "${latest}/summary.json"
