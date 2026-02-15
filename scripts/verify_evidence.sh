@@ -89,6 +89,15 @@ verify_finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 verify_duration_seconds=$((verify_end_epoch - verify_start_epoch))
 set -e
 
+failed_step="null"
+if [[ ${proto_status} -ne 0 && ${verify_status} -ne 0 ]]; then
+  failed_step="\"both\""
+elif [[ ${proto_status} -ne 0 ]]; then
+  failed_step="\"proto_check\""
+elif [[ ${verify_status} -ne 0 ]]; then
+  failed_step="\"make_verify\""
+fi
+
 git_changed_files_count_after="$(git status --porcelain | wc -l | tr -d ' ')"
 git_worktree_clean_after="true"
 if [[ "${git_changed_files_count_after}" != "0" ]]; then
@@ -167,6 +176,7 @@ cat >"${summary_file}" <<EOF
   "proto_check_status": ${proto_status},
   "make_verify_status": ${verify_status},
   "overall_status": $([[ ${proto_status} -eq 0 && ${verify_status} -eq 0 ]] && echo "\"pass\"" || echo "\"fail\""),
+  "failed_step": ${failed_step},
   "changed_files_artifact": $([[ "${git_worktree_clean_after}" == "true" ]] && echo "null" || echo "\"changed_files.txt\"")
 }
 EOF
