@@ -127,6 +127,8 @@ go_sum_sha256=""
 check_module_path_sha256=""
 check_proto_clean_sha256=""
 verify_evidence_sha256=""
+makefile_sha256=""
+ci_workflow_sha256=""
 if [[ -f "go.mod" ]]; then
   go_mod_sha256="$(checksum_file "go.mod" | awk '{print $1}')"
 fi
@@ -141,6 +143,12 @@ if [[ -f "scripts/check_proto_clean.sh" ]]; then
 fi
 if [[ -f "scripts/verify_evidence.sh" ]]; then
   verify_evidence_sha256="$(checksum_file "scripts/verify_evidence.sh" | awk '{print $1}')"
+fi
+if [[ -f "Makefile" ]]; then
+  makefile_sha256="$(checksum_file "Makefile" | awk '{print $1}')"
+fi
+if [[ -f ".github/workflows/ci.yml" ]]; then
+  ci_workflow_sha256="$(checksum_file ".github/workflows/ci.yml" | awk '{print $1}')"
 fi
 
 cat >"${summary_file}" <<EOF
@@ -170,6 +178,8 @@ cat >"${summary_file}" <<EOF
   "check_module_path_script_sha256": "${check_module_path_sha256}",
   "check_proto_clean_script_sha256": "${check_proto_clean_sha256}",
   "verify_evidence_script_sha256": "${verify_evidence_sha256}",
+  "makefile_sha256": "${makefile_sha256}",
+  "ci_workflow_sha256": "${ci_workflow_sha256}",
   "proto_check_command": "${proto_cmd}",
   "proto_check_started_at": "${proto_started_at}",
   "proto_check_finished_at": "${proto_finished_at}",
@@ -219,6 +229,12 @@ fi
   fi
   if [[ -f "scripts/verify_evidence.sh" ]]; then
     checksum_file "scripts/verify_evidence.sh" || { echo "no sha256 tool available" >&2; exit 1; }
+  fi
+  if [[ -f "Makefile" ]]; then
+    checksum_file "Makefile" || { echo "no sha256 tool available" >&2; exit 1; }
+  fi
+  if [[ -f ".github/workflows/ci.yml" ]]; then
+    checksum_file ".github/workflows/ci.yml" || { echo "no sha256 tool available" >&2; exit 1; }
   fi
   checksum_file "${proto_log}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${verify_log}" || { echo "no sha256 tool available" >&2; exit 1; }
