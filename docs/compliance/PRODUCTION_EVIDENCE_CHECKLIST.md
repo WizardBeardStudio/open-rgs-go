@@ -20,6 +20,7 @@ Release gate companion:
 - Retain verification artifacts for each release candidate and release for a minimum of 12 months (or longer if jurisdictional policy requires).
 - CI artifact naming should include run and attempt identity (for example: `verify-evidence-<run_id>-<run_attempt>`).
 - CI evidence capture should enforce a clean worktree (`RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN=true`) to avoid ambiguous provenance.
+- `summary.json` should report required artifact completeness via `required_artifacts_present` and required count fields (`required_artifact_count_expected`, `required_artifact_count_present`, `required_artifact_count_missing`).
 - `buf lint` and `buf generate` validation evidence.
 - Migration plan and target schema version evidence.
 
