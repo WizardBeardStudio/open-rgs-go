@@ -44,3 +44,5 @@ jobs:
         with:
           name: verify-evidence-${{ github.run_id }}
           path: artifacts/verify
+          if-no-files-found: error
+          retention-days: 365
