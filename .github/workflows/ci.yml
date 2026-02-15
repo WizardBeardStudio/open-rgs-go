@@ -37,6 +37,8 @@ jobs:
       - uses: bufbuild/buf-setup-action@v1
       - name: generate verification evidence logs
         run: make verify-evidence-strict
+      - name: validate generated summary artifact
+        run: ./scripts/validate_verify_summary.sh "$(cat artifacts/verify/LATEST)/summary.json"
       - name: upload verification evidence artifacts
         uses: actions/upload-artifact@v4
         with:

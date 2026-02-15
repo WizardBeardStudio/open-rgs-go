@@ -140,6 +140,7 @@ go_sum_sha256=""
 check_module_path_sha256=""
 check_proto_clean_sha256=""
 verify_evidence_sha256=""
+validate_verify_summary_sha256=""
 makefile_sha256=""
 ci_workflow_sha256=""
 if [[ -f "go.mod" ]]; then
@@ -156,6 +157,9 @@ if [[ -f "scripts/check_proto_clean.sh" ]]; then
 fi
 if [[ -f "scripts/verify_evidence.sh" ]]; then
   verify_evidence_sha256="$(checksum_file "scripts/verify_evidence.sh" | awk '{print $1}')"
+fi
+if [[ -f "scripts/validate_verify_summary.sh" ]]; then
+  validate_verify_summary_sha256="$(checksum_file "scripts/validate_verify_summary.sh" | awk '{print $1}')"
 fi
 if [[ -f "Makefile" ]]; then
   makefile_sha256="$(checksum_file "Makefile" | awk '{print $1}')"
@@ -195,6 +199,7 @@ cat >"${summary_file}" <<EOF
   "check_module_path_script_sha256": "${check_module_path_sha256}",
   "check_proto_clean_script_sha256": "${check_proto_clean_sha256}",
   "verify_evidence_script_sha256": "${verify_evidence_sha256}",
+  "validate_verify_summary_script_sha256": "${validate_verify_summary_sha256}",
   "makefile_sha256": "${makefile_sha256}",
   "ci_workflow_sha256": "${ci_workflow_sha256}",
   "proto_check_command": "${proto_cmd}",
@@ -209,7 +214,7 @@ cat >"${summary_file}" <<EOF
   "make_verify_status": ${verify_status},
   "overall_status": $([[ ${proto_status} -eq 0 && ${verify_status} -eq 0 ]] && echo "\"pass\"" || echo "\"fail\""),
   "failed_step": ${failed_step},
-  "changed_files_artifact": $([[ "${git_worktree_clean_after}" == "true" ]] && echo "null" || echo "\"changed_files.txt\"")
+  "changed_files_artifact": $([[ "${git_worktree_clean_after}" == "true" ]] && echo "null" || echo "\"changed_files.txt\""),
 }
 EOF
 
@@ -277,6 +282,8 @@ tmp_summary="${summary_file}.tmp"
 } >"${tmp_summary}"
 mv "${tmp_summary}" "${summary_file}"
 
+./scripts/validate_verify_summary.sh "${summary_file}" >/dev/null
+
 {
   if [[ -f "go.mod" ]]; then
     checksum_file "go.mod" || { echo "no sha256 tool available" >&2; exit 1; }
@@ -292,6 +299,9 @@ mv "${tmp_summary}" "${summary_file}"
   fi
   if [[ -f "scripts/verify_evidence.sh" ]]; then
     checksum_file "scripts/verify_evidence.sh" || { echo "no sha256 tool available" >&2; exit 1; }
+  fi
+  if [[ -f "scripts/validate_verify_summary.sh" ]]; then
+    checksum_file "scripts/validate_verify_summary.sh" || { echo "no sha256 tool available" >&2; exit 1; }
   fi
   if [[ -f "Makefile" ]]; then
     checksum_file "Makefile" || { echo "no sha256 tool available" >&2; exit 1; }

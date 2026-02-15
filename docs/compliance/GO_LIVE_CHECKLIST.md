@@ -110,6 +110,7 @@ Release metadata:
 - Status: `PASS` / `FAIL`
 - Criteria:
   - Verification command outputs attached (`make verify` and `make verify-evidence-strict`)
+  - Summary-schema validator pass output attached (`./scripts/validate_verify_summary.sh`)
   - All sections complete in evidence checklist
   - Requirements traceability updated to release commit
   - Threat model reviewed for residual risks
@@ -118,6 +119,7 @@ Release metadata:
 - Evidence:
   - `make verify` output log artifact
   - `make verify-evidence-strict` output log artifact
+  - `./scripts/validate_verify_summary.sh "$(cat artifacts/verify/LATEST)/summary.json"` pass output artifact
   - `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
   - `docs/compliance/REQUIREMENTS.md`
   - `docs/compliance/THREAT_MODEL.md`
