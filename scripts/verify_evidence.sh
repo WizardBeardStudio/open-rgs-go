@@ -9,6 +9,7 @@ proto_mode="${RGS_VERIFY_EVIDENCE_PROTO_MODE:-full}"
 require_clean="${RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN:-false}"
 git_commit="$(git rev-parse HEAD)"
 git_branch="$(git rev-parse --abbrev-ref HEAD)"
+git_describe="$(git describe --tags --always --dirty 2>/dev/null || true)"
 ci_run_id="${GITHUB_RUN_ID:-}"
 ci_run_attempt="${GITHUB_RUN_ATTEMPT:-}"
 ci_ref="${GITHUB_REF:-}"
@@ -170,6 +171,7 @@ cat >"${summary_file}" <<EOF
   "run_dir": "${run_dir}",
   "git_commit": "${git_commit}",
   "git_branch": "${git_branch}",
+  "git_describe": "${git_describe}",
   "git_worktree_clean_before": ${git_worktree_clean_before},
   "git_changed_files_count_before": ${git_changed_files_count_before},
   "git_worktree_clean_after": ${git_worktree_clean_after},

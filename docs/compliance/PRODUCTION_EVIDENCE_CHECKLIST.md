@@ -11,7 +11,7 @@ Release gate companion:
   - Run directory naming: `artifacts/verify/<UTC_TIMESTAMP>`; collision-safe suffixes (`-1`, `-2`, ...) may be used.
   - `artifacts/verify/<UTC_TIMESTAMP>/proto_check.log`
   - `artifacts/verify/<UTC_TIMESTAMP>/make_verify.log`
-  - `artifacts/verify/<UTC_TIMESTAMP>/summary.json` (includes numeric `summary_schema_version`, explicit run-directory identity, verification mode/policy fields, git commit/ref, pre/post worktree cleanliness metadata, CI run metadata, toolchain/runtime context, dependency + verification/build-policy script checksums, command timing metadata, and explicit failure-step attribution)
+  - `artifacts/verify/<UTC_TIMESTAMP>/summary.json` (includes numeric `summary_schema_version`, explicit run-directory identity, verification mode/policy fields, git commit/ref/describe lineage, pre/post worktree cleanliness metadata, CI run metadata, toolchain/runtime context, dependency + verification/build-policy script checksums, command timing metadata, and explicit failure-step attribution)
   - Current expected `summary_schema_version`: `2`
   - `artifacts/verify/<UTC_TIMESTAMP>/index.txt` (artifact inventory with per-file byte sizes)
   - `artifacts/verify/<UTC_TIMESTAMP>/changed_files.txt` (present when `summary.json` indicates a non-clean worktree)
