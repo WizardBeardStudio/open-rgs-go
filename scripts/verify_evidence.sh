@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ts="$(date -u +%Y%m%dT%H%M%SZ)"
+base_dir="${RGS_VERIFY_EVIDENCE_DIR:-artifacts/verify}"
+run_dir="${base_dir}/${ts}"
+proto_mode="${RGS_VERIFY_EVIDENCE_PROTO_MODE:-full}"
+
+mkdir -p "${run_dir}"
+
+run_and_capture() {
+  local cmd="$1"
+  local log_file="$2"
+
+  set +e
+  bash -lc "${cmd}" >"${log_file}" 2>&1
+  local status=$?
+  set -e
+  return "${status}"
+}
+
+proto_log="${run_dir}/proto_check.log"
+verify_log="${run_dir}/make_verify.log"
+summary_file="${run_dir}/summary.json"
+latest_file="${base_dir}/LATEST"
+
+proto_cmd="RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
+verify_cmd="RGS_PROTO_CHECK_MODE=${proto_mode} make verify"
+
+proto_status=0
+verify_status=0
+
+set +e
+run_and_capture "${proto_cmd}" "${proto_log}"
+proto_status=$?
+run_and_capture "${verify_cmd}" "${verify_log}"
+verify_status=$?
+set -e
+
+cat >"${summary_file}" <<EOF
+{
+  "timestamp_utc": "${ts}",
+  "proto_check_command": "${proto_cmd}",
+  "make_verify_command": "${verify_cmd}",
+  "proto_check_status": ${proto_status},
+  "make_verify_status": ${verify_status},
+  "overall_status": $([[ ${proto_status} -eq 0 && ${verify_status} -eq 0 ]] && echo "\"pass\"" || echo "\"fail\"")
+}
+EOF
+
+printf '%s\n' "${run_dir}" >"${latest_file}"
+
+if [[ ${proto_status} -ne 0 || ${verify_status} -ne 0 ]]; then
+  echo "verification evidence failed; see ${summary_file}" >&2
+  exit 1
+fi
+
+echo "verification evidence captured at ${run_dir}"

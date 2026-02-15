@@ -7,7 +7,12 @@ Release gate companion:
 
 ## 1. Build and Release Integrity
 - Immutable source revision and signed artifact references.
-- `make verify` results attached for release commit.
+- `make verify-evidence` results attached for release commit, including:
+  - `artifacts/verify/<UTC_TIMESTAMP>/proto_check.log`
+  - `artifacts/verify/<UTC_TIMESTAMP>/make_verify.log`
+  - `artifacts/verify/<UTC_TIMESTAMP>/summary.json`
+  - `artifacts/verify/LATEST`
+- Retain verification artifacts for each release candidate and release for a minimum of 12 months (or longer if jurisdictional policy requires).
 - `buf lint` and `buf generate` validation evidence.
 - Migration plan and target schema version evidence.
 
