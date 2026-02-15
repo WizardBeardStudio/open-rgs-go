@@ -48,6 +48,7 @@ proto_log="${run_dir}/proto_check.log"
 verify_log="${run_dir}/make_verify.log"
 summary_file="${run_dir}/summary.json"
 manifest_file="${run_dir}/manifest.sha256"
+changed_files_file="${run_dir}/changed_files.txt"
 latest_file="${base_dir}/LATEST"
 
 proto_cmd="RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
@@ -83,9 +84,14 @@ cat >"${summary_file}" <<EOF
   "make_verify_command": "${verify_cmd}",
   "proto_check_status": ${proto_status},
   "make_verify_status": ${verify_status},
-  "overall_status": $([[ ${proto_status} -eq 0 && ${verify_status} -eq 0 ]] && echo "\"pass\"" || echo "\"fail\"")
+  "overall_status": $([[ ${proto_status} -eq 0 && ${verify_status} -eq 0 ]] && echo "\"pass\"" || echo "\"fail\""),
+  "changed_files_artifact": $([[ "${git_worktree_clean}" == "true" ]] && echo "null" || echo "\"changed_files.txt\"")
 }
 EOF
+
+if [[ "${git_worktree_clean}" != "true" ]]; then
+  git status --porcelain >"${changed_files_file}"
+fi
 
 checksum_file() {
   local file="$1"
@@ -104,6 +110,9 @@ checksum_file() {
   checksum_file "${proto_log}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${verify_log}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${summary_file}" || { echo "no sha256 tool available" >&2; exit 1; }
+  if [[ -f "${changed_files_file}" ]]; then
+    checksum_file "${changed_files_file}" || { echo "no sha256 tool available" >&2; exit 1; }
+  fi
 } >"${manifest_file}"
 
 printf '%s\n' "${run_dir}" >"${latest_file}"

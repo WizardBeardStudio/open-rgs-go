@@ -11,6 +11,7 @@ Release gate companion:
   - `artifacts/verify/<UTC_TIMESTAMP>/proto_check.log`
   - `artifacts/verify/<UTC_TIMESTAMP>/make_verify.log`
   - `artifacts/verify/<UTC_TIMESTAMP>/summary.json` (includes git commit/ref, worktree cleanliness metadata, CI run metadata, and toolchain/runtime context)
+  - `artifacts/verify/<UTC_TIMESTAMP>/changed_files.txt` (present when `summary.json` indicates a non-clean worktree)
   - `artifacts/verify/<UTC_TIMESTAMP>/manifest.sha256`
   - `artifacts/verify/LATEST`
 - Retain verification artifacts for each release candidate and release for a minimum of 12 months (or longer if jurisdictional policy requires).
