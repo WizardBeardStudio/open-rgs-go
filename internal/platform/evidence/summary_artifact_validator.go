@@ -369,9 +369,6 @@ func parseEd25519PublicKey(raw string) (ed25519.PublicKey, error) {
 }
 
 func resolveValueSource(valueEnv, fileEnv, commandEnv string) (string, error) {
-	if v := strings.TrimSpace(os.Getenv(valueEnv)); v != "" {
-		return v, nil
-	}
 	if p := strings.TrimSpace(os.Getenv(fileEnv)); p != "" {
 		data, err := os.ReadFile(p)
 		if err != nil {
@@ -385,6 +382,9 @@ func resolveValueSource(valueEnv, fileEnv, commandEnv string) (string, error) {
 			return "", fmt.Errorf("run %s command: %w", valueEnv, err)
 		}
 		return strings.TrimSpace(string(out)), nil
+	}
+	if v := strings.TrimSpace(os.Getenv(valueEnv)); v != "" {
+		return v, nil
 	}
 	return "", nil
 }
