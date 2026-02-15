@@ -46,6 +46,7 @@ UPM package scaffold:
 Unity CI harness project:
 - `examples/unity-csharp-proto-client/UnityTestProject/`
 - Workflow: `.github/workflows/unity-ci.yml`
+- Test modes: `editmode`, `playmode`
 - Required GitHub secrets for Unity Personal activation:
   - `UNITY_LICENSE`
   - `UNITY_EMAIL`
