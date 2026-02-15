@@ -390,6 +390,7 @@ Chaos tests:
 - Unity/C# runnable sample: `examples/unity-csharp-proto-client/README.md`
 - Unity CI workflow (license-gated): `.github/workflows/unity-ci.yml`
 - Unity package release workflow: `.github/workflows/unity-package-release.yml`
+- `rgsd` binary release workflow (linux/amd64 + darwin/arm64): `.github/workflows/rgsd-release.yml`
 
 ## 13. Known Limitations and Next Work
 
