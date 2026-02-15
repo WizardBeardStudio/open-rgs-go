@@ -37,6 +37,14 @@ jobs:
         with:
           go-version-file: go.mod
       - uses: bufbuild/buf-setup-action@v1
+      - name: attestation key preflight
+        env:
+          RGS_VERIFY_EVIDENCE_ATTESTATION_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_KEY }}
+        run: |
+          if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY}" ]]; then
+            echo "missing required secret: RGS_VERIFY_EVIDENCE_ATTESTATION_KEY" >&2
+            exit 1
+          fi
       - name: generate verification evidence logs
         env:
           RGS_VERIFY_EVIDENCE_ATTESTATION_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_KEY }}
