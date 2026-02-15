@@ -10,6 +10,7 @@ run_dir="${base_dir}/${ts}"
 proto_mode="${RGS_VERIFY_EVIDENCE_PROTO_MODE:-full}"
 require_clean="${RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN:-false}"
 enforce_attestation_key="${RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY:-false}"
+attestation_alg="${RGS_VERIFY_EVIDENCE_ATTESTATION_ALG:-hmac-sha256}"
 attestation_key_id="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID:-${default_attestation_key_id}}"
 attestation_key_ring="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS:-}"
 git_commit="$(git rev-parse HEAD)"
@@ -53,6 +54,10 @@ if [[ "${enforce_attestation_key}" != "true" && "${enforce_attestation_key}" != 
   echo "RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY must be 'true' or 'false', got '${enforce_attestation_key}'" >&2
   exit 1
 fi
+if [[ "${attestation_alg}" != "hmac-sha256" && "${attestation_alg}" != "ed25519" ]]; then
+  echo "RGS_VERIFY_EVIDENCE_ATTESTATION_ALG must be 'hmac-sha256' or 'ed25519', got '${attestation_alg}'" >&2
+  exit 1
+fi
 
 if [[ "${require_clean}" == "true" && "${git_worktree_clean_before}" != "true" ]]; then
   echo "verify evidence requires a clean worktree, but detected ${git_changed_files_count_before} changed file(s)" >&2
@@ -89,28 +94,42 @@ resolve_attestation_key() {
   return 1
 }
 
-attestation_key="$(resolve_attestation_key "${attestation_key_id}" "${attestation_key_ring}" || true)"
-if [[ -z "${attestation_key}" ]]; then
-  echo "unable to resolve attestation key for key_id='${attestation_key_id}'" >&2
-  exit 1
+attestation_key=""
+if [[ "${attestation_alg}" == "hmac-sha256" ]]; then
+  attestation_key="$(resolve_attestation_key "${attestation_key_id}" "${attestation_key_ring}" || true)"
+  if [[ -z "${attestation_key}" ]]; then
+    echo "unable to resolve hmac attestation key for key_id='${attestation_key_id}'" >&2
+    exit 1
+  fi
 fi
 
 if [[ "${GITHUB_ACTIONS:-}" == "true" || "${require_clean}" == "true" || "${enforce_attestation_key}" == "true" ]]; then
-  if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" && -z "${attestation_key_ring}" ]]; then
-    echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY or RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS must be set for strict/CI evidence runs" >&2
-    exit 1
-  fi
-  if [[ "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" == "${default_attestation_key}" ]]; then
-    echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must not use default development key in strict/CI runs" >&2
-    exit 1
-  fi
-  if [[ -n "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" && ${#RGS_VERIFY_EVIDENCE_ATTESTATION_KEY} -lt 32 ]]; then
-    echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must be at least 32 characters in strict/CI runs" >&2
-    exit 1
-  fi
-  if [[ -n "${attestation_key_ring}" && ${#attestation_key} -lt 32 ]]; then
-    echo "resolved attestation key from RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS must be at least 32 characters in strict/CI runs" >&2
-    exit 1
+  if [[ "${attestation_alg}" == "hmac-sha256" ]]; then
+    if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" && -z "${attestation_key_ring}" ]]; then
+      echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY or RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS must be set for strict/CI hmac evidence runs" >&2
+      exit 1
+    fi
+    if [[ "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" == "${default_attestation_key}" ]]; then
+      echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must not use default development key in strict/CI runs" >&2
+      exit 1
+    fi
+    if [[ -n "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" && ${#RGS_VERIFY_EVIDENCE_ATTESTATION_KEY} -lt 32 ]]; then
+      echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must be at least 32 characters in strict/CI runs" >&2
+      exit 1
+    fi
+    if [[ -n "${attestation_key_ring}" && ${#attestation_key} -lt 32 ]]; then
+      echo "resolved attestation key from RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS must be at least 32 characters in strict/CI runs" >&2
+      exit 1
+    fi
+  else
+    if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS:-}" ]]; then
+      echo "RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY or RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS must be set for strict/CI ed25519 evidence runs" >&2
+      exit 1
+    fi
+    if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS:-}" ]]; then
+      echo "RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY or RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS must be set for strict/CI ed25519 verification" >&2
+      exit 1
+    fi
   fi
 fi
 
@@ -150,8 +169,8 @@ attestation_file="${run_dir}/attestation.json"
 attestation_sig_file="${run_dir}/attestation.sig"
 latest_file="${base_dir}/LATEST"
 
-proto_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
-verify_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make verify"
+proto_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_ALG -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
+verify_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_ALG -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make verify"
 
 proto_status=0
 verify_status=0
@@ -251,6 +270,7 @@ cat >"${summary_file}" <<EOF
   "timestamp_utc": "${ts}",
   "run_dir": "${run_dir}",
   "key_id": "${attestation_key_id}",
+  "attestation_alg": "${attestation_alg}",
   "git_commit": "${git_commit}",
   "git_branch": "${git_branch}",
   "git_describe": "${git_describe}",
@@ -368,6 +388,7 @@ tmp_summary="${summary_file}.tmp"
   echo "  \"summary_validation_log\": \"summary_validation.log\","
   echo "  \"summary_validation_log_sha256\": \"${summary_validation_log_sha256}\","
   echo "  \"attestation_status\": \"signed\","
+  echo "  \"attestation_alg\": \"${attestation_alg}\","
   echo "  \"attestation_file\": \"attestation.json\","
   echo "  \"attestation_signature_file\": \"attestation.sig\","
   echo "  \"required_artifacts_present\": ${required_artifacts_present},"
@@ -414,6 +435,7 @@ cat >"${attestation_file}" <<EOF
   "attestation_schema_version": 1,
   "generated_at": "${ts}",
   "run_dir": "${run_dir}",
+  "alg": "${attestation_alg}",
   "key_id": "${attestation_key_id}",
   "git_commit": "${git_commit}",
   "git_branch": "${git_branch}",
@@ -423,12 +445,16 @@ cat >"${attestation_file}" <<EOF
 }
 EOF
 
-attestation_sig="$(hmac_file "${attestation_file}" "${attestation_key}")"
-if [[ -z "${attestation_sig}" ]]; then
-  echo "failed creating attestation signature: openssl not available" >&2
-  exit 1
+if [[ "${attestation_alg}" == "hmac-sha256" ]]; then
+  attestation_sig="$(hmac_file "${attestation_file}" "${attestation_key}")"
+  if [[ -z "${attestation_sig}" ]]; then
+    echo "failed creating hmac attestation signature: openssl not available" >&2
+    exit 1
+  fi
+  printf '%s\n' "${attestation_sig}" >"${attestation_sig_file}"
+else
+  go run ./cmd/attestsign --in "${attestation_file}" --out "${attestation_sig_file}" --alg "${attestation_alg}" --key-id "${attestation_key_id}"
 fi
-printf '%s\n' "${attestation_sig}" >"${attestation_sig_file}"
 
 {
   echo "verify evidence artifact index"
@@ -483,6 +509,11 @@ printf '%s\n' "${attestation_sig}" >"${attestation_sig_file}"
 RGS_VERIFY_EVIDENCE_ATTESTATION_KEY="${attestation_key}" \
 RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID="${attestation_key_id}" \
 RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS="${attestation_key_ring}" \
+RGS_VERIFY_EVIDENCE_ATTESTATION_ALG="${attestation_alg}" \
+RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY="${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY:-}" \
+RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS="${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS:-}" \
+RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY="${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY:-}" \
+RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS="${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS:-}" \
 RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY="${enforce_attestation_key}" \
 ./scripts/validate_verify_summary.sh "${summary_file}" >/dev/null
 

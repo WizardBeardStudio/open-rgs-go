@@ -1,8 +1,10 @@
 package evidence
 
 import (
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -132,22 +134,16 @@ func ValidateSummaryArtifact(summaryPath, mode string) error {
 	if err := requireNonEmptyString(a, "key_id"); err != nil {
 		return err
 	}
+	if err := requireInSetString(a, "alg", "hmac-sha256", "ed25519"); err != nil {
+		return err
+	}
 	attKeyID, _ := a["key_id"].(string)
+	attAlg, _ := a["alg"].(string)
 
 	attestationSig := strings.TrimSpace(string(attestationSigData))
 	enforceKey := os.Getenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
-	key, err := resolveAttestationKey(attKeyID)
-	if err != nil {
+	if err := verifyAttestationSignature(attAlg, attKeyID, attestationData, attestationSig, enforceKey); err != nil {
 		return err
-	}
-	if enforceKey && (key == DefaultVerifyEvidenceAttestationKey || len(key) < 32) {
-		return fmt.Errorf("attestation key policy violation in strict/CI validation")
-	}
-	mac := hmac.New(sha256.New, []byte(key))
-	mac.Write(attestationData)
-	wantSig := hex.EncodeToString(mac.Sum(nil))
-	if !strings.EqualFold(attestationSig, wantSig) {
-		return fmt.Errorf("attestation signature mismatch")
 	}
 	attRunDir, _ := a["run_dir"].(string)
 	if filepath.Clean(attRunDir) != filepath.Clean(runDir) {
@@ -195,6 +191,41 @@ func ValidateSummaryArtifact(summaryPath, mode string) error {
 	}
 
 	return nil
+}
+
+func verifyAttestationSignature(alg, keyID string, attestationData []byte, attestationSig string, enforceKey bool) error {
+	switch alg {
+	case "hmac-sha256":
+		key, err := resolveAttestationKey(keyID)
+		if err != nil {
+			return err
+		}
+		if enforceKey && (key == DefaultVerifyEvidenceAttestationKey || len(key) < 32) {
+			return fmt.Errorf("attestation key policy violation in strict/CI validation")
+		}
+		mac := hmac.New(sha256.New, []byte(key))
+		mac.Write(attestationData)
+		wantSig := hex.EncodeToString(mac.Sum(nil))
+		if !strings.EqualFold(attestationSig, wantSig) {
+			return fmt.Errorf("attestation signature mismatch")
+		}
+		return nil
+	case "ed25519":
+		pub, err := resolveEd25519PublicKey(keyID)
+		if err != nil {
+			return err
+		}
+		sigBytes, err := hex.DecodeString(attestationSig)
+		if err != nil {
+			return fmt.Errorf("decode ed25519 signature hex: %w", err)
+		}
+		if !ed25519.Verify(pub, attestationData, sigBytes) {
+			return fmt.Errorf("attestation signature mismatch")
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported attestation algorithm: %s", alg)
+	}
 }
 
 func resolveAttestationKey(keyID string) (string, error) {
@@ -246,4 +277,61 @@ func resolveAttestationKey(keyID string) (string, error) {
 		return "", fmt.Errorf("attestation key_id mismatch: attestation=%q configured=%q", keyID, singleID)
 	}
 	return key, nil
+}
+
+func resolveEd25519PublicKey(keyID string) (ed25519.PublicKey, error) {
+	keyRingRaw := strings.TrimSpace(os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS"))
+	if keyRingRaw != "" {
+		keyRing := map[string]string{}
+		for _, part := range strings.Split(keyRingRaw, ",") {
+			p := strings.TrimSpace(part)
+			if p == "" {
+				continue
+			}
+			idx := strings.IndexByte(p, ':')
+			if idx <= 0 || idx >= len(p)-1 {
+				return nil, fmt.Errorf("invalid RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS entry: %q", p)
+			}
+			id := strings.TrimSpace(p[:idx])
+			val := strings.TrimSpace(p[idx+1:])
+			if id == "" || val == "" {
+				return nil, fmt.Errorf("invalid RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS entry: %q", p)
+			}
+			keyRing[id] = val
+		}
+		raw, ok := keyRing[keyID]
+		if !ok {
+			ids := make([]string, 0, len(keyRing))
+			for id := range keyRing {
+				ids = append(ids, id)
+			}
+			sort.Strings(ids)
+			return nil, fmt.Errorf("no ed25519 public key for key_id=%q in RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS (available: %s)", keyID, strings.Join(ids, ","))
+		}
+		return parseEd25519PublicKey(raw)
+	}
+
+	raw := strings.TrimSpace(os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY"))
+	if raw == "" {
+		return nil, fmt.Errorf("RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY or RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS is required for ed25519")
+	}
+	singleID := os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID")
+	if singleID == "" {
+		singleID = DefaultVerifyEvidenceAttestationKeyID
+	}
+	if singleID != keyID {
+		return nil, fmt.Errorf("ed25519 public key key_id mismatch: attestation=%q configured=%q", keyID, singleID)
+	}
+	return parseEd25519PublicKey(raw)
+}
+
+func parseEd25519PublicKey(raw string) (ed25519.PublicKey, error) {
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(raw))
+	if err != nil {
+		return nil, fmt.Errorf("decode ed25519 public key base64: %w", err)
+	}
+	if len(decoded) != ed25519.PublicKeySize {
+		return nil, fmt.Errorf("invalid ed25519 public key length: %d", len(decoded))
+	}
+	return ed25519.PublicKey(decoded), nil
 }
