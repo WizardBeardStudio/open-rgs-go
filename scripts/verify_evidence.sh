@@ -11,6 +11,15 @@ ci_run_id="${GITHUB_RUN_ID:-}"
 ci_run_attempt="${GITHUB_RUN_ATTEMPT:-}"
 ci_ref="${GITHUB_REF:-}"
 ci_sha="${GITHUB_SHA:-}"
+if command -v hostname >/dev/null 2>&1; then
+  host_name="$(hostname)"
+else
+  host_name="$(uname -n)"
+fi
+os_name="$(uname -s)"
+arch_name="$(uname -m)"
+go_version="$(go version | sed 's/"/\\"/g')"
+buf_version="$(buf --version 2>/dev/null | sed 's/"/\\"/g' || true)"
 
 mkdir -p "${run_dir}"
 
@@ -52,6 +61,11 @@ cat >"${summary_file}" <<EOF
   "ci_run_attempt": "${ci_run_attempt}",
   "ci_ref": "${ci_ref}",
   "ci_sha": "${ci_sha}",
+  "hostname": "${host_name}",
+  "os": "${os_name}",
+  "arch": "${arch_name}",
+  "go_version": "${go_version}",
+  "buf_version": "${buf_version}",
   "proto_check_command": "${proto_cmd}",
   "make_verify_command": "${verify_cmd}",
   "proto_check_status": ${proto_status},
