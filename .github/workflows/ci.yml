@@ -40,7 +40,10 @@ jobs:
       - name: generate verification evidence logs
         run: make verify-evidence-strict
       - name: validate generated summary artifact
-        run: ./scripts/validate_verify_summary.sh "$(cat artifacts/verify/LATEST)/summary.json"
+        run: |
+          latest="$(cat artifacts/verify/LATEST)"
+          ./scripts/validate_verify_summary.sh "${latest}/summary.json"
+          echo "summary validation log: ${latest}/summary_validation.log"
       - name: upload verification evidence artifacts
         uses: actions/upload-artifact@v4
         with:

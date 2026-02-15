@@ -81,6 +81,7 @@ summary_file="${run_dir}/summary.json"
 manifest_file="${run_dir}/manifest.sha256"
 changed_files_file="${run_dir}/changed_files.txt"
 index_file="${run_dir}/index.txt"
+summary_validation_log="${run_dir}/summary_validation.log"
 latest_file="${base_dir}/LATEST"
 
 proto_cmd="RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
@@ -214,7 +215,7 @@ cat >"${summary_file}" <<EOF
   "make_verify_status": ${verify_status},
   "overall_status": $([[ ${proto_status} -eq 0 && ${verify_status} -eq 0 ]] && echo "\"pass\"" || echo "\"fail\""),
   "failed_step": ${failed_step},
-  "changed_files_artifact": $([[ "${git_worktree_clean_after}" == "true" ]] && echo "null" || echo "\"changed_files.txt\""),
+  "changed_files_artifact": $([[ "${git_worktree_clean_after}" == "true" ]] && echo "null" || echo "\"changed_files.txt\"")
 }
 EOF
 
@@ -222,11 +223,18 @@ if [[ "${git_worktree_clean_after}" != "true" ]]; then
   git status --porcelain >"${changed_files_file}"
 fi
 
+optional_changed_files_present=false
+if [[ -f "${changed_files_file}" ]]; then
+  optional_changed_files_present=true
+fi
+
+: >"${summary_validation_log}"
+
 {
   echo "verify evidence artifact index"
   echo "timestamp_utc=${ts}"
   echo "run_dir=${run_dir}"
-  for f in "${proto_log}" "${verify_log}" "${summary_file}" "${changed_files_file}"; do
+  for f in "${proto_log}" "${verify_log}" "${summary_file}" "${summary_validation_log}" "${changed_files_file}"; do
     if [[ -f "${f}" ]]; then
       # Format: relative_path<TAB>bytes
       rel="${f#${run_dir}/}"
@@ -237,11 +245,11 @@ fi
 } >"${index_file}"
 
 required_artifacts_present=true
-if [[ ! -f "${proto_log}" || ! -f "${verify_log}" || ! -f "${summary_file}" || ! -f "${index_file}" ]]; then
+if [[ ! -f "${proto_log}" || ! -f "${verify_log}" || ! -f "${summary_file}" || ! -f "${index_file}" || ! -f "${summary_validation_log}" ]]; then
   required_artifacts_present=false
 fi
 
-required_artifact_count_expected=4
+required_artifact_count_expected=5
 required_artifact_count_present=0
 if [[ -f "${proto_log}" ]]; then
   required_artifact_count_present=$((required_artifact_count_present + 1))
@@ -255,12 +263,10 @@ fi
 if [[ -f "${index_file}" ]]; then
   required_artifact_count_present=$((required_artifact_count_present + 1))
 fi
-required_artifact_count_missing=$((required_artifact_count_expected - required_artifact_count_present))
-
-optional_changed_files_present=false
-if [[ -f "${changed_files_file}" ]]; then
-  optional_changed_files_present=true
+if [[ -f "${summary_validation_log}" ]]; then
+  required_artifact_count_present=$((required_artifact_count_present + 1))
 fi
+required_artifact_count_missing=$((required_artifact_count_expected - required_artifact_count_present))
 
 artifact_file_count="$(find "${run_dir}" -maxdepth 1 -type f | wc -l | tr -d ' ')"
 artifact_total_bytes="$(find "${run_dir}" -maxdepth 1 -type f -print0 | xargs -0 wc -c | tail -n1 | awk '{print $1}')"
@@ -270,7 +276,9 @@ fi
 
 tmp_summary="${summary_file}.tmp"
 {
-  sed '$d' "${summary_file}"
+  sed '$d' "${summary_file}" | sed '$s/$/,/'
+  echo "  \"summary_validation_status\": 0,"
+  echo "  \"summary_validation_log\": \"summary_validation.log\","
   echo "  \"required_artifacts_present\": ${required_artifacts_present},"
   echo "  \"required_artifact_count_expected\": ${required_artifact_count_expected},"
   echo "  \"required_artifact_count_present\": ${required_artifact_count_present},"
@@ -282,7 +290,28 @@ tmp_summary="${summary_file}.tmp"
 } >"${tmp_summary}"
 mv "${tmp_summary}" "${summary_file}"
 
-./scripts/validate_verify_summary.sh "${summary_file}" >/dev/null
+set +e
+GOCACHE="${GOCACHE:-/tmp/open-rgs-go-gocache}" ./scripts/validate_verify_summary.sh "${summary_file}" >"${summary_validation_log}" 2>&1
+summary_validation_status=$?
+set -e
+
+if [[ ${summary_validation_status} -ne 0 ]]; then
+  echo "verify summary validation failed; see ${summary_validation_log}" >&2
+  exit 1
+fi
+
+{
+  echo "verify evidence artifact index"
+  echo "timestamp_utc=${ts}"
+  echo "run_dir=${run_dir}"
+  for f in "${proto_log}" "${verify_log}" "${summary_file}" "${summary_validation_log}" "${changed_files_file}"; do
+    if [[ -f "${f}" ]]; then
+      rel="${f#${run_dir}/}"
+      bytes="$(wc -c <"${f}" | tr -d ' ')"
+      printf '%s\t%s\n' "${rel}" "${bytes}"
+    fi
+  done
+} >"${index_file}"
 
 {
   if [[ -f "go.mod" ]]; then
@@ -312,6 +341,7 @@ mv "${tmp_summary}" "${summary_file}"
   checksum_file "${proto_log}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${verify_log}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${summary_file}" || { echo "no sha256 tool available" >&2; exit 1; }
+  checksum_file "${summary_validation_log}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${index_file}" || { echo "no sha256 tool available" >&2; exit 1; }
   if [[ -f "${changed_files_file}" ]]; then
     checksum_file "${changed_files_file}" || { echo "no sha256 tool available" >&2; exit 1; }
