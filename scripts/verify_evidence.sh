@@ -20,6 +20,11 @@ os_name="$(uname -s)"
 arch_name="$(uname -m)"
 go_version="$(go version | sed 's/"/\\"/g')"
 buf_version="$(buf --version 2>/dev/null | sed 's/"/\\"/g' || true)"
+git_changed_files_count="$(git status --porcelain | wc -l | tr -d ' ')"
+git_worktree_clean="true"
+if [[ "${git_changed_files_count}" != "0" ]]; then
+  git_worktree_clean="false"
+fi
 
 if [[ "${GITHUB_ACTIONS:-}" == "true" && "${proto_mode}" != "full" ]]; then
   echo "RGS_VERIFY_EVIDENCE_PROTO_MODE must be 'full' in CI (GITHUB_ACTIONS=true), got '${proto_mode}'" >&2
@@ -63,6 +68,8 @@ cat >"${summary_file}" <<EOF
   "timestamp_utc": "${ts}",
   "git_commit": "${git_commit}",
   "git_branch": "${git_branch}",
+  "git_worktree_clean": ${git_worktree_clean},
+  "git_changed_files_count": ${git_changed_files_count},
   "ci_run_id": "${ci_run_id}",
   "ci_run_attempt": "${ci_run_attempt}",
   "ci_ref": "${ci_ref}",

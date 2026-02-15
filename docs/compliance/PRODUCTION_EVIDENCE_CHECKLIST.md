@@ -10,7 +10,7 @@ Release gate companion:
 - `make verify-evidence` results attached for release commit, including:
   - `artifacts/verify/<UTC_TIMESTAMP>/proto_check.log`
   - `artifacts/verify/<UTC_TIMESTAMP>/make_verify.log`
-  - `artifacts/verify/<UTC_TIMESTAMP>/summary.json` (includes git commit/ref, CI run metadata, and toolchain/runtime context)
+  - `artifacts/verify/<UTC_TIMESTAMP>/summary.json` (includes git commit/ref, worktree cleanliness metadata, CI run metadata, and toolchain/runtime context)
   - `artifacts/verify/<UTC_TIMESTAMP>/manifest.sha256`
   - `artifacts/verify/LATEST`
 - Retain verification artifacts for each release candidate and release for a minimum of 12 months (or longer if jurisdictional policy requires).
