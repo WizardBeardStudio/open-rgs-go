@@ -5,6 +5,7 @@ ts="$(date -u +%Y%m%dT%H%M%SZ)"
 base_dir="${RGS_VERIFY_EVIDENCE_DIR:-artifacts/verify}"
 run_dir="${base_dir}/${ts}"
 proto_mode="${RGS_VERIFY_EVIDENCE_PROTO_MODE:-full}"
+require_clean="${RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN:-false}"
 git_commit="$(git rev-parse HEAD)"
 git_branch="$(git rev-parse --abbrev-ref HEAD)"
 ci_run_id="${GITHUB_RUN_ID:-}"
@@ -28,6 +29,17 @@ fi
 
 if [[ "${GITHUB_ACTIONS:-}" == "true" && "${proto_mode}" != "full" ]]; then
   echo "RGS_VERIFY_EVIDENCE_PROTO_MODE must be 'full' in CI (GITHUB_ACTIONS=true), got '${proto_mode}'" >&2
+  exit 1
+fi
+
+if [[ "${require_clean}" != "true" && "${require_clean}" != "false" ]]; then
+  echo "RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN must be 'true' or 'false', got '${require_clean}'" >&2
+  exit 1
+fi
+
+if [[ "${require_clean}" == "true" && "${git_worktree_clean}" != "true" ]]; then
+  echo "verify evidence requires a clean worktree, but detected ${git_changed_files_count} changed file(s)" >&2
+  git status --short >&2
   exit 1
 fi
 
@@ -82,6 +94,7 @@ cat >"${summary_file}" <<EOF
   "git_branch": "${git_branch}",
   "git_worktree_clean": ${git_worktree_clean},
   "git_changed_files_count": ${git_changed_files_count},
+  "require_clean_worktree": ${require_clean},
   "ci_run_id": "${ci_run_id}",
   "ci_run_attempt": "${ci_run_attempt}",
   "ci_ref": "${ci_ref}",

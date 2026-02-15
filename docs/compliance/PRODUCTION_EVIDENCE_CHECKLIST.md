@@ -15,6 +15,7 @@ Release gate companion:
   - `artifacts/verify/<UTC_TIMESTAMP>/manifest.sha256`
   - `artifacts/verify/LATEST`
 - Retain verification artifacts for each release candidate and release for a minimum of 12 months (or longer if jurisdictional policy requires).
+- CI evidence capture should enforce a clean worktree (`RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN=true`) to avoid ambiguous provenance.
 - `buf lint` and `buf generate` validation evidence.
 - Migration plan and target schema version evidence.
 

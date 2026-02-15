@@ -97,6 +97,7 @@ make verify-evidence
 
 This writes timestamped logs and a summary under `artifacts/verify/`.
 When `GITHUB_ACTIONS=true`, `verify_evidence.sh` requires `RGS_VERIFY_EVIDENCE_PROTO_MODE=full`.
+Set `RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN=true` to require a clean git worktree before evidence capture.
 If Buf remote dependencies are unavailable in a local environment, use:
 
 ```bash
