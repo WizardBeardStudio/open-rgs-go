@@ -236,6 +236,22 @@ if [[ ! -f "${proto_log}" || ! -f "${verify_log}" || ! -f "${summary_file}" || !
   required_artifacts_present=false
 fi
 
+required_artifact_count_expected=4
+required_artifact_count_present=0
+if [[ -f "${proto_log}" ]]; then
+  required_artifact_count_present=$((required_artifact_count_present + 1))
+fi
+if [[ -f "${verify_log}" ]]; then
+  required_artifact_count_present=$((required_artifact_count_present + 1))
+fi
+if [[ -f "${summary_file}" ]]; then
+  required_artifact_count_present=$((required_artifact_count_present + 1))
+fi
+if [[ -f "${index_file}" ]]; then
+  required_artifact_count_present=$((required_artifact_count_present + 1))
+fi
+required_artifact_count_missing=$((required_artifact_count_expected - required_artifact_count_present))
+
 optional_changed_files_present=false
 if [[ -f "${changed_files_file}" ]]; then
   optional_changed_files_present=true
@@ -251,6 +267,9 @@ tmp_summary="${summary_file}.tmp"
 {
   sed '$d' "${summary_file}"
   echo "  \"required_artifacts_present\": ${required_artifacts_present},"
+  echo "  \"required_artifact_count_expected\": ${required_artifact_count_expected},"
+  echo "  \"required_artifact_count_present\": ${required_artifact_count_present},"
+  echo "  \"required_artifact_count_missing\": ${required_artifact_count_missing},"
   echo "  \"optional_changed_files_present\": ${optional_changed_files_present},"
   echo "  \"artifact_file_count\": ${artifact_file_count},"
   echo "  \"artifact_total_bytes\": ${artifact_total_bytes}"
