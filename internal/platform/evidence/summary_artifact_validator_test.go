@@ -11,15 +11,12 @@ import (
 )
 
 func TestValidateSummaryArtifactStrict(t *testing.T) {
-	t.Parallel()
-
 	summaryPath, summary := writeValidSummaryArtifact(t)
 	if err := ValidateSummaryArtifact(summaryPath, "strict"); err != nil {
 		t.Fatalf("expected strict validation to pass: %v", err)
 	}
 
 	t.Run("missing validation log", func(t *testing.T) {
-		t.Parallel()
 		path, s := writeValidSummaryArtifact(t)
 		if err := os.Remove(filepath.Join(filepath.Dir(path), "summary_validation.log")); err != nil {
 			t.Fatalf("remove summary_validation.log: %v", err)
@@ -31,7 +28,6 @@ func TestValidateSummaryArtifactStrict(t *testing.T) {
 	})
 
 	t.Run("checksum mismatch", func(t *testing.T) {
-		t.Parallel()
 		path, s := writeValidSummaryArtifact(t)
 		s["summary_validation_log_sha256"] = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 		writeSummary(t, path, s)
@@ -41,7 +37,6 @@ func TestValidateSummaryArtifactStrict(t *testing.T) {
 	})
 
 	t.Run("stale index", func(t *testing.T) {
-		t.Parallel()
 		path, _ := writeValidSummaryArtifact(t)
 		idx := filepath.Join(filepath.Dir(path), "index.txt")
 		if err := os.WriteFile(idx, []byte("verify evidence artifact index\n"), 0o644); err != nil {
@@ -53,7 +48,6 @@ func TestValidateSummaryArtifactStrict(t *testing.T) {
 	})
 
 	t.Run("bad counters", func(t *testing.T) {
-		t.Parallel()
 		path, s := writeValidSummaryArtifact(t)
 		s["required_artifact_count_expected"] = 7
 		s["required_artifact_count_present"] = 6
@@ -65,7 +59,6 @@ func TestValidateSummaryArtifactStrict(t *testing.T) {
 	})
 
 	t.Run("attestation signature mismatch", func(t *testing.T) {
-		t.Parallel()
 		path, _ := writeValidSummaryArtifact(t)
 		sigPath := filepath.Join(filepath.Dir(path), "attestation.sig")
 		if err := os.WriteFile(sigPath, []byte("bad-signature\n"), 0o644); err != nil {
@@ -76,10 +69,47 @@ func TestValidateSummaryArtifactStrict(t *testing.T) {
 		}
 	})
 
+	t.Run("strict validation fails when key missing", func(t *testing.T) {
+		path, _ := writeValidSummaryArtifact(t)
+		t.Setenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY", "true")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY", "")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID", "")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS", "")
+		if err := ValidateSummaryArtifact(path, "strict"); err == nil {
+			t.Fatalf("expected error when strict validation key is missing")
+		}
+	})
+
+	t.Run("strict validation fails with wrong key", func(t *testing.T) {
+		path, _ := writeValidSummaryArtifact(t)
+		t.Setenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY", "true")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY", "0123456789abcdef0123456789abcdef")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID", DefaultVerifyEvidenceAttestationKeyID)
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS", "")
+		if err := ValidateSummaryArtifact(path, "strict"); err == nil {
+			t.Fatalf("expected signature mismatch with wrong strict key")
+		}
+	})
+
+	t.Run("strict validation passes with rotated previous key", func(t *testing.T) {
+		path, _ := writeValidSummaryArtifactWithKey(t, "previous", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY", "true")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY", "")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID", "")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS", "active:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,previous:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
+		if err := ValidateSummaryArtifact(path, "strict"); err != nil {
+			t.Fatalf("expected rotated previous-key validation to pass: %v", err)
+		}
+	})
+
 	_ = summary
 }
 
 func writeValidSummaryArtifact(t *testing.T) (string, map[string]any) {
+	return writeValidSummaryArtifactWithKey(t, DefaultVerifyEvidenceAttestationKeyID, DefaultVerifyEvidenceAttestationKey)
+}
+
+func writeValidSummaryArtifactWithKey(t *testing.T, keyID, signingKey string) (string, map[string]any) {
 	t.Helper()
 
 	runDir := filepath.Join(t.TempDir(), "artifacts", "verify", "20260215T000000Z")
@@ -135,7 +165,7 @@ func writeValidSummaryArtifact(t *testing.T) (string, map[string]any) {
 		"attestation_schema_version": 1,
 		"generated_at":               "2026-02-15T00:00:00Z",
 		"run_dir":                    runDir,
-		"key_id":                     DefaultVerifyEvidenceAttestationKeyID,
+		"key_id":                     keyID,
 		"git_commit":                 "abc",
 		"git_branch":                 "main",
 		"summary_sha256":             summarySHA,
@@ -149,7 +179,7 @@ func writeValidSummaryArtifact(t *testing.T) (string, map[string]any) {
 		t.Fatalf("read attestation: %v", err)
 	}
 
-	mac := hmac.New(sha256.New, []byte(DefaultVerifyEvidenceAttestationKey))
+	mac := hmac.New(sha256.New, []byte(signingKey))
 	mac.Write(attestationData)
 	attestationSig := hex.EncodeToString(mac.Sum(nil))
 	if err := os.WriteFile(filepath.Join(runDir, "attestation.sig"), []byte(attestationSig+"\n"), 0o644); err != nil {
