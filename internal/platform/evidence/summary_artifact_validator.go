@@ -281,7 +281,7 @@ func resolveEd25519PublicKey(keyID string) (ed25519.PublicKey, error) {
 }
 
 func parseEd25519PublicKey(raw string) (ed25519.PublicKey, error) {
-	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(raw))
+	decoded, err := base64.StdEncoding.DecodeString(normalizeKeyMaterial(raw))
 	if err != nil {
 		return nil, fmt.Errorf("decode ed25519 public key base64: %w", err)
 	}
@@ -315,4 +315,16 @@ func resolveValueSource(valueEnv, fileEnv, commandEnv string) (string, error) {
 		return v, nil
 	}
 	return "", nil
+}
+
+func normalizeKeyMaterial(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if len(trimmed) >= 2 {
+		first := trimmed[0]
+		last := trimmed[len(trimmed)-1]
+		if (first == '"' && last == '"') || (first == '\'' && last == '\'') {
+			return strings.TrimSpace(trimmed[1 : len(trimmed)-1])
+		}
+	}
+	return trimmed
 }

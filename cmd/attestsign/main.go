@@ -151,7 +151,7 @@ func resolveValueSource(valueEnv, fileEnv, commandEnv string) (string, error) {
 }
 
 func parseEd25519PrivateKey(raw string) (ed25519.PrivateKey, error) {
-	decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(raw))
+	decoded, err := base64.StdEncoding.DecodeString(normalizeKeyMaterial(raw))
 	if err != nil {
 		return nil, fmt.Errorf("decode base64 private key: %w", err)
 	}
@@ -168,4 +168,16 @@ func parseEd25519PrivateKey(raw string) (ed25519.PrivateKey, error) {
 func defaultDevEd25519PrivateKey() ed25519.PrivateKey {
 	sum := sha256.Sum256([]byte(defaultDevSeedContext))
 	return ed25519.NewKeyFromSeed(sum[:ed25519.SeedSize])
+}
+
+func normalizeKeyMaterial(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if len(trimmed) >= 2 {
+		first := trimmed[0]
+		last := trimmed[len(trimmed)-1]
+		if (first == '"' && last == '"') || (first == '\'' && last == '\'') {
+			return strings.TrimSpace(trimmed[1 : len(trimmed)-1])
+		}
+	}
+	return trimmed
 }

@@ -50,6 +50,9 @@ jobs:
             if [[ ${#value} -ge 2 && "${value:0:1}" == '"' && "${value: -1}" == '"' ]]; then
               value="${value:1:${#value}-2}"
             fi
+            if [[ ${#value} -ge 2 && "${value:0:1}" == "'" && "${value: -1}" == "'" ]]; then
+              value="${value:1:${#value}-2}"
+            fi
             printf '%s' "${value}"
           }
 
