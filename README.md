@@ -36,6 +36,7 @@ Current persistence model:
 - `migrations/`: SQL schema evolution
 - `docs/compliance/`: traceability, report catalog, threat model
 - `docs/deployment/`: deployment hardening guidance
+- `docs/integration/`: client integration guides
 
 ## 3. Prerequisites
 
@@ -383,6 +384,8 @@ Chaos tests:
 - Production readiness rounds: `docs/compliance/PRODUCTION_READINESS_ROUNDS.md`
 - Production evidence checklist: `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
 - Go-live release gates: `docs/compliance/GO_LIVE_CHECKLIST.md`
+- GLI gap analysis: `docs/compliance/GLI_GAP_ANALYSIS.md`
+- Unity/C# protobuf client guide: `docs/integration/UNITY_CSHARP_PROTO_CLIENT.md`
 
 ## 13. Known Limitations and Next Work
 
