@@ -10,9 +10,31 @@ using WizardBeardStudio.Rgs.Models;
 
 namespace WizardBeardStudio.Rgs.Services
 {
+    internal interface ISessionsRpcClient
+    {
+        Task<StartSessionResponse> StartSessionAsync(StartSessionRequest request, Metadata headers, CancellationToken cancellationToken);
+        Task<EndSessionResponse> EndSessionAsync(EndSessionRequest request, Metadata headers, CancellationToken cancellationToken);
+    }
+
+    internal sealed class SessionsRpcClientAdapter : ISessionsRpcClient
+    {
+        private readonly SessionsService.SessionsServiceClient _client;
+
+        public SessionsRpcClientAdapter(SessionsService.SessionsServiceClient client)
+        {
+            _client = client;
+        }
+
+        public Task<StartSessionResponse> StartSessionAsync(StartSessionRequest request, Metadata headers, CancellationToken cancellationToken)
+            => _client.StartSessionAsync(request, headers, cancellationToken: cancellationToken).ResponseAsync;
+
+        public Task<EndSessionResponse> EndSessionAsync(EndSessionRequest request, Metadata headers, CancellationToken cancellationToken)
+            => _client.EndSessionAsync(request, headers, cancellationToken: cancellationToken).ResponseAsync;
+    }
+
     public sealed class SessionsClient
     {
-        private readonly SessionsService.SessionsServiceClient? _grpcClient;
+        private readonly ISessionsRpcClient? _grpcClient;
         private readonly IRgsTransport? _restTransport;
         private readonly Func<string?> _accessTokenProvider;
         private readonly string _playerId;
@@ -28,7 +50,7 @@ namespace WizardBeardStudio.Rgs.Services
             string userAgent,
             string geo)
         {
-            _grpcClient = client;
+            _grpcClient = new SessionsRpcClientAdapter(client);
             _accessTokenProvider = accessTokenProvider;
             _playerId = playerId;
             _deviceId = deviceId;
@@ -45,6 +67,22 @@ namespace WizardBeardStudio.Rgs.Services
             string geo)
         {
             _restTransport = transport;
+            _accessTokenProvider = accessTokenProvider;
+            _playerId = playerId;
+            _deviceId = deviceId;
+            _userAgent = userAgent;
+            _geo = geo;
+        }
+
+        internal SessionsClient(
+            ISessionsRpcClient client,
+            Func<string?> accessTokenProvider,
+            string playerId,
+            string deviceId,
+            string userAgent,
+            string geo)
+        {
+            _grpcClient = client;
             _accessTokenProvider = accessTokenProvider;
             _playerId = playerId;
             _deviceId = deviceId;

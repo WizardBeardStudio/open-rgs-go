@@ -10,9 +10,31 @@ using WizardBeardStudio.Rgs.Models;
 
 namespace WizardBeardStudio.Rgs.Services
 {
+    internal interface IWageringRpcClient
+    {
+        Task<PlaceWagerResponse> PlaceWagerAsync(PlaceWagerRequest request, Metadata headers, CancellationToken cancellationToken);
+        Task<SettleWagerResponse> SettleWagerAsync(SettleWagerRequest request, Metadata headers, CancellationToken cancellationToken);
+    }
+
+    internal sealed class WageringRpcClientAdapter : IWageringRpcClient
+    {
+        private readonly WageringService.WageringServiceClient _client;
+
+        public WageringRpcClientAdapter(WageringService.WageringServiceClient client)
+        {
+            _client = client;
+        }
+
+        public Task<PlaceWagerResponse> PlaceWagerAsync(PlaceWagerRequest request, Metadata headers, CancellationToken cancellationToken)
+            => _client.PlaceWagerAsync(request, headers, cancellationToken: cancellationToken).ResponseAsync;
+
+        public Task<SettleWagerResponse> SettleWagerAsync(SettleWagerRequest request, Metadata headers, CancellationToken cancellationToken)
+            => _client.SettleWagerAsync(request, headers, cancellationToken: cancellationToken).ResponseAsync;
+    }
+
     public sealed class WageringClient
     {
-        private readonly WageringService.WageringServiceClient? _grpcClient;
+        private readonly IWageringRpcClient? _grpcClient;
         private readonly IRgsTransport? _restTransport;
         private readonly Func<string?> _accessTokenProvider;
         private readonly string _playerId;
@@ -28,7 +50,7 @@ namespace WizardBeardStudio.Rgs.Services
             string userAgent,
             string geo)
         {
-            _grpcClient = client;
+            _grpcClient = new WageringRpcClientAdapter(client);
             _accessTokenProvider = accessTokenProvider;
             _playerId = playerId;
             _deviceId = deviceId;
@@ -45,6 +67,22 @@ namespace WizardBeardStudio.Rgs.Services
             string geo)
         {
             _restTransport = transport;
+            _accessTokenProvider = accessTokenProvider;
+            _playerId = playerId;
+            _deviceId = deviceId;
+            _userAgent = userAgent;
+            _geo = geo;
+        }
+
+        internal WageringClient(
+            IWageringRpcClient client,
+            Func<string?> accessTokenProvider,
+            string playerId,
+            string deviceId,
+            string userAgent,
+            string geo)
+        {
+            _grpcClient = client;
             _accessTokenProvider = accessTokenProvider;
             _playerId = playerId;
             _deviceId = deviceId;

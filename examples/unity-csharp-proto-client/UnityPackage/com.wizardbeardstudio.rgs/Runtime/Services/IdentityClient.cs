@@ -9,9 +9,27 @@ using WizardBeardStudio.Rgs.Models;
 
 namespace WizardBeardStudio.Rgs.Services
 {
+    internal interface IIdentityRpcClient
+    {
+        Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken);
+    }
+
+    internal sealed class IdentityRpcClientAdapter : IIdentityRpcClient
+    {
+        private readonly IdentityService.IdentityServiceClient _client;
+
+        public IdentityRpcClientAdapter(IdentityService.IdentityServiceClient client)
+        {
+            _client = client;
+        }
+
+        public Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
+            => _client.LoginAsync(request, cancellationToken: cancellationToken).ResponseAsync;
+    }
+
     public sealed class IdentityClient
     {
-        private readonly IdentityService.IdentityServiceClient? _grpcClient;
+        private readonly IIdentityRpcClient? _grpcClient;
         private readonly IRgsTransport? _restTransport;
         private readonly string _deviceId;
         private readonly string _userAgent;
@@ -19,6 +37,18 @@ namespace WizardBeardStudio.Rgs.Services
 
         public IdentityClient(
             IdentityService.IdentityServiceClient client,
+            string deviceId,
+            string userAgent,
+            string geo)
+        {
+            _grpcClient = new IdentityRpcClientAdapter(client);
+            _deviceId = deviceId;
+            _userAgent = userAgent;
+            _geo = geo;
+        }
+
+        internal IdentityClient(
+            IIdentityRpcClient client,
             string deviceId,
             string userAgent,
             string geo)

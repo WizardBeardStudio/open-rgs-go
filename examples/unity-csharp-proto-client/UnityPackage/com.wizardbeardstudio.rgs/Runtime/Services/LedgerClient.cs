@@ -10,9 +10,27 @@ using WizardBeardStudio.Rgs.Models;
 
 namespace WizardBeardStudio.Rgs.Services
 {
+    internal interface ILedgerRpcClient
+    {
+        Task<GetBalanceResponse> GetBalanceAsync(GetBalanceRequest request, Metadata headers, CancellationToken cancellationToken);
+    }
+
+    internal sealed class LedgerRpcClientAdapter : ILedgerRpcClient
+    {
+        private readonly LedgerService.LedgerServiceClient _client;
+
+        public LedgerRpcClientAdapter(LedgerService.LedgerServiceClient client)
+        {
+            _client = client;
+        }
+
+        public Task<GetBalanceResponse> GetBalanceAsync(GetBalanceRequest request, Metadata headers, CancellationToken cancellationToken)
+            => _client.GetBalanceAsync(request, headers, cancellationToken: cancellationToken).ResponseAsync;
+    }
+
     public sealed class LedgerClient
     {
-        private readonly LedgerService.LedgerServiceClient? _grpcClient;
+        private readonly ILedgerRpcClient? _grpcClient;
         private readonly IRgsTransport? _restTransport;
         private readonly Func<string?> _accessTokenProvider;
         private readonly string _playerId;
@@ -28,7 +46,7 @@ namespace WizardBeardStudio.Rgs.Services
             string userAgent,
             string geo)
         {
-            _grpcClient = client;
+            _grpcClient = new LedgerRpcClientAdapter(client);
             _accessTokenProvider = accessTokenProvider;
             _playerId = playerId;
             _deviceId = deviceId;
@@ -45,6 +63,22 @@ namespace WizardBeardStudio.Rgs.Services
             string geo)
         {
             _restTransport = transport;
+            _accessTokenProvider = accessTokenProvider;
+            _playerId = playerId;
+            _deviceId = deviceId;
+            _userAgent = userAgent;
+            _geo = geo;
+        }
+
+        internal LedgerClient(
+            ILedgerRpcClient client,
+            Func<string?> accessTokenProvider,
+            string playerId,
+            string deviceId,
+            string userAgent,
+            string geo)
+        {
+            _grpcClient = client;
             _accessTokenProvider = accessTokenProvider;
             _playerId = playerId;
             _deviceId = deviceId;
