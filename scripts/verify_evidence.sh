@@ -102,11 +102,23 @@ checksum_file() {
 
 go_mod_sha256=""
 go_sum_sha256=""
+check_module_path_sha256=""
+check_proto_clean_sha256=""
+verify_evidence_sha256=""
 if [[ -f "go.mod" ]]; then
   go_mod_sha256="$(checksum_file "go.mod" | awk '{print $1}')"
 fi
 if [[ -f "go.sum" ]]; then
   go_sum_sha256="$(checksum_file "go.sum" | awk '{print $1}')"
+fi
+if [[ -f "scripts/check_module_path.sh" ]]; then
+  check_module_path_sha256="$(checksum_file "scripts/check_module_path.sh" | awk '{print $1}')"
+fi
+if [[ -f "scripts/check_proto_clean.sh" ]]; then
+  check_proto_clean_sha256="$(checksum_file "scripts/check_proto_clean.sh" | awk '{print $1}')"
+fi
+if [[ -f "scripts/verify_evidence.sh" ]]; then
+  verify_evidence_sha256="$(checksum_file "scripts/verify_evidence.sh" | awk '{print $1}')"
 fi
 
 cat >"${summary_file}" <<EOF
@@ -128,6 +140,9 @@ cat >"${summary_file}" <<EOF
   "buf_version": "${buf_version}",
   "go_mod_sha256": "${go_mod_sha256}",
   "go_sum_sha256": "${go_sum_sha256}",
+  "check_module_path_script_sha256": "${check_module_path_sha256}",
+  "check_proto_clean_script_sha256": "${check_proto_clean_sha256}",
+  "verify_evidence_script_sha256": "${verify_evidence_sha256}",
   "proto_check_command": "${proto_cmd}",
   "proto_check_started_at": "${proto_started_at}",
   "proto_check_finished_at": "${proto_finished_at}",
@@ -153,6 +168,15 @@ fi
   fi
   if [[ -f "go.sum" ]]; then
     checksum_file "go.sum" || { echo "no sha256 tool available" >&2; exit 1; }
+  fi
+  if [[ -f "scripts/check_module_path.sh" ]]; then
+    checksum_file "scripts/check_module_path.sh" || { echo "no sha256 tool available" >&2; exit 1; }
+  fi
+  if [[ -f "scripts/check_proto_clean.sh" ]]; then
+    checksum_file "scripts/check_proto_clean.sh" || { echo "no sha256 tool available" >&2; exit 1; }
+  fi
+  if [[ -f "scripts/verify_evidence.sh" ]]; then
+    checksum_file "scripts/verify_evidence.sh" || { echo "no sha256 tool available" >&2; exit 1; }
   fi
   checksum_file "${proto_log}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${verify_log}" || { echo "no sha256 tool available" >&2; exit 1; }
