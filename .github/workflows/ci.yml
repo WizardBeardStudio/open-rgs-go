@@ -40,10 +40,12 @@ jobs:
       - name: generate verification evidence logs
         env:
           RGS_VERIFY_EVIDENCE_ATTESTATION_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_KEY }}
+          RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID: ci-active
         run: make verify-evidence-strict
       - name: validate generated summary artifact
         env:
           RGS_VERIFY_EVIDENCE_ATTESTATION_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_KEY }}
+          RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID: ci-active
           RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY: true
         run: |
           latest="$(cat artifacts/verify/LATEST)"

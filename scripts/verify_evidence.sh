@@ -4,11 +4,14 @@ set -euo pipefail
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
 summary_schema_version="2"
 default_attestation_key="open-rgs-go-dev-attestation-key"
+default_attestation_key_id="dev-default"
 base_dir="${RGS_VERIFY_EVIDENCE_DIR:-artifacts/verify}"
 run_dir="${base_dir}/${ts}"
 proto_mode="${RGS_VERIFY_EVIDENCE_PROTO_MODE:-full}"
 require_clean="${RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN:-false}"
 enforce_attestation_key="${RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY:-false}"
+attestation_key_id="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID:-${default_attestation_key_id}}"
+attestation_key_ring="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS:-}"
 git_commit="$(git rev-parse HEAD)"
 git_branch="$(git rev-parse --abbrev-ref HEAD)"
 git_describe="$(git describe --tags --always --dirty 2>/dev/null || true)"
@@ -57,18 +60,56 @@ if [[ "${require_clean}" == "true" && "${git_worktree_clean_before}" != "true" ]
   exit 1
 fi
 
-attestation_key="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-${default_attestation_key}}"
+resolve_attestation_key() {
+  local key_id="$1"
+  local key_ring="$2"
+  local single_key="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}"
+  if [[ -n "${key_ring}" ]]; then
+    IFS=',' read -r -a entries <<<"${key_ring}"
+    for entry in "${entries[@]}"; do
+      item="$(echo "${entry}" | tr -d ' ')"
+      [[ -z "${item}" ]] && continue
+      id="${item%%:*}"
+      key="${item#*:}"
+      if [[ "${id}" == "${key_id}" && -n "${key}" && "${key}" != "${id}" ]]; then
+        printf '%s' "${key}"
+        return 0
+      fi
+    done
+    return 1
+  fi
+  if [[ -n "${single_key}" ]]; then
+    printf '%s' "${single_key}"
+    return 0
+  fi
+  if [[ "${key_id}" == "${default_attestation_key_id}" ]]; then
+    printf '%s' "${default_attestation_key}"
+    return 0
+  fi
+  return 1
+}
+
+attestation_key="$(resolve_attestation_key "${attestation_key_id}" "${attestation_key_ring}" || true)"
+if [[ -z "${attestation_key}" ]]; then
+  echo "unable to resolve attestation key for key_id='${attestation_key_id}'" >&2
+  exit 1
+fi
+
 if [[ "${GITHUB_ACTIONS:-}" == "true" || "${require_clean}" == "true" || "${enforce_attestation_key}" == "true" ]]; then
-  if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" ]]; then
-    echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must be set for strict/CI evidence runs" >&2
+  if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" && -z "${attestation_key_ring}" ]]; then
+    echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY or RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS must be set for strict/CI evidence runs" >&2
     exit 1
   fi
-  if [[ "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY}" == "${default_attestation_key}" ]]; then
+  if [[ "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" == "${default_attestation_key}" ]]; then
     echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must not use default development key in strict/CI runs" >&2
     exit 1
   fi
-  if [[ ${#RGS_VERIFY_EVIDENCE_ATTESTATION_KEY} -lt 32 ]]; then
+  if [[ -n "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" && ${#RGS_VERIFY_EVIDENCE_ATTESTATION_KEY} -lt 32 ]]; then
     echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must be at least 32 characters in strict/CI runs" >&2
+    exit 1
+  fi
+  if [[ -n "${attestation_key_ring}" && ${#attestation_key} -lt 32 ]]; then
+    echo "resolved attestation key from RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS must be at least 32 characters in strict/CI runs" >&2
     exit 1
   fi
 fi
@@ -109,8 +150,8 @@ attestation_file="${run_dir}/attestation.json"
 attestation_sig_file="${run_dir}/attestation.sig"
 latest_file="${base_dir}/LATEST"
 
-proto_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
-verify_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make verify"
+proto_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
+verify_cmd="env -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID -u RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS -u RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY RGS_PROTO_CHECK_MODE=${proto_mode} make verify"
 
 proto_status=0
 verify_status=0
@@ -209,6 +250,7 @@ cat >"${summary_file}" <<EOF
   "summary_schema_version": ${summary_schema_version},
   "timestamp_utc": "${ts}",
   "run_dir": "${run_dir}",
+  "key_id": "${attestation_key_id}",
   "git_commit": "${git_commit}",
   "git_branch": "${git_branch}",
   "git_describe": "${git_describe}",
@@ -372,6 +414,7 @@ cat >"${attestation_file}" <<EOF
   "attestation_schema_version": 1,
   "generated_at": "${ts}",
   "run_dir": "${run_dir}",
+  "key_id": "${attestation_key_id}",
   "git_commit": "${git_commit}",
   "git_branch": "${git_branch}",
   "summary_sha256": "${summary_sha256}",
@@ -437,7 +480,11 @@ printf '%s\n' "${attestation_sig}" >"${attestation_sig_file}"
   fi
 } >"${manifest_file}"
 
-RGS_VERIFY_EVIDENCE_ATTESTATION_KEY="${attestation_key}" ./scripts/validate_verify_summary.sh "${summary_file}" >/dev/null
+RGS_VERIFY_EVIDENCE_ATTESTATION_KEY="${attestation_key}" \
+RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID="${attestation_key_id}" \
+RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS="${attestation_key_ring}" \
+RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY="${enforce_attestation_key}" \
+./scripts/validate_verify_summary.sh "${summary_file}" >/dev/null
 
 printf '%s\n' "${run_dir}" >"${latest_file}"
 

@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
 const DefaultVerifyEvidenceAttestationKey = "open-rgs-go-dev-attestation-key"
+const DefaultVerifyEvidenceAttestationKeyID = "dev-default"
 
 // ValidateSummaryArtifact validates summary.json plus linked artifact files.
 // mode accepts "json" (schema/consistency only) or "strict" (with file checks).
@@ -111,30 +113,6 @@ func ValidateSummaryArtifact(summaryPath, mode string) error {
 		return fmt.Errorf("read attestation signature: %w", err)
 	}
 
-	attestationSig := strings.TrimSpace(string(attestationSigData))
-	key := os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY")
-	enforceKey := os.Getenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
-	if enforceKey {
-		if key == "" {
-			return fmt.Errorf("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must be set in strict/CI validation")
-		}
-		if key == DefaultVerifyEvidenceAttestationKey {
-			return fmt.Errorf("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must not use default development key in strict/CI validation")
-		}
-		if len(key) < 32 {
-			return fmt.Errorf("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY must be at least 32 characters in strict/CI validation")
-		}
-	}
-	if key == "" {
-		key = DefaultVerifyEvidenceAttestationKey
-	}
-	mac := hmac.New(sha256.New, []byte(key))
-	mac.Write(attestationData)
-	wantSig := hex.EncodeToString(mac.Sum(nil))
-	if !strings.EqualFold(attestationSig, wantSig) {
-		return fmt.Errorf("attestation signature mismatch")
-	}
-
 	var a map[string]any
 	if err := json.Unmarshal(attestationData, &a); err != nil {
 		return fmt.Errorf("invalid attestation JSON: %w", err)
@@ -150,6 +128,26 @@ func ValidateSummaryArtifact(summaryPath, mode string) error {
 	}
 	if err := requireNonEmptyString(a, "summary_sha256"); err != nil {
 		return err
+	}
+	if err := requireNonEmptyString(a, "key_id"); err != nil {
+		return err
+	}
+	attKeyID, _ := a["key_id"].(string)
+
+	attestationSig := strings.TrimSpace(string(attestationSigData))
+	enforceKey := os.Getenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
+	key, err := resolveAttestationKey(attKeyID)
+	if err != nil {
+		return err
+	}
+	if enforceKey && (key == DefaultVerifyEvidenceAttestationKey || len(key) < 32) {
+		return fmt.Errorf("attestation key policy violation in strict/CI validation")
+	}
+	mac := hmac.New(sha256.New, []byte(key))
+	mac.Write(attestationData)
+	wantSig := hex.EncodeToString(mac.Sum(nil))
+	if !strings.EqualFold(attestationSig, wantSig) {
+		return fmt.Errorf("attestation signature mismatch")
 	}
 	attRunDir, _ := a["run_dir"].(string)
 	if filepath.Clean(attRunDir) != filepath.Clean(runDir) {
@@ -197,4 +195,55 @@ func ValidateSummaryArtifact(summaryPath, mode string) error {
 	}
 
 	return nil
+}
+
+func resolveAttestationKey(keyID string) (string, error) {
+	// Preferred source: comma-separated key ring "key_id:key,key_id2:key2".
+	// This supports active+previous keys during rotation windows.
+	keyRingRaw := strings.TrimSpace(os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS"))
+	if keyRingRaw != "" {
+		keyRing := map[string]string{}
+		for _, part := range strings.Split(keyRingRaw, ",") {
+			p := strings.TrimSpace(part)
+			if p == "" {
+				continue
+			}
+			idx := strings.IndexByte(p, ':')
+			if idx <= 0 || idx >= len(p)-1 {
+				return "", fmt.Errorf("invalid RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS entry: %q", p)
+			}
+			id := strings.TrimSpace(p[:idx])
+			val := strings.TrimSpace(p[idx+1:])
+			if id == "" || val == "" {
+				return "", fmt.Errorf("invalid RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS entry: %q", p)
+			}
+			keyRing[id] = val
+		}
+		if key, ok := keyRing[keyID]; ok {
+			return key, nil
+		}
+		ids := make([]string, 0, len(keyRing))
+		for id := range keyRing {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		return "", fmt.Errorf("no attestation key for key_id=%q in RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS (available: %s)", keyID, strings.Join(ids, ","))
+	}
+
+	// Backwards-compatible single-key mode.
+	key := os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY")
+	if key == "" {
+		if keyID != DefaultVerifyEvidenceAttestationKeyID {
+			return "", fmt.Errorf("no attestation key available for key_id=%q", keyID)
+		}
+		return DefaultVerifyEvidenceAttestationKey, nil
+	}
+	singleID := os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID")
+	if singleID == "" {
+		singleID = DefaultVerifyEvidenceAttestationKeyID
+	}
+	if singleID != keyID {
+		return "", fmt.Errorf("attestation key_id mismatch: attestation=%q configured=%q", keyID, singleID)
+	}
+	return key, nil
 }

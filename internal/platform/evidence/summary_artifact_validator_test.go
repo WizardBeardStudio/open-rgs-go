@@ -135,6 +135,7 @@ func writeValidSummaryArtifact(t *testing.T) (string, map[string]any) {
 		"attestation_schema_version": 1,
 		"generated_at":               "2026-02-15T00:00:00Z",
 		"run_dir":                    runDir,
+		"key_id":                     DefaultVerifyEvidenceAttestationKeyID,
 		"git_commit":                 "abc",
 		"git_branch":                 "main",
 		"summary_sha256":             summarySHA,
