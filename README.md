@@ -150,6 +150,24 @@ CI should continue using the default strict mode (`RGS_PROTO_CHECK_MODE=full`).
 The repository CI workflow pins this mode explicitly for the proto job.
 If `GITHUB_ACTIONS=true`, `scripts/check_proto_clean.sh` rejects any mode other than `full`.
 
+### GitHub Actions Setup (for new clones/forks)
+
+1. Push your clone/fork to GitHub and keep `.github/workflows/ci.yml` enabled.
+2. In GitHub repo settings, allow workflow read access to repository contents (default for this workflow).
+3. Add repository or organization secrets used by the `verify_evidence` job:
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY`
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS`
+4. Keep `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=ci-active` in workflow env, or set a different key id consistently with your public-key ring entry.
+5. Open a PR and confirm these jobs pass:
+- `test`
+- `proto`
+- `verify_evidence`
+
+Notes:
+- Do not commit attestation keys into the repo.
+- The current workflow writes secret values to runner temp files and passes file paths to strict evidence verification.
+- For rotation patterns and key-ring examples, see `docs/deployment/KEY_MANAGEMENT.md`.
+
 Lint (if installed):
 
 ```bash
