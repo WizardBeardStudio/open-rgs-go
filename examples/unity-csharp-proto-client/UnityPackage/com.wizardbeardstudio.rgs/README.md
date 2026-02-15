@@ -19,9 +19,13 @@ Includes:
    - login
    - refresh token
    - logout
-  - Package release assets:
+ - Package release assets:
     - `CHANGELOG.md`
     - `LICENSE.md`
     - `Documentation~/PACKAGE_RELEASE_CHECKLIST.md`
+ - Importable sample scenes:
+   - `Samples~/AuthAndBalance/AuthAndBalanceSampleScene.unity`
+   - `Samples~/QuickStartSlot/QuickStartSlotSampleScene.unity`
+   - editor wiring utility: `Tools > WizardBeard > RGS > ...`
 
 Next implementation rounds should wire service classes to generated protobuf clients and publish importable sample scenes.

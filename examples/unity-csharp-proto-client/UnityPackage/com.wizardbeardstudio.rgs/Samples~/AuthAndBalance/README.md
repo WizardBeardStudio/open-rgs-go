@@ -7,9 +7,12 @@ This sample demonstrates:
 
 Script:
 - `AuthAndBalanceSample.cs`
+Scene asset:
+- `AuthAndBalanceSampleScene.unity`
 
 Usage:
-1. Add `RgsClientBootstrap` to one GameObject and configure endpoint/actor defaults.
-2. Add `AuthAndBalanceSample` to another GameObject.
-3. Assign the bootstrap reference and player/account fields in Inspector.
-4. Enter Play mode.
+1. Import package samples into your project.
+2. Open `AuthAndBalanceSampleScene.unity`.
+3. Run menu action: `Tools > WizardBeard > RGS > Wire AuthAndBalance Sample Scene`.
+4. Configure endpoint and credentials in Inspector.
+5. Enter Play mode.

@@ -7,9 +7,12 @@ This sample demonstrates:
 
 Script:
 - `QuickStartSlotSample.cs`
+Scene asset:
+- `QuickStartSlotSampleScene.unity`
 
 Usage:
-1. Add `RgsClientBootstrap` to one GameObject and configure endpoint/player defaults.
-2. Add `QuickStartSlotSample` to another GameObject.
-3. Assign bootstrap reference and set `gameId`, `wagerMinor`, and `payoutMinor`.
-4. Enter Play mode.
+1. Import package samples into your project.
+2. Open `QuickStartSlotSampleScene.unity`.
+3. Run menu action: `Tools > WizardBeard > RGS > Wire QuickStartSlot Sample Scene`.
+4. Configure endpoint/player defaults and flow values.
+5. Enter Play mode.
