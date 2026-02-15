@@ -36,7 +36,7 @@ namespace WizardBeardStudio.Rgs.Tests.Editor
         {
             var transport = new FakeTransport();
             var tokenStore = new InMemoryTokenStore();
-            tokenStore.Save("access-token", "refresh-token");
+            tokenStore.Save("access-token", "refresh-token", "player-1");
 
             var identity = new IdentityClient(transport, "dev-1", "ua", string.Empty);
             var auth = new RgsAuthService(identity, tokenStore);

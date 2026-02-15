@@ -55,7 +55,7 @@ namespace WizardBeardStudio.Rgs.Tests.Runtime
             var login = await auth.LoginPlayerAsync("player-1", "1234", CancellationToken.None);
             if (login.Success)
             {
-                tokenStore.Save(login.AccessToken ?? string.Empty, login.RefreshToken ?? string.Empty);
+                tokenStore.Save(login.AccessToken ?? string.Empty, login.RefreshToken ?? string.Empty, login.ActorId ?? "player-1");
             }
             var balance = await ledger.GetBalanceAsync("acct-player-1", CancellationToken.None);
 

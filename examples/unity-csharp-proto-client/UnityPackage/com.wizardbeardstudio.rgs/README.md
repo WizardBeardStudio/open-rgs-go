@@ -15,6 +15,10 @@ Includes:
   - `WageringClient.PlaceWagerAsync` / `SettleWagerAsync`
 - Parallel REST gateway wiring for the same methods when `RgsTransportMode.RestGateway` is selected.
   - WebGL runtime builds use `UnityWebRequest` for REST mode.
+ - Token lifecycle support:
+   - login
+   - refresh token
+   - logout
   - Package release assets:
     - `CHANGELOG.md`
     - `LICENSE.md`

@@ -4,7 +4,8 @@ namespace WizardBeardStudio.Rgs.Auth
     {
         string? AccessToken { get; }
         string? RefreshToken { get; }
-        void Save(string accessToken, string refreshToken);
+        string? ActorId { get; }
+        void Save(string accessToken, string refreshToken, string actorId);
         void Clear();
     }
 }

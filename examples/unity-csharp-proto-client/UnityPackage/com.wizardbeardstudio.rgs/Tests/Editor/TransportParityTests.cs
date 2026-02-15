@@ -144,6 +144,40 @@ namespace WizardBeardStudio.Rgs.Tests.Editor
                     }
                 });
             }
+
+            public Task<RefreshTokenResponse> RefreshTokenAsync(RefreshTokenRequest request, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(new RefreshTokenResponse
+                {
+                    Meta = new ResponseMeta
+                    {
+                        RequestId = "req-refresh",
+                        ResultCode = (ResultCode)ProtoResultCode.Ok,
+                        DenialReason = string.Empty,
+                        ServerTime = "2026-02-15T00:00:00Z",
+                    },
+                    Token = new SessionToken
+                    {
+                        AccessToken = "access-2",
+                        RefreshToken = "refresh-2",
+                        Actor = new Actor { ActorId = "player-1", ActorType = (ActorType)1 }
+                    }
+                });
+            }
+
+            public Task<LogoutResponse> LogoutAsync(LogoutRequest request, CancellationToken cancellationToken)
+            {
+                return Task.FromResult(new LogoutResponse
+                {
+                    Meta = new ResponseMeta
+                    {
+                        RequestId = "req-logout",
+                        ResultCode = (ResultCode)ProtoResultCode.Ok,
+                        DenialReason = string.Empty,
+                        ServerTime = "2026-02-15T00:00:00Z",
+                    }
+                });
+            }
         }
 
         private sealed class FakeLedgerRpcClient : ILedgerRpcClient

@@ -22,8 +22,59 @@ namespace WizardBeardStudio.Rgs.Auth
             var result = await _identityClient.LoginPlayerAsync(playerId, pin, cancellationToken);
             if (result.Success)
             {
-                _tokenStore.Save(result.AccessToken ?? string.Empty, result.RefreshToken ?? string.Empty);
+                _tokenStore.Save(result.AccessToken ?? string.Empty, result.RefreshToken ?? string.Empty, result.ActorId ?? playerId);
             }
+            return result;
+        }
+
+        public async Task<LoginResult> RefreshTokenAsync(CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(_tokenStore.RefreshToken))
+            {
+                return new LoginResult
+                {
+                    Success = false,
+                    ResultCode = "NO_REFRESH_TOKEN",
+                    DenialReason = "refresh token is not available",
+                };
+            }
+
+            var actorId = _tokenStore.ActorId ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(actorId))
+            {
+                return new LoginResult
+                {
+                    Success = false,
+                    ResultCode = "NO_ACTOR_ID",
+                    DenialReason = "actor id is not available for refresh request",
+                };
+            }
+
+            var result = await _identityClient.RefreshPlayerTokenAsync(actorId, _tokenStore.RefreshToken, cancellationToken);
+            if (result.Success)
+            {
+                _tokenStore.Save(result.AccessToken ?? string.Empty, result.RefreshToken ?? string.Empty, result.ActorId ?? actorId);
+            }
+            return result;
+        }
+
+        public async Task<OperationResult> LogoutAsync(CancellationToken cancellationToken)
+        {
+            var refreshToken = _tokenStore.RefreshToken ?? string.Empty;
+            var actorId = _tokenStore.ActorId ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(refreshToken) || string.IsNullOrWhiteSpace(actorId))
+            {
+                _tokenStore.Clear();
+                return new OperationResult
+                {
+                    Success = true,
+                    ResultCode = "NOOP",
+                    DenialReason = string.Empty,
+                };
+            }
+
+            var result = await _identityClient.LogoutAsync(actorId, refreshToken, cancellationToken);
+            _tokenStore.Clear();
             return result;
         }
 

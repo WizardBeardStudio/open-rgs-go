@@ -32,6 +32,12 @@ namespace WizardBeardStudio.Rgs.Core
         public Task<LoginResult> LoginAsync(string playerId, string pin, CancellationToken cancellationToken)
             => _auth.LoginPlayerAsync(playerId, pin, cancellationToken);
 
+        public Task<LoginResult> RefreshTokenAsync(CancellationToken cancellationToken)
+            => _auth.RefreshTokenAsync(cancellationToken);
+
+        public Task<OperationResult> LogoutAsync(CancellationToken cancellationToken)
+            => _auth.LogoutAsync(cancellationToken);
+
         public Task<BalanceResult> GetBalanceAsync(string accountId, CancellationToken cancellationToken)
             => _ledger.GetBalanceAsync(accountId, cancellationToken);
 

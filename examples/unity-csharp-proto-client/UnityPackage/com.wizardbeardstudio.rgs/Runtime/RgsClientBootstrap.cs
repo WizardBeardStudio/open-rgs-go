@@ -122,6 +122,15 @@ namespace WizardBeardStudio.Rgs
             OnDisconnected?.Invoke();
         }
 
+        public async void LogoutAndDisconnect()
+        {
+            if (AuthService != null)
+            {
+                await AuthService.LogoutAsync(CancellationToken.None);
+            }
+            OnDisconnected?.Invoke();
+        }
+
         private static GrpcChannel CreateChannel(RgsClientConfig cfg)
         {
             var handler = new GrpcWebHandler(GrpcWebMode.GrpcWebText, new HttpClientHandler());
