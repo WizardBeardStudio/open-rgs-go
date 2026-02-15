@@ -29,9 +29,6 @@ jobs:
   verify_evidence:
     runs-on: ubuntu-latest
     needs: [test, proto]
-    env:
-      RGS_VERIFY_EVIDENCE_PROTO_MODE: full
-      RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -39,7 +36,7 @@ jobs:
           go-version-file: go.mod
       - uses: bufbuild/buf-setup-action@v1
       - name: generate verification evidence logs
-        run: make verify-evidence
+        run: make verify-evidence-strict
       - name: upload verification evidence artifacts
         uses: actions/upload-artifact@v4
         with:
