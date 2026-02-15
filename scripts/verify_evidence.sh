@@ -153,7 +153,7 @@ fi
 
 cat >"${summary_file}" <<EOF
 {
-  "summary_schema_version": "${summary_schema_version}",
+  "summary_schema_version": ${summary_schema_version},
   "timestamp_utc": "${ts}",
   "git_commit": "${git_commit}",
   "git_branch": "${git_branch}",
