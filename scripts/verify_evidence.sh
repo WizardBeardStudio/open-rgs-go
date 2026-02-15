@@ -231,6 +231,33 @@ fi
   done
 } >"${index_file}"
 
+required_artifacts_present=true
+if [[ ! -f "${proto_log}" || ! -f "${verify_log}" || ! -f "${summary_file}" || ! -f "${index_file}" ]]; then
+  required_artifacts_present=false
+fi
+
+optional_changed_files_present=false
+if [[ -f "${changed_files_file}" ]]; then
+  optional_changed_files_present=true
+fi
+
+artifact_file_count="$(find "${run_dir}" -maxdepth 1 -type f | wc -l | tr -d ' ')"
+artifact_total_bytes="$(find "${run_dir}" -maxdepth 1 -type f -print0 | xargs -0 wc -c | tail -n1 | awk '{print $1}')"
+if [[ -z "${artifact_total_bytes}" ]]; then
+  artifact_total_bytes="0"
+fi
+
+tmp_summary="${summary_file}.tmp"
+{
+  sed '$d' "${summary_file}"
+  echo "  \"required_artifacts_present\": ${required_artifacts_present},"
+  echo "  \"optional_changed_files_present\": ${optional_changed_files_present},"
+  echo "  \"artifact_file_count\": ${artifact_file_count},"
+  echo "  \"artifact_total_bytes\": ${artifact_total_bytes}"
+  echo "}"
+} >"${tmp_summary}"
+mv "${tmp_summary}" "${summary_file}"
+
 {
   if [[ -f "go.mod" ]]; then
     checksum_file "go.mod" || { echo "no sha256 tool available" >&2; exit 1; }
