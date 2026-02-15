@@ -1,0 +1,69 @@
+name: unity-ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      has_license: ${{ steps.license.outputs.has_license }}
+    steps:
+      - name: Check Unity license secrets
+        id: license
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${UNITY_LICENSE}" && -n "${UNITY_EMAIL}" && -n "${UNITY_PASSWORD}" ]]; then
+            echo "has_license=true" >>"${GITHUB_OUTPUT}"
+            echo "Unity CI preflight: license secrets present."
+          else
+            echo "has_license=false" >>"${GITHUB_OUTPUT}"
+            echo "Unity CI preflight: missing UNITY_LICENSE/UNITY_EMAIL/UNITY_PASSWORD; Unity test jobs will be skipped."
+          fi
+
+  unity-tests:
+    runs-on: ubuntu-latest
+    needs: preflight
+    if: needs.preflight.outputs.has_license == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        unityVersion: ["6000.3.0f1"]
+        testMode: ["editmode"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Unity tests
+        uses: game-ci/unity-test-runner@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          projectPath: examples/unity-csharp-proto-client/UnityTestProject
+          unityVersion: ${{ matrix.unityVersion }}
+          testMode: ${{ matrix.testMode }}
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Unity test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-test-results-${{ matrix.unityVersion }}-${{ matrix.testMode }}
+          path: artifacts
+          if-no-files-found: warn
+
+  unity-tests-skipped:
+    runs-on: ubuntu-latest
+    needs: preflight
+    if: needs.preflight.outputs.has_license != 'true'
+    steps:
+      - name: Report skip reason
+        run: |
+          echo "Skipping Unity CI because UNITY_LICENSE/UNITY_EMAIL/UNITY_PASSWORD are not configured."
+          echo "Configure these repository secrets to enable Unity Personal CI activation."

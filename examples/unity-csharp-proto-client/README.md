@@ -42,3 +42,11 @@ UPM package scaffold:
     - `CHANGELOG.md`
     - `LICENSE.md`
     - `Documentation~/PACKAGE_RELEASE_CHECKLIST.md`
+
+Unity CI harness project:
+- `examples/unity-csharp-proto-client/UnityTestProject/`
+- Workflow: `.github/workflows/unity-ci.yml`
+- Required GitHub secrets for Unity Personal activation:
+  - `UNITY_LICENSE`
+  - `UNITY_EMAIL`
+  - `UNITY_PASSWORD`
