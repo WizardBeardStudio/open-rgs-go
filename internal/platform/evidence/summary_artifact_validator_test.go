@@ -1,8 +1,10 @@
 package evidence
 
 import (
+	"crypto/ed25519"
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"os"
@@ -110,6 +112,30 @@ func TestValidateSummaryArtifactStrict(t *testing.T) {
 		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS", "")
 		if err := ValidateSummaryArtifact(path, "strict"); err == nil {
 			t.Fatalf("expected strict mode to reject non-ed25519 attestation")
+		}
+	})
+
+	t.Run("strict validation passes with ed25519 attestation", func(t *testing.T) {
+		path, pubKeyB64 := writeValidSummaryArtifactEd25519(t, "ci-active")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY", "true")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID", "ci-active")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS", "ci-active:"+pubKeyB64)
+		if err := ValidateSummaryArtifact(path, "strict"); err != nil {
+			t.Fatalf("expected strict ed25519 validation to pass: %v", err)
+		}
+	})
+
+	t.Run("strict validation fails with wrong ed25519 public key", func(t *testing.T) {
+		path, _ := writeValidSummaryArtifactEd25519(t, "ci-active")
+		wrongPub, _, err := ed25519.GenerateKey(nil)
+		if err != nil {
+			t.Fatalf("generate wrong ed25519 key: %v", err)
+		}
+		t.Setenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY", "true")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID", "ci-active")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS", "ci-active:"+base64.StdEncoding.EncodeToString(wrongPub))
+		if err := ValidateSummaryArtifact(path, "strict"); err == nil {
+			t.Fatalf("expected strict ed25519 validation to fail with wrong public key")
 		}
 	})
 
@@ -221,6 +247,111 @@ func writeValidSummaryArtifactWithKey(t *testing.T, keyID, signingKey string) (s
 	}
 
 	return summaryPath, summary
+}
+
+func writeValidSummaryArtifactEd25519(t *testing.T, keyID string) (string, string) {
+	t.Helper()
+
+	runDir := filepath.Join(t.TempDir(), "artifacts", "verify", "20260215T000000Z")
+	if err := os.MkdirAll(runDir, 0o755); err != nil {
+		t.Fatalf("mkdir run dir: %v", err)
+	}
+
+	logContent := []byte("verify summary validation passed\n")
+	logPath := filepath.Join(runDir, "summary_validation.log")
+	if err := os.WriteFile(logPath, logContent, 0o644); err != nil {
+		t.Fatalf("write summary_validation.log: %v", err)
+	}
+	logSum := sha256.Sum256(logContent)
+	logSHA := hex.EncodeToString(logSum[:])
+
+	summary := map[string]any{
+		"summary_schema_version":           2,
+		"timestamp_utc":                    "2026-02-15T00:00:00Z",
+		"run_dir":                          runDir,
+		"proto_mode":                       "full",
+		"require_clean_worktree":           true,
+		"required_artifacts_present":       true,
+		"optional_changed_files_present":   false,
+		"required_artifact_count_expected": 7,
+		"required_artifact_count_present":  7,
+		"required_artifact_count_missing":  0,
+		"artifact_file_count":              7,
+		"artifact_total_bytes":             1000,
+		"summary_validation_status":        0,
+		"summary_validation_log":           "summary_validation.log",
+		"summary_validation_log_sha256":    logSHA,
+		"attestation_status":               "signed",
+		"attestation_alg":                  "ed25519",
+		"attestation_file":                 "attestation.json",
+		"attestation_signature_file":       "attestation.sig",
+		"proto_check_status":               0,
+		"make_verify_status":               0,
+		"overall_status":                   "pass",
+		"failed_step":                      nil,
+		"changed_files_artifact":           nil,
+	}
+	summaryPath := filepath.Join(runDir, "summary.json")
+	writeSummary(t, summaryPath, summary)
+
+	summaryData, err := os.ReadFile(summaryPath)
+	if err != nil {
+		t.Fatalf("read summary: %v", err)
+	}
+	summarySum := sha256.Sum256(summaryData)
+	summarySHA := hex.EncodeToString(summarySum[:])
+
+	pub, priv, err := ed25519.GenerateKey(nil)
+	if err != nil {
+		t.Fatalf("generate ed25519 key: %v", err)
+	}
+
+	attestation := map[string]any{
+		"attestation_schema_version": 1,
+		"generated_at":               "2026-02-15T00:00:00Z",
+		"run_dir":                    runDir,
+		"alg":                        "ed25519",
+		"key_id":                     keyID,
+		"git_commit":                 "abc",
+		"git_branch":                 "main",
+		"summary_sha256":             summarySHA,
+		"go_version":                 "go version go1.24.0 linux/amd64",
+		"buf_version":                "1.64.0",
+	}
+	attestationPath := filepath.Join(runDir, "attestation.json")
+	writeSummary(t, attestationPath, attestation)
+	attestationData, err := os.ReadFile(attestationPath)
+	if err != nil {
+		t.Fatalf("read attestation: %v", err)
+	}
+
+	sig := ed25519.Sign(priv, attestationData)
+	if err := os.WriteFile(filepath.Join(runDir, "attestation.sig"), []byte(hex.EncodeToString(sig)+"\n"), 0o644); err != nil {
+		t.Fatalf("write attestation.sig: %v", err)
+	}
+
+	indexContent := "verify evidence artifact index\nsummary_validation.log\t33\nattestation.json\t1\nattestation.sig\t1\n"
+	if err := os.WriteFile(filepath.Join(runDir, "index.txt"), []byte(indexContent), 0o644); err != nil {
+		t.Fatalf("write index.txt: %v", err)
+	}
+
+	attestationSum := sha256.Sum256(attestationData)
+	attestationSHA := hex.EncodeToString(attestationSum[:])
+	sigData, err := os.ReadFile(filepath.Join(runDir, "attestation.sig"))
+	if err != nil {
+		t.Fatalf("read attestation.sig: %v", err)
+	}
+	sigSum := sha256.Sum256(sigData)
+	sigSHA := hex.EncodeToString(sigSum[:])
+	manifestContent := ""
+	manifestContent += logSHA + "  " + filepath.Join(runDir, "summary_validation.log") + "\n"
+	manifestContent += attestationSHA + "  " + filepath.Join(runDir, "attestation.json") + "\n"
+	manifestContent += sigSHA + "  " + filepath.Join(runDir, "attestation.sig") + "\n"
+	if err := os.WriteFile(filepath.Join(runDir, "manifest.sha256"), []byte(manifestContent), 0o644); err != nil {
+		t.Fatalf("write manifest.sha256: %v", err)
+	}
+
+	return summaryPath, base64.StdEncoding.EncodeToString(pub)
 }
 
 func writeSummary(t *testing.T, path string, payload map[string]any) {
