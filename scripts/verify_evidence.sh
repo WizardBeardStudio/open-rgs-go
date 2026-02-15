@@ -2,6 +2,7 @@
 set -euo pipefail
 
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
+summary_schema_version="1"
 base_dir="${RGS_VERIFY_EVIDENCE_DIR:-artifacts/verify}"
 run_dir="${base_dir}/${ts}"
 proto_mode="${RGS_VERIFY_EVIDENCE_PROTO_MODE:-full}"
@@ -129,6 +130,7 @@ fi
 
 cat >"${summary_file}" <<EOF
 {
+  "summary_schema_version": "${summary_schema_version}",
   "timestamp_utc": "${ts}",
   "git_commit": "${git_commit}",
   "git_branch": "${git_branch}",
