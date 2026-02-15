@@ -74,3 +74,49 @@ Artifacts are written under `${RGS_KEYSET_WORKDIR:-/tmp/open-rgs-go-keyset}/<eve
 - On reload failures, server keeps last-known-good keyset and logs refresh errors.
 - Keep keyset file permissions restricted to runtime user (`0600`).
 - `scripts/keyset_rotation_evidence.sh` requires `jq` for summary extraction and validation.
+
+## Verification Evidence Attestation Keys
+
+`make verify-evidence-strict` signs `attestation.json` and validates signatures during `verify-summary`.
+
+Required runtime variables for strict/CI evidence:
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID` (for example `ci-active`)
+- One of:
+  - `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY` for single-key mode
+  - `RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS` for rotation windows in key-ring mode, format:
+    - `active:<key_material>,previous:<key_material>`
+- `RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY=true` (enabled by `make verify-evidence-strict`)
+
+Minimum policy in strict/CI mode:
+- key material must not use development default
+- key material length must be at least 32 characters
+
+### Secret Source Patterns
+
+1. GitHub Actions secrets:
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY` stored in repository/org secrets
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID` set in workflow (`ci-active`)
+
+2. Vault injection:
+- sidecar/agent renders env vars at runtime
+- runner exports `RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS` with active+previous entries
+
+3. KMS-wrapped secret material:
+- decrypt key material at runtime in CI bootstrap
+- export only process-scoped env vars for the job duration
+
+Do not commit attestation keys into repository files or workflow YAML literals.
+
+### Rotation Runbook (Attestation Keys)
+
+1. Generate new key material in secret manager (Vault/KMS/CI secrets backend).
+2. Assign a new key id (for example `ci-2026-02`).
+3. During overlap window, publish key ring:
+   - `RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS="ci-2026-02:<new>,ci-2026-01:<old>"`
+4. Set signing key id:
+   - `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=ci-2026-02`
+5. Run strict verification:
+   - `make verify-evidence-strict`
+   - `make verify-summary`
+6. After retention window for old evidence verification, remove old key id from key ring.
+7. Record rotation event id and evidence artifact path in operations log.

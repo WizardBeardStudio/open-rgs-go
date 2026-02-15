@@ -103,6 +103,28 @@ For CI-equivalent local execution, run:
 ```bash
 make verify-evidence-strict
 ```
+
+Strict/CI evidence runs require attestation signing key configuration:
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID` (for example `ci-active`)
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY` (single key) or `RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS` (rotation key ring `active:<key>,previous:<key>`)
+- `RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY=true` (set automatically by `make verify-evidence-strict`)
+
+Example local strict run with a single key:
+
+```bash
+RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=local-active \
+RGS_VERIFY_EVIDENCE_ATTESTATION_KEY=0123456789abcdef0123456789abcdef \
+make verify-evidence-strict
+```
+
+Example local strict run during key rotation:
+
+```bash
+RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=active \
+RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS='active:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,previous:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' \
+make verify-evidence-strict
+```
+
 If Buf remote dependencies are unavailable in a local environment, use:
 
 ```bash
