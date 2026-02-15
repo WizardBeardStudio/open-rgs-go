@@ -132,6 +132,14 @@ func resolveHMACKey(keyID string) (string, error) {
 }
 
 func resolveEd25519PrivateKey(keyID string) (ed25519.PrivateKey, error) {
+	enforce := os.Getenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
+	allowInline := os.Getenv("RGS_VERIFY_EVIDENCE_ALLOW_INLINE_PRIVATE_KEY") == "true"
+	if enforce && !allowInline {
+		if strings.TrimSpace(os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY")) != "" || strings.TrimSpace(os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS")) != "" {
+			return nil, fmt.Errorf("inline ed25519 private-key env vars are disabled in strict/CI mode")
+		}
+	}
+
 	keyRingRaw, err := resolveValueSource(
 		"RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS",
 		"RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_FILE",

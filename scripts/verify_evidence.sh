@@ -10,6 +10,7 @@ run_dir="${base_dir}/${ts}"
 proto_mode="${RGS_VERIFY_EVIDENCE_PROTO_MODE:-full}"
 require_clean="${RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN:-false}"
 enforce_attestation_key="${RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY:-false}"
+allow_inline_private_key="${RGS_VERIFY_EVIDENCE_ALLOW_INLINE_PRIVATE_KEY:-false}"
 attestation_alg="${RGS_VERIFY_EVIDENCE_ATTESTATION_ALG:-hmac-sha256}"
 attestation_key_id="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID:-${default_attestation_key_id}}"
 attestation_key_ring="${RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS:-}"
@@ -52,6 +53,10 @@ fi
 
 if [[ "${enforce_attestation_key}" != "true" && "${enforce_attestation_key}" != "false" ]]; then
   echo "RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY must be 'true' or 'false', got '${enforce_attestation_key}'" >&2
+  exit 1
+fi
+if [[ "${allow_inline_private_key}" != "true" && "${allow_inline_private_key}" != "false" ]]; then
+  echo "RGS_VERIFY_EVIDENCE_ALLOW_INLINE_PRIVATE_KEY must be 'true' or 'false', got '${allow_inline_private_key}'" >&2
   exit 1
 fi
 if [[ "${attestation_alg}" != "hmac-sha256" && "${attestation_alg}" != "ed25519" ]]; then
@@ -126,6 +131,10 @@ if [[ "${GITHUB_ACTIONS:-}" == "true" || "${require_clean}" == "true" || "${enfo
       exit 1
     fi
   else
+    if [[ "${allow_inline_private_key}" != "true" && ( -n "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY:-}" || -n "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS:-}" ) ]]; then
+      echo "strict/CI ed25519 runs reject inline private-key env vars; use *_FILE/*_COMMAND sources or set RGS_VERIFY_EVIDENCE_ALLOW_INLINE_PRIVATE_KEY=true for local exceptions" >&2
+      exit 1
+    fi
     if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_FILE:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY_COMMAND:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_FILE:-}" && -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS_COMMAND:-}" ]]; then
       echo "ed25519 private key source must be set for strict/CI evidence runs" >&2
       exit 1
@@ -530,6 +539,7 @@ RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_COMMAND="${RGS_VERIFY_EVIDENC
 RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS="${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS:-}" \
 RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_FILE="${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_FILE:-}" \
 RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_COMMAND="${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_COMMAND:-}" \
+RGS_VERIFY_EVIDENCE_ALLOW_INLINE_PRIVATE_KEY="${allow_inline_private_key}" \
 RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY="${enforce_attestation_key}" \
 ./scripts/validate_verify_summary.sh "${summary_file}" >/dev/null
 
