@@ -10,7 +10,7 @@ Release gate companion:
 - `make verify-evidence-strict` results attached for release commit, including:
   - `artifacts/verify/<UTC_TIMESTAMP>/proto_check.log`
   - `artifacts/verify/<UTC_TIMESTAMP>/make_verify.log`
-  - `artifacts/verify/<UTC_TIMESTAMP>/summary.json` (includes `summary_schema_version`, git commit/ref, pre/post worktree cleanliness metadata, CI run metadata, toolchain/runtime context, dependency + verification/build-policy script checksums, command timing metadata, and explicit failure-step attribution)
+  - `artifacts/verify/<UTC_TIMESTAMP>/summary.json` (includes `summary_schema_version`, verification mode/policy fields, git commit/ref, pre/post worktree cleanliness metadata, CI run metadata, toolchain/runtime context, dependency + verification/build-policy script checksums, command timing metadata, and explicit failure-step attribution)
   - `artifacts/verify/<UTC_TIMESTAMP>/index.txt` (artifact inventory with per-file byte sizes)
   - `artifacts/verify/<UTC_TIMESTAMP>/changed_files.txt` (present when `summary.json` indicates a non-clean worktree)
   - `artifacts/verify/<UTC_TIMESTAMP>/manifest.sha256`
