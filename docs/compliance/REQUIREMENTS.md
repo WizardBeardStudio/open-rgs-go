@@ -318,6 +318,12 @@ This document maps implemented requirements to standards references, code locati
 - Standard refs: GLI-13 significant event/alteration retention and regulator retrieval expectations
 - Code: `api/proto/rgs/v1/audit.proto`, `internal/platform/server/audit_postgres.go`, `internal/platform/server/audit_grpc.go`, `internal/platform/server/ledger_grpc.go`, `internal/platform/server/wagering_grpc.go`, `internal/platform/server/identity_grpc.go`, `internal/platform/server/registry_grpc.go`, `internal/platform/server/events_grpc.go`, `internal/platform/server/reporting_grpc.go`, `internal/platform/server/config_grpc.go`, `internal/platform/server/extensions_grpc.go`, `internal/platform/server/sessions_grpc.go`, `internal/platform/server/remote_access.go`, `cmd/rgsd/main.go`
 - Tests: `internal/platform/server/audit_grpc_test.go`, `internal/platform/server/postgres_integration_test.go` (`TestPostgresAuditChainVerificationPassesForPersistedEvents`, `TestPostgresAuditChainVerificationDetectsTamper`, `TestPostgresAuditServiceVerifyAuditChain`)
+
+## RGS-0719 Verification Evidence Summary-Validator Log Integrity
+- Standard refs: GLI-13/GLI-21 evidence integrity and regulator-facing auditability expectations
+- Code: `scripts/verify_evidence.sh`, `scripts/validate_verify_summary.sh`, `cmd/verifysummary/main.go`, `internal/platform/evidence/summary_validator.go`, `internal/platform/evidence/summary_artifact_validator.go`, `.github/workflows/ci.yml`
+- Tests: `internal/platform/evidence/summary_validator_test.go`, `internal/platform/evidence/summary_artifact_validator_test.go`, `make verify-evidence`, `make verify-summary`
+- Status: implemented (`summary.json` records `summary_validation_log` + `summary_validation_log_sha256`; strict validation fails on missing log, checksum mismatch, stale `index.txt` entry, or missing `manifest.sha256` checksum line; CI enforces strict summary validation and explicit artifact presence checks)
 - Status: implemented (DB-enabled core services and remote-access outcomes persist audit appends to `audit_events` with hash chaining semantics, audit list endpoints enforce consistent pagination-token validation and strict non-negative/bounded page-size validation across in-memory and DB-backed paths, `AuditService/ListAuditEvents` reads DB-backed records when configured, and `AuditService/VerifyAuditChain` provides an explicit regulator/operator verification API with input validation that detects tamper/mismatch conditions)
 
 ## RGS-0719 Audit Chain Verification Evidence Automation
