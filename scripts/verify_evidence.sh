@@ -167,6 +167,7 @@ cat >"${summary_file}" <<EOF
 {
   "summary_schema_version": ${summary_schema_version},
   "timestamp_utc": "${ts}",
+  "run_dir": "${run_dir}",
   "git_commit": "${git_commit}",
   "git_branch": "${git_branch}",
   "git_worktree_clean_before": ${git_worktree_clean_before},
