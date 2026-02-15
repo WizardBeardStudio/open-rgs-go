@@ -32,3 +32,6 @@ At minimum include:
 
 For Unity transport guidance and request metadata requirements, see:
 - `docs/integration/UNITY_CSHARP_PROTO_CLIENT.md`
+
+Runtime Unity sample:
+- `examples/unity-csharp-proto-client/UnitySample/README.md`

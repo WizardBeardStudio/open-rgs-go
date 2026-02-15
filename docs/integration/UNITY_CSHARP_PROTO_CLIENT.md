@@ -4,6 +4,8 @@ This guide shows one practical way to build a Unity-compatible C# client for `op
 
 Runnable example project:
 - `examples/unity-csharp-proto-client/`
+- Unity runtime sample script:
+  - `examples/unity-csharp-proto-client/UnitySample/RgsClientBehaviour.cs`
 
 ## Scope
 
