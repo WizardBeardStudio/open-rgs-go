@@ -21,6 +21,11 @@ arch_name="$(uname -m)"
 go_version="$(go version | sed 's/"/\\"/g')"
 buf_version="$(buf --version 2>/dev/null | sed 's/"/\\"/g' || true)"
 
+if [[ "${GITHUB_ACTIONS:-}" == "true" && "${proto_mode}" != "full" ]]; then
+  echo "RGS_VERIFY_EVIDENCE_PROTO_MODE must be 'full' in CI (GITHUB_ACTIONS=true), got '${proto_mode}'" >&2
+  exit 1
+fi
+
 mkdir -p "${run_dir}"
 
 run_and_capture() {
