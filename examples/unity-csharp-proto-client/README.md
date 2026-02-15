@@ -35,3 +35,6 @@ For Unity transport guidance and request metadata requirements, see:
 
 Runtime Unity sample:
 - `examples/unity-csharp-proto-client/UnitySample/README.md`
+
+UPM package scaffold:
+- `examples/unity-csharp-proto-client/UnityPackage/com.wizardbeardstudio.rgs/`

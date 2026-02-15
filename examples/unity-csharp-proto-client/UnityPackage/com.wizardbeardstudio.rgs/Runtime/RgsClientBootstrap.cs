@@ -1,10 +1,13 @@
 using System;
+using System.Net.Http;
 using System.Threading;
+using Grpc.Net.Client;
+using Grpc.Net.Client.Web;
+using Rgs.V1;
 using UnityEngine;
 using WizardBeardStudio.Rgs.Auth;
 using WizardBeardStudio.Rgs.Core;
 using WizardBeardStudio.Rgs.Diagnostics;
-using WizardBeardStudio.Rgs.Models;
 using WizardBeardStudio.Rgs.Services;
 
 namespace WizardBeardStudio.Rgs
@@ -21,11 +24,19 @@ namespace WizardBeardStudio.Rgs
         public RgsClient? Client { get; private set; }
         public RgsAuthService? AuthService { get; private set; }
 
-        private IRgsLogger _logger = new UnityRgsLogger();
+        private readonly IRgsLogger _logger = new UnityRgsLogger();
+        private GrpcChannel? _channel;
+        private InMemoryTokenStore? _tokenStore;
 
         private void Awake()
         {
             Initialize();
+        }
+
+        private void OnDestroy()
+        {
+            _channel?.Dispose();
+            _channel = null;
         }
 
         public void Initialize()
@@ -37,11 +48,22 @@ namespace WizardBeardStudio.Rgs
                 return;
             }
 
-            var tokenStore = new InMemoryTokenStore();
-            var identity = new IdentityClient();
-            var auth = new RgsAuthService(identity, tokenStore);
+            _tokenStore = new InMemoryTokenStore();
+            _channel = CreateChannel(config);
+
+            var identityStub = new IdentityService.IdentityServiceClient(_channel);
+            var ledgerStub = new LedgerService.LedgerServiceClient(_channel);
+
+            var identity = new IdentityClient(identityStub, config.deviceId, config.userAgent, config.geo);
+            var auth = new RgsAuthService(identity, _tokenStore);
             var sessions = new SessionsClient();
-            var ledger = new LedgerClient();
+            var ledger = new LedgerClient(
+                ledgerStub,
+                () => _tokenStore.AccessToken,
+                config.playerId,
+                config.deviceId,
+                config.userAgent,
+                config.geo);
             var wagering = new WageringClient();
 
             AuthService = auth;
@@ -79,6 +101,20 @@ namespace WizardBeardStudio.Rgs
         {
             AuthService?.ClearSession();
             OnDisconnected?.Invoke();
+        }
+
+        private GrpcChannel CreateChannel(RgsClientConfig cfg)
+        {
+            if (cfg.transportMode == RgsTransportMode.RestGateway)
+            {
+                _logger.Warn("REST transport mode selected in config; bootstrap currently uses gRPC-Web generated clients for runtime sample paths.");
+            }
+
+            var handler = new GrpcWebHandler(GrpcWebMode.GrpcWebText, new HttpClientHandler());
+            return GrpcChannel.ForAddress(cfg.baseUrl, new GrpcChannelOptions
+            {
+                HttpHandler = handler
+            });
         }
     }
 }

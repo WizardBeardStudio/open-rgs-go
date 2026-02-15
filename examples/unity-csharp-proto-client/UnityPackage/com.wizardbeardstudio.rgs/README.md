@@ -8,5 +8,8 @@ Includes:
 - Transport abstractions
 - Editor inspector helper
 - Documentation and sample placeholders
+- Initial gRPC wiring for:
+  - `IdentityClient.LoginPlayerAsync`
+  - `LedgerClient.GetBalanceAsync`
 
 Next implementation rounds should wire service classes to generated protobuf clients and publish importable sample scenes.
