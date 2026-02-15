@@ -93,6 +93,12 @@ If Buf remote dependencies are unavailable in a local environment, use:
 RGS_PROTO_CHECK_MODE=diff-only make proto-check
 ```
 
+The same mode can be used for full local verification:
+
+```bash
+RGS_PROTO_CHECK_MODE=diff-only make verify
+```
+
 CI should continue using the default strict mode (`RGS_PROTO_CHECK_MODE=full`).
 The repository CI workflow pins this mode explicitly for the proto job.
 
@@ -286,7 +292,7 @@ Identity admin flow:
 - In DB-backed mode, legacy fallback credentials are not used.
 
 ### Post-Deploy Validation
-- `make verify` in CI is green.
+- CI `test` and `proto` jobs are green (`make test` and strict `make proto-check`).
 - Gateway parity tests are green.
 - Remote admin path denied from untrusted source and allowed from trusted source.
 
