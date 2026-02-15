@@ -56,12 +56,23 @@ verify_cmd="RGS_PROTO_CHECK_MODE=${proto_mode} make verify"
 
 proto_status=0
 verify_status=0
+proto_started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+proto_start_epoch="$(date -u +%s)"
 
 set +e
 run_and_capture "${proto_cmd}" "${proto_log}"
 proto_status=$?
+proto_end_epoch="$(date -u +%s)"
+proto_finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+proto_duration_seconds=$((proto_end_epoch - proto_start_epoch))
+
+verify_started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+verify_start_epoch="$(date -u +%s)"
 run_and_capture "${verify_cmd}" "${verify_log}"
 verify_status=$?
+verify_end_epoch="$(date -u +%s)"
+verify_finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+verify_duration_seconds=$((verify_end_epoch - verify_start_epoch))
 set -e
 
 cat >"${summary_file}" <<EOF
@@ -81,7 +92,13 @@ cat >"${summary_file}" <<EOF
   "go_version": "${go_version}",
   "buf_version": "${buf_version}",
   "proto_check_command": "${proto_cmd}",
+  "proto_check_started_at": "${proto_started_at}",
+  "proto_check_finished_at": "${proto_finished_at}",
+  "proto_check_duration_seconds": ${proto_duration_seconds},
   "make_verify_command": "${verify_cmd}",
+  "make_verify_started_at": "${verify_started_at}",
+  "make_verify_finished_at": "${verify_finished_at}",
+  "make_verify_duration_seconds": ${verify_duration_seconds},
   "proto_check_status": ${proto_status},
   "make_verify_status": ${verify_status},
   "overall_status": $([[ ${proto_status} -eq 0 && ${verify_status} -eq 0 ]] && echo "\"pass\"" || echo "\"fail\""),
