@@ -87,6 +87,28 @@ verify_finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 verify_duration_seconds=$((verify_end_epoch - verify_start_epoch))
 set -e
 
+checksum_file() {
+  local file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "${file}"
+    return 0
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "${file}"
+    return 0
+  fi
+  return 1
+}
+
+go_mod_sha256=""
+go_sum_sha256=""
+if [[ -f "go.mod" ]]; then
+  go_mod_sha256="$(checksum_file "go.mod" | awk '{print $1}')"
+fi
+if [[ -f "go.sum" ]]; then
+  go_sum_sha256="$(checksum_file "go.sum" | awk '{print $1}')"
+fi
+
 cat >"${summary_file}" <<EOF
 {
   "timestamp_utc": "${ts}",
@@ -104,6 +126,8 @@ cat >"${summary_file}" <<EOF
   "arch": "${arch_name}",
   "go_version": "${go_version}",
   "buf_version": "${buf_version}",
+  "go_mod_sha256": "${go_mod_sha256}",
+  "go_sum_sha256": "${go_sum_sha256}",
   "proto_check_command": "${proto_cmd}",
   "proto_check_started_at": "${proto_started_at}",
   "proto_check_finished_at": "${proto_finished_at}",
@@ -123,20 +147,13 @@ if [[ "${git_worktree_clean}" != "true" ]]; then
   git status --porcelain >"${changed_files_file}"
 fi
 
-checksum_file() {
-  local file="$1"
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "${file}"
-    return 0
-  fi
-  if command -v shasum >/dev/null 2>&1; then
-    shasum -a 256 "${file}"
-    return 0
-  fi
-  return 1
-}
-
 {
+  if [[ -f "go.mod" ]]; then
+    checksum_file "go.mod" || { echo "no sha256 tool available" >&2; exit 1; }
+  fi
+  if [[ -f "go.sum" ]]; then
+    checksum_file "go.sum" || { echo "no sha256 tool available" >&2; exit 1; }
+  fi
   checksum_file "${proto_log}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${verify_log}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${summary_file}" || { echo "no sha256 tool available" >&2; exit 1; }

@@ -10,7 +10,7 @@ Release gate companion:
 - `make verify-evidence` results attached for release commit, including:
   - `artifacts/verify/<UTC_TIMESTAMP>/proto_check.log`
   - `artifacts/verify/<UTC_TIMESTAMP>/make_verify.log`
-  - `artifacts/verify/<UTC_TIMESTAMP>/summary.json` (includes git commit/ref, worktree cleanliness metadata, CI run metadata, toolchain/runtime context, and command timing metadata)
+  - `artifacts/verify/<UTC_TIMESTAMP>/summary.json` (includes git commit/ref, worktree cleanliness metadata, CI run metadata, toolchain/runtime context, dependency-file checksums, and command timing metadata)
   - `artifacts/verify/<UTC_TIMESTAMP>/changed_files.txt` (present when `summary.json` indicates a non-clean worktree)
   - `artifacts/verify/<UTC_TIMESTAMP>/manifest.sha256`
   - `artifacts/verify/LATEST`
