@@ -49,6 +49,18 @@ if [[ "${require_clean}" == "true" && "${git_worktree_clean_before}" != "true" ]
   exit 1
 fi
 
+if [[ -e "${run_dir}" ]]; then
+  seq=1
+  while true; do
+    candidate="${base_dir}/${ts}-${seq}"
+    if [[ ! -e "${candidate}" ]]; then
+      run_dir="${candidate}"
+      break
+    fi
+    seq=$((seq + 1))
+  done
+fi
+
 mkdir -p "${run_dir}"
 
 run_and_capture() {

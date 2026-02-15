@@ -8,6 +8,7 @@ Release gate companion:
 ## 1. Build and Release Integrity
 - Immutable source revision and signed artifact references.
 - `make verify-evidence-strict` results attached for release commit, including:
+  - Run directory naming: `artifacts/verify/<UTC_TIMESTAMP>`; collision-safe suffixes (`-1`, `-2`, ...) may be used.
   - `artifacts/verify/<UTC_TIMESTAMP>/proto_check.log`
   - `artifacts/verify/<UTC_TIMESTAMP>/make_verify.log`
   - `artifacts/verify/<UTC_TIMESTAMP>/summary.json` (includes numeric `summary_schema_version`, verification mode/policy fields, git commit/ref, pre/post worktree cleanliness metadata, CI run metadata, toolchain/runtime context, dependency + verification/build-policy script checksums, command timing metadata, and explicit failure-step attribution)
