@@ -47,6 +47,9 @@ Unity CI harness project:
 - `examples/unity-csharp-proto-client/UnityTestProject/`
 - Workflow: `.github/workflows/unity-ci.yml`
 - Test modes: `editmode`, `playmode`
+- CI pre-test wiring step:
+  - runs in batch mode via `WizardBeardStudio.Rgs.Editor.SampleSceneWiringEditor.WireAllSamplesForCi`
+  - opens package sample scenes and applies component wiring before test execution
 - Required GitHub secrets for Unity Personal activation:
   - `UNITY_LICENSE`
   - `UNITY_EMAIL`
