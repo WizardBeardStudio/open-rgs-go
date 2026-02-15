@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -8,18 +9,16 @@ import (
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/verifysummary <summary.json>")
+	mode := flag.String("mode", "strict", "validation mode: strict|json")
+	flag.Parse()
+
+	if flag.NArg() != 1 {
+		fmt.Fprintln(os.Stderr, "usage: go run ./cmd/verifysummary [--mode=strict|json] <summary.json>")
 		os.Exit(2)
 	}
+	summaryPath := flag.Arg(0)
 
-	data, err := os.ReadFile(os.Args[1])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "read summary: %v\n", err)
-		os.Exit(1)
-	}
-
-	if err := evidence.ValidateSummaryJSON(data); err != nil {
+	if err := evidence.ValidateSummaryArtifact(summaryPath, *mode); err != nil {
 		fmt.Fprintf(os.Stderr, "invalid verify summary: %v\n", err)
 		os.Exit(1)
 	}

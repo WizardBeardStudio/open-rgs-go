@@ -315,8 +315,6 @@ tmp_summary="${summary_file}.tmp"
 } >"${tmp_summary}"
 mv "${tmp_summary}" "${summary_file}"
 
-./scripts/validate_verify_summary.sh "${summary_file}" >/dev/null
-
 {
   echo "verify evidence artifact index"
   echo "timestamp_utc=${ts}"
@@ -364,6 +362,8 @@ mv "${tmp_summary}" "${summary_file}"
     checksum_file "${changed_files_file}" || { echo "no sha256 tool available" >&2; exit 1; }
   fi
 } >"${manifest_file}"
+
+./scripts/validate_verify_summary.sh "${summary_file}" >/dev/null
 
 printf '%s\n' "${run_dir}" >"${latest_file}"
 
