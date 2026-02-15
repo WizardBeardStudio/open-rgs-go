@@ -62,6 +62,7 @@ verify_log="${run_dir}/make_verify.log"
 summary_file="${run_dir}/summary.json"
 manifest_file="${run_dir}/manifest.sha256"
 changed_files_file="${run_dir}/changed_files.txt"
+index_file="${run_dir}/index.txt"
 latest_file="${base_dir}/LATEST"
 
 proto_cmd="RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
@@ -175,6 +176,20 @@ if [[ "${git_worktree_clean_after}" != "true" ]]; then
 fi
 
 {
+  echo "verify evidence artifact index"
+  echo "timestamp_utc=${ts}"
+  echo "run_dir=${run_dir}"
+  for f in "${proto_log}" "${verify_log}" "${summary_file}" "${changed_files_file}"; do
+    if [[ -f "${f}" ]]; then
+      # Format: relative_path<TAB>bytes
+      rel="${f#${run_dir}/}"
+      bytes="$(wc -c <"${f}" | tr -d ' ')"
+      printf '%s\t%s\n' "${rel}" "${bytes}"
+    fi
+  done
+} >"${index_file}"
+
+{
   if [[ -f "go.mod" ]]; then
     checksum_file "go.mod" || { echo "no sha256 tool available" >&2; exit 1; }
   fi
@@ -193,6 +208,7 @@ fi
   checksum_file "${proto_log}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${verify_log}" || { echo "no sha256 tool available" >&2; exit 1; }
   checksum_file "${summary_file}" || { echo "no sha256 tool available" >&2; exit 1; }
+  checksum_file "${index_file}" || { echo "no sha256 tool available" >&2; exit 1; }
   if [[ -f "${changed_files_file}" ]]; then
     checksum_file "${changed_files_file}" || { echo "no sha256 tool available" >&2; exit 1; }
   fi
