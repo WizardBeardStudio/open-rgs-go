@@ -37,6 +37,7 @@ run_and_capture() {
 proto_log="${run_dir}/proto_check.log"
 verify_log="${run_dir}/make_verify.log"
 summary_file="${run_dir}/summary.json"
+manifest_file="${run_dir}/manifest.sha256"
 latest_file="${base_dir}/LATEST"
 
 proto_cmd="RGS_PROTO_CHECK_MODE=${proto_mode} make proto-check"
@@ -73,6 +74,25 @@ cat >"${summary_file}" <<EOF
   "overall_status": $([[ ${proto_status} -eq 0 && ${verify_status} -eq 0 ]] && echo "\"pass\"" || echo "\"fail\"")
 }
 EOF
+
+checksum_file() {
+  local file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "${file}"
+    return 0
+  fi
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "${file}"
+    return 0
+  fi
+  return 1
+}
+
+{
+  checksum_file "${proto_log}" || { echo "no sha256 tool available" >&2; exit 1; }
+  checksum_file "${verify_log}" || { echo "no sha256 tool available" >&2; exit 1; }
+  checksum_file "${summary_file}" || { echo "no sha256 tool available" >&2; exit 1; }
+} >"${manifest_file}"
 
 printf '%s\n' "${run_dir}" >"${latest_file}"
 
