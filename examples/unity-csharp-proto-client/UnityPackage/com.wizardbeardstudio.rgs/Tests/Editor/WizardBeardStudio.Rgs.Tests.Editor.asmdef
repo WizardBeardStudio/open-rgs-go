@@ -1,0 +1,21 @@
+{
+  "name": "WizardBeardStudio.Rgs.Tests.Editor",
+  "rootNamespace": "WizardBeardStudio.Rgs.Tests.Editor",
+  "references": [
+    "WizardBeardStudio.Rgs.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
