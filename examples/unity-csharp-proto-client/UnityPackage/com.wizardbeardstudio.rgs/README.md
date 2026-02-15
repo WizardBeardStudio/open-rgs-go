@@ -15,5 +15,9 @@ Includes:
   - `WageringClient.PlaceWagerAsync` / `SettleWagerAsync`
 - Parallel REST gateway wiring for the same methods when `RgsTransportMode.RestGateway` is selected.
   - WebGL runtime builds use `UnityWebRequest` for REST mode.
+  - Package release assets:
+    - `CHANGELOG.md`
+    - `LICENSE.md`
+    - `Documentation~/PACKAGE_RELEASE_CHECKLIST.md`
 
 Next implementation rounds should wire service classes to generated protobuf clients and publish importable sample scenes.

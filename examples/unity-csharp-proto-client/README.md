@@ -38,3 +38,7 @@ Runtime Unity sample:
 
 UPM package scaffold:
 - `examples/unity-csharp-proto-client/UnityPackage/com.wizardbeardstudio.rgs/`
+  - release docs/checklist:
+    - `CHANGELOG.md`
+    - `LICENSE.md`
+    - `Documentation~/PACKAGE_RELEASE_CHECKLIST.md`
