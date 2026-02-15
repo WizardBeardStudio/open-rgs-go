@@ -338,7 +338,7 @@ Identity admin flow:
 - Insert bootstrap credentials directly (one-time) or call `POST /v1/identity/credentials:set` as an authenticated operator/service with a precomputed bcrypt `credential_hash`.
 - Example payload (hash truncated):
   - `{"meta":{"request_id":"...","actor":{"actor_id":"op-1","actor_type":"ACTOR_TYPE_OPERATOR"}},"actor":{"actor_id":"player-1","actor_type":"ACTOR_TYPE_PLAYER"},"credential_hash":"$2a$10$...","reason":"bootstrap"}`
-- In DB-backed mode, legacy fallback credentials are not used.
+- In DB-backed mode, deprecated fallback credentials are not used.
 
 ### Post-Deploy Validation
 - CI `test` and `proto` jobs are green (`make test` and strict `make proto-check`).

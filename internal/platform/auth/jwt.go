@@ -26,7 +26,7 @@ type HMACKeyset struct {
 	Keys      map[string][]byte
 }
 
-func ParseHMACKeyset(legacySecret, keysetSpec, activeKID string) (HMACKeyset, error) {
+func ParseHMACKeyset(fallbackSecret, keysetSpec, activeKID string) (HMACKeyset, error) {
 	out := HMACKeyset{
 		ActiveKID: activeKID,
 		Keys:      make(map[string][]byte),
@@ -53,10 +53,10 @@ func ParseHMACKeyset(legacySecret, keysetSpec, activeKID string) (HMACKeyset, er
 			out.Keys[kid] = []byte(secret)
 		}
 	} else {
-		if strings.TrimSpace(legacySecret) == "" {
+		if strings.TrimSpace(fallbackSecret) == "" {
 			return HMACKeyset{}, errors.New("jwt secret is required")
 		}
-		out.Keys[out.ActiveKID] = []byte(legacySecret)
+		out.Keys[out.ActiveKID] = []byte(fallbackSecret)
 	}
 	if len(out.Keys) == 0 {
 		return HMACKeyset{}, errors.New("jwt keyset is empty")
