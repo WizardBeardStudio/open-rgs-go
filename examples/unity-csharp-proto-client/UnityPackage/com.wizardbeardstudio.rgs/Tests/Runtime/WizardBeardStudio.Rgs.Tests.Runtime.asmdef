@@ -1,0 +1,21 @@
+{
+  "name": "WizardBeardStudio.Rgs.Tests.Runtime",
+  "rootNamespace": "WizardBeardStudio.Rgs.Tests.Runtime",
+  "references": [
+    "WizardBeardStudio.Rgs.Runtime"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [
+    "Editor"
+  ],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false,
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ]
+}
