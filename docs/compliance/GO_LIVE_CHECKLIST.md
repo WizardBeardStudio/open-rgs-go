@@ -109,12 +109,15 @@ Release metadata:
 - Owner: Compliance/QA
 - Status: `PASS` / `FAIL`
 - Criteria:
+  - Verification command outputs attached (`make verify` and strict `make proto-check`)
   - All sections complete in evidence checklist
   - Requirements traceability updated to release commit
   - Threat model reviewed for residual risks
   - gRPC/REST parity negative-path evidence includes actor mismatch with token denial coverage for core state and reporting/admin surfaces
   - Identity refresh/logout and identity admin mismatch-denial paths include denied-audit evidence in both gRPC and REST gateway test artifacts
 - Evidence:
+  - `make verify` output log artifact
+  - `RGS_PROTO_CHECK_MODE=full make proto-check` output log artifact
   - `docs/compliance/PRODUCTION_EVIDENCE_CHECKLIST.md`
   - `docs/compliance/REQUIREMENTS.md`
   - `docs/compliance/THREAT_MODEL.md`
