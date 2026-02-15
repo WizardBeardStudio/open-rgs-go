@@ -33,6 +33,11 @@ if [[ "${GITHUB_ACTIONS:-}" == "true" && "${proto_mode}" != "full" ]]; then
   exit 1
 fi
 
+if [[ "${GITHUB_ACTIONS:-}" == "true" && "${require_clean}" != "true" ]]; then
+  echo "RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN must be 'true' in CI (GITHUB_ACTIONS=true), got '${require_clean}'" >&2
+  exit 1
+fi
+
 if [[ "${require_clean}" != "true" && "${require_clean}" != "false" ]]; then
   echo "RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN must be 'true' or 'false', got '${require_clean}'" >&2
   exit 1
