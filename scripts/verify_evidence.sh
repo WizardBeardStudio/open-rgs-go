@@ -21,10 +21,10 @@ os_name="$(uname -s)"
 arch_name="$(uname -m)"
 go_version="$(go version | sed 's/"/\\"/g')"
 buf_version="$(buf --version 2>/dev/null | sed 's/"/\\"/g' || true)"
-git_changed_files_count="$(git status --porcelain | wc -l | tr -d ' ')"
-git_worktree_clean="true"
-if [[ "${git_changed_files_count}" != "0" ]]; then
-  git_worktree_clean="false"
+git_changed_files_count_before="$(git status --porcelain | wc -l | tr -d ' ')"
+git_worktree_clean_before="true"
+if [[ "${git_changed_files_count_before}" != "0" ]]; then
+  git_worktree_clean_before="false"
 fi
 
 if [[ "${GITHUB_ACTIONS:-}" == "true" && "${proto_mode}" != "full" ]]; then
@@ -37,8 +37,8 @@ if [[ "${require_clean}" != "true" && "${require_clean}" != "false" ]]; then
   exit 1
 fi
 
-if [[ "${require_clean}" == "true" && "${git_worktree_clean}" != "true" ]]; then
-  echo "verify evidence requires a clean worktree, but detected ${git_changed_files_count} changed file(s)" >&2
+if [[ "${require_clean}" == "true" && "${git_worktree_clean_before}" != "true" ]]; then
+  echo "verify evidence requires a clean worktree, but detected ${git_changed_files_count_before} changed file(s)" >&2
   git status --short >&2
   exit 1
 fi
@@ -87,6 +87,12 @@ verify_finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 verify_duration_seconds=$((verify_end_epoch - verify_start_epoch))
 set -e
 
+git_changed_files_count_after="$(git status --porcelain | wc -l | tr -d ' ')"
+git_worktree_clean_after="true"
+if [[ "${git_changed_files_count_after}" != "0" ]]; then
+  git_worktree_clean_after="false"
+fi
+
 checksum_file() {
   local file="$1"
   if command -v sha256sum >/dev/null 2>&1; then
@@ -126,8 +132,12 @@ cat >"${summary_file}" <<EOF
   "timestamp_utc": "${ts}",
   "git_commit": "${git_commit}",
   "git_branch": "${git_branch}",
-  "git_worktree_clean": ${git_worktree_clean},
-  "git_changed_files_count": ${git_changed_files_count},
+  "git_worktree_clean_before": ${git_worktree_clean_before},
+  "git_changed_files_count_before": ${git_changed_files_count_before},
+  "git_worktree_clean_after": ${git_worktree_clean_after},
+  "git_changed_files_count_after": ${git_changed_files_count_after},
+  "git_worktree_clean": ${git_worktree_clean_after},
+  "git_changed_files_count": ${git_changed_files_count_after},
   "require_clean_worktree": ${require_clean},
   "ci_run_id": "${ci_run_id}",
   "ci_run_attempt": "${ci_run_attempt}",
@@ -154,11 +164,11 @@ cat >"${summary_file}" <<EOF
   "proto_check_status": ${proto_status},
   "make_verify_status": ${verify_status},
   "overall_status": $([[ ${proto_status} -eq 0 && ${verify_status} -eq 0 ]] && echo "\"pass\"" || echo "\"fail\""),
-  "changed_files_artifact": $([[ "${git_worktree_clean}" == "true" ]] && echo "null" || echo "\"changed_files.txt\"")
+  "changed_files_artifact": $([[ "${git_worktree_clean_after}" == "true" ]] && echo "null" || echo "\"changed_files.txt\"")
 }
 EOF
 
-if [[ "${git_worktree_clean}" != "true" ]]; then
+if [[ "${git_worktree_clean_after}" != "true" ]]; then
   git status --porcelain >"${changed_files_file}"
 fi
 
