@@ -1,0 +1,11 @@
+{
+  "name": "com.wizardbeardstudio.rgs",
+  "version": "0.1.0",
+  "displayName": "WizardBeard RGS SDK",
+  "description": "Unity SDK for integrating game clients with open-rgs-go Remote Gaming System APIs.",
+  "unity": "2022.3",
+  "author": {
+    "name": "WizardBeard Studio",
+    "url": "https://github.com/WizardBeardStudio/open-rgs-go"
+  }
+}
