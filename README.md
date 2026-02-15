@@ -389,6 +389,7 @@ Chaos tests:
 - Unity/C# protobuf client guide: `docs/integration/UNITY_CSHARP_PROTO_CLIENT.md`
 - Unity/C# runnable sample: `examples/unity-csharp-proto-client/README.md`
 - Unity CI workflow (license-gated): `.github/workflows/unity-ci.yml`
+- Unity package release workflow: `.github/workflows/unity-package-release.yml`
 
 ## 13. Known Limitations and Next Work
 

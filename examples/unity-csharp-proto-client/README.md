@@ -54,3 +54,10 @@ Unity CI harness project:
   - `UNITY_LICENSE`
   - `UNITY_EMAIL`
   - `UNITY_PASSWORD`
+
+Unity package release automation:
+- Workflow: `.github/workflows/unity-package-release.yml`
+- Trigger: tag push (`vX.Y.Z` or `rgs-sdk-vX.Y.Z`) or manual dispatch
+- Guards:
+  - package version in `package.json` must match tag version
+  - `CHANGELOG.md` must contain `## [X.Y.Z]`

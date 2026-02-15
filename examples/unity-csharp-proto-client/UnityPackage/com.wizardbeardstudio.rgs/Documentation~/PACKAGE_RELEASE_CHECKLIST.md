@@ -43,3 +43,7 @@ Use this checklist before publishing a package build (including Unity Asset Stor
 - Unity Asset Store package description + screenshots prepared.
 - Known limitations section included.
 - Support/contact links present.
+- Release automation run passes:
+  - `.github/workflows/unity-package-release.yml`
+  - tag/version guard passes (`vX.Y.Z` or `rgs-sdk-vX.Y.Z` matches `package.json`)
+  - changelog contains `## [X.Y.Z]` heading
