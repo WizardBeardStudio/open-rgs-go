@@ -157,6 +157,9 @@ If `GITHUB_ACTIONS=true`, `scripts/check_proto_clean.sh` rejects any mode other 
 3. Add repository or organization secrets used by the `verify_evidence` job:
 - `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY`
 - `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS`
+  Accepted secret formats:
+  - single key: `<base64_key_material>`
+  - key ring: `key_id:<base64_key_material>[,key_id2:<base64_key_material>]`
 4. Keep `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=ci-active` in workflow env, or set a different key id consistently with your public-key ring entry.
 5. Open a PR and confirm these jobs pass:
 - `test`
