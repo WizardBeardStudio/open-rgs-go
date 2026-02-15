@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -234,7 +235,14 @@ func verifyAttestationSignature(alg, keyID string, attestationData []byte, attes
 func resolveAttestationKey(keyID string) (string, error) {
 	// Preferred source: comma-separated key ring "key_id:key,key_id2:key2".
 	// This supports active+previous keys during rotation windows.
-	keyRingRaw := strings.TrimSpace(os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS"))
+	keyRingRaw, err := resolveValueSource(
+		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS",
+		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_FILE",
+		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS_COMMAND",
+	)
+	if err != nil {
+		return "", err
+	}
 	if keyRingRaw != "" {
 		keyRing := map[string]string{}
 		for _, part := range strings.Split(keyRingRaw, ",") {
@@ -265,7 +273,14 @@ func resolveAttestationKey(keyID string) (string, error) {
 	}
 
 	// Backwards-compatible single-key mode.
-	key := os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY")
+	key, err := resolveValueSource(
+		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEY",
+		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_FILE",
+		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_COMMAND",
+	)
+	if err != nil {
+		return "", err
+	}
 	if key == "" {
 		if keyID != DefaultVerifyEvidenceAttestationKeyID {
 			return "", fmt.Errorf("no attestation key available for key_id=%q", keyID)
@@ -283,7 +298,14 @@ func resolveAttestationKey(keyID string) (string, error) {
 }
 
 func resolveEd25519PublicKey(keyID string) (ed25519.PublicKey, error) {
-	keyRingRaw := strings.TrimSpace(os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS"))
+	keyRingRaw, err := resolveValueSource(
+		"RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS",
+		"RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_FILE",
+		"RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS_COMMAND",
+	)
+	if err != nil {
+		return nil, err
+	}
 	if keyRingRaw != "" {
 		keyRing := map[string]string{}
 		for _, part := range strings.Split(keyRingRaw, ",") {
@@ -314,7 +336,14 @@ func resolveEd25519PublicKey(keyID string) (ed25519.PublicKey, error) {
 		return parseEd25519PublicKey(raw)
 	}
 
-	raw := strings.TrimSpace(os.Getenv("RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY"))
+	raw, err := resolveValueSource(
+		"RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY",
+		"RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_FILE",
+		"RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY_COMMAND",
+	)
+	if err != nil {
+		return nil, err
+	}
 	if raw == "" {
 		return nil, fmt.Errorf("RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY or RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS is required for ed25519")
 	}
@@ -337,4 +366,25 @@ func parseEd25519PublicKey(raw string) (ed25519.PublicKey, error) {
 		return nil, fmt.Errorf("invalid ed25519 public key length: %d", len(decoded))
 	}
 	return ed25519.PublicKey(decoded), nil
+}
+
+func resolveValueSource(valueEnv, fileEnv, commandEnv string) (string, error) {
+	if v := strings.TrimSpace(os.Getenv(valueEnv)); v != "" {
+		return v, nil
+	}
+	if p := strings.TrimSpace(os.Getenv(fileEnv)); p != "" {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return "", fmt.Errorf("read %s file %q: %w", valueEnv, p, err)
+		}
+		return strings.TrimSpace(string(data)), nil
+	}
+	if cmdRaw := strings.TrimSpace(os.Getenv(commandEnv)); cmdRaw != "" {
+		out, err := exec.Command("bash", "-lc", cmdRaw).Output()
+		if err != nil {
+			return "", fmt.Errorf("run %s command: %w", valueEnv, err)
+		}
+		return strings.TrimSpace(string(out)), nil
+	}
+	return "", nil
 }
