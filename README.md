@@ -87,6 +87,7 @@ make all
 
 `make verify` runs module-path checks, proto freshness validation, and tests.
 `./scripts/check.sh` runs formatting and then `make verify`.
+The module-path check also validates `api/proto/rgs/v1/*.proto` `go_package` consistency.
 If Buf remote dependencies are unavailable in a local environment, use:
 
 ```bash
