@@ -142,6 +142,9 @@ func ValidateSummaryArtifact(summaryPath, mode string) error {
 
 	attestationSig := strings.TrimSpace(string(attestationSigData))
 	enforceKey := os.Getenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY") == "true" || os.Getenv("GITHUB_ACTIONS") == "true"
+	if enforceKey && attAlg != "ed25519" {
+		return fmt.Errorf("strict/CI validation requires attestation alg=ed25519")
+	}
 	if err := verifyAttestationSignature(attAlg, attKeyID, attestationData, attestationSig, enforceKey); err != nil {
 		return err
 	}

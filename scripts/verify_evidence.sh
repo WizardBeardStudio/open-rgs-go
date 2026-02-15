@@ -104,6 +104,10 @@ if [[ "${attestation_alg}" == "hmac-sha256" ]]; then
 fi
 
 if [[ "${GITHUB_ACTIONS:-}" == "true" || "${require_clean}" == "true" || "${enforce_attestation_key}" == "true" ]]; then
+  if [[ "${attestation_alg}" != "ed25519" ]]; then
+    echo "strict/CI evidence runs require RGS_VERIFY_EVIDENCE_ATTESTATION_ALG=ed25519" >&2
+    exit 1
+  fi
   if [[ "${attestation_alg}" == "hmac-sha256" ]]; then
     if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY:-}" && -z "${attestation_key_ring}" ]]; then
       echo "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY or RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS must be set for strict/CI hmac evidence runs" >&2

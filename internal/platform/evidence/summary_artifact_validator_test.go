@@ -93,12 +93,23 @@ func TestValidateSummaryArtifactStrict(t *testing.T) {
 
 	t.Run("strict validation passes with rotated previous key", func(t *testing.T) {
 		path, _ := writeValidSummaryArtifactWithKey(t, "previous", "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-		t.Setenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY", "true")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY", "false")
 		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY", "")
 		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID", "")
 		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS", "active:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,previous:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
 		if err := ValidateSummaryArtifact(path, "strict"); err != nil {
 			t.Fatalf("expected rotated previous-key validation to pass: %v", err)
+		}
+	})
+
+	t.Run("strict validation requires ed25519 algorithm", func(t *testing.T) {
+		path, _ := writeValidSummaryArtifact(t)
+		t.Setenv("RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY", "true")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY", "")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID", "")
+		t.Setenv("RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS", "")
+		if err := ValidateSummaryArtifact(path, "strict"); err == nil {
+			t.Fatalf("expected strict mode to reject non-ed25519 attestation")
 		}
 	})
 
