@@ -39,20 +39,28 @@ jobs:
       - uses: bufbuild/buf-setup-action@v1
       - name: attestation key preflight
         env:
-          RGS_VERIFY_EVIDENCE_ATTESTATION_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_KEY }}
+          RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY }}
+          RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS }}
         run: |
-          if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_KEY}" ]]; then
-            echo "missing required secret: RGS_VERIFY_EVIDENCE_ATTESTATION_KEY" >&2
+          if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY}" ]]; then
+            echo "missing required secret: RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY" >&2
+            exit 1
+          fi
+          if [[ -z "${RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS}" ]]; then
+            echo "missing required secret: RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS" >&2
             exit 1
           fi
       - name: generate verification evidence logs
         env:
-          RGS_VERIFY_EVIDENCE_ATTESTATION_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_KEY }}
+          RGS_VERIFY_EVIDENCE_ATTESTATION_ALG: ed25519
+          RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY }}
+          RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS }}
           RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID: ci-active
         run: make verify-evidence-strict
       - name: validate generated summary artifact
         env:
-          RGS_VERIFY_EVIDENCE_ATTESTATION_KEY: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_KEY }}
+          RGS_VERIFY_EVIDENCE_ATTESTATION_ALG: ed25519
+          RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS: ${{ secrets.RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS }}
           RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID: ci-active
           RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY: true
         run: |

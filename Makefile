@@ -19,7 +19,7 @@ verify-evidence:
 	./scripts/verify_evidence.sh
 
 verify-evidence-strict:
-	RGS_VERIFY_EVIDENCE_PROTO_MODE=full RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN=true RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY=true ./scripts/verify_evidence.sh
+	RGS_VERIFY_EVIDENCE_PROTO_MODE=full RGS_VERIFY_EVIDENCE_REQUIRE_CLEAN=true RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY=true RGS_VERIFY_EVIDENCE_ATTESTATION_ALG=ed25519 ./scripts/verify_evidence.sh
 
 test-integration-postgres:
 	RGS_TEST_DATABASE_URL=$${RGS_TEST_DATABASE_URL:?set RGS_TEST_DATABASE_URL} go test ./internal/platform/server -run '^TestPostgres'
