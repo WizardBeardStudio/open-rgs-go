@@ -3,6 +3,11 @@ set -euo pipefail
 
 mode="${RGS_PROTO_CHECK_MODE:-full}"
 
+if [[ "${GITHUB_ACTIONS:-}" == "true" && "${mode}" != "full" ]]; then
+  echo "RGS_PROTO_CHECK_MODE must be 'full' in CI (GITHUB_ACTIONS=true), got '${mode}'" >&2
+  exit 1
+fi
+
 case "${mode}" in
   full)
     if ! buf lint; then

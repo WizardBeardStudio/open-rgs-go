@@ -101,6 +101,7 @@ RGS_PROTO_CHECK_MODE=diff-only make verify
 
 CI should continue using the default strict mode (`RGS_PROTO_CHECK_MODE=full`).
 The repository CI workflow pins this mode explicitly for the proto job.
+If `GITHUB_ACTIONS=true`, `scripts/check_proto_clean.sh` rejects any mode other than `full`.
 
 Lint (if installed):
 
