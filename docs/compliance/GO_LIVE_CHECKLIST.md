@@ -150,9 +150,12 @@ Release metadata:
 - Owner: Product + Compliance
 - Status: `PASS` / `FAIL`
 - Criteria:
-  - Advanced promotions/UI gap either:
-    - implemented and validated, or
-    - formally accepted as deferred scope with approvals
+  - One of the following must be true:
+    - Advanced promotions/UI requirements are implemented, test-covered, and mapped in `docs/compliance/REQUIREMENTS.md`.
+    - Deferred scope is explicitly approved with:
+      - signed product owner + compliance owner acceptance
+      - jurisdiction impact statement
+      - target release/milestone for completion
 - Evidence:
   - Signed scope-acceptance memo or implementation test report
 
@@ -167,11 +170,31 @@ Release metadata:
   - Submission manifest
   - Review sign-off record
 
+## Gate 10: Known-Limitations Closure Check
+- Owner: Release Manager + Compliance
+- Status: `PASS` / `FAIL`
+- Criteria:
+  - README limitation #1 (in-memory mirrors) closure evidence attached:
+    - production config snapshot with `RGS_STRICT_PRODUCTION_MODE=true`
+    - DB-backed qualification evidence (`make soak-qual-db`, `make soak-qual-matrix`)
+  - README limitation #2 (external key custody) closure evidence attached:
+    - production keyset source is `RGS_JWT_KEYSET_FILE` or `RGS_JWT_KEYSET_COMMAND`
+    - current-cycle `make keyset-evidence` artifact and sign-off
+  - README limitation #3 (promotions/UI scope) closure evidence attached:
+    - implementation evidence, or deferred-scope acceptance package from Gate 8
+  - No open `FAIL` status across Gates 1-9
+- Evidence:
+  - `README.md` Section 13 mapping sheet (limitation -> artifact)
+  - Runtime config snapshot
+  - Keyset evidence artifact set
+  - Soak qualification artifact set
+  - Scope acceptance artifact set (if deferred)
+
 ## Final Release Decision
 - Go-live decision: `APPROVED` / `REJECTED`
 - Decision date (UTC):
 - Decision authority:
-- Notes:
+- Notes (must include Gate 10 result and any accepted deferred scope):
 
 Sign-offs:
 - Engineering lead:

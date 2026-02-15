@@ -386,10 +386,26 @@ Chaos tests:
 
 ## 13. Known Limitations and Next Work
 
-Current limitations:
-- Some non-authoritative operational mirrors remain in-memory for performance, with PostgreSQL as system-of-record where configured; strict production mode disables in-memory idempotency replay caches for ledger/wagering, disables in-memory wagering state mirrors in DB mode, disables in-memory remote-access activity caching, disables in-memory reporting fallback/run retention, disables in-memory config/download mirrors, disables in-memory promotions/UI mirrors, disables in-memory registry mirrors, and disables in-memory events/meters mirrors.
-- JWT issuance/refresh/rotation is implemented, including live keyset-file reload hooks, but full KMS/HSM operational integration and key custody controls remain deployment responsibilities.
-- Promotions/UI services are implemented at baseline CRUD/reportability level, but advanced campaign policy engines and full device-side interaction workflows are still pending.
+Current limitations (must be dispositioned before production approval):
+- In-memory operational mirrors are still present for non-production/runtime fallback paths.
+- External key custody (KMS/HSM/Vault-backed process controls) is deployment-integrated, not product-enforced end-to-end.
+- Promotions/UI support is baseline (CRUD/reportability), without advanced campaign policy orchestration.
+
+Objective release-exit criteria for these limitations:
+1. In-memory mirrors:
+- `RGS_STRICT_PRODUCTION_MODE=true` in production.
+- Startup evidence shows PostgreSQL configured and strict mode active.
+- Evidence package includes pass outputs for `make verify`, `make verify-evidence-strict`, and DB qualification (`make soak-qual-db`, `make soak-qual-matrix`).
+2. External key custody:
+- Production deploy uses `RGS_JWT_KEYSET_FILE` or `RGS_JWT_KEYSET_COMMAND`.
+- At least one current-cycle `make keyset-evidence` artifact is attached with operator/security sign-off.
+- No inline JWT/attestation private key material in committed config or workflow YAML literals.
+3. Promotions/UI scope:
+- Either:
+  - advanced campaign/device workflow requirements are implemented and tested, or
+  - explicit deferred-scope sign-off is recorded in go-live evidence with jurisdiction/product approval.
 
 Recommended next steps:
-- Execute `make soak-qual-db` and `make soak-qual-matrix` in each DB-backed deployment tier and record per-profile thresholds/baselines as release evidence.
+- Execute `make soak-qual-db` and `make soak-qual-matrix` in each DB-backed deployment tier and attach per-profile thresholds/baselines as release evidence.
+- Execute `make keyset-evidence` for the active release cycle and attach sign-off notes.
+- Complete Gate 8 and Gate 9 in `docs/compliance/GO_LIVE_CHECKLIST.md` with `PASS` status and linked artifacts.
