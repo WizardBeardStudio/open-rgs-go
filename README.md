@@ -106,14 +106,18 @@ make verify-evidence-strict
 
 Strict/CI evidence runs require attestation signing key configuration:
 - `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID` (for example `ci-active`)
-- `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY` (single key) or `RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS` (rotation key ring `active:<key>,previous:<key>`)
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_ALG=ed25519`
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY` (or ring: `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS`)
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY` (or ring: `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS`)
 - `RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY=true` (set automatically by `make verify-evidence-strict`)
 
-Example local strict run with a single key:
+Example local strict run with a single ed25519 keypair:
 
 ```bash
 RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=local-active \
-RGS_VERIFY_EVIDENCE_ATTESTATION_KEY=0123456789abcdef0123456789abcdef \
+RGS_VERIFY_EVIDENCE_ATTESTATION_ALG=ed25519 \
+RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY='<base64_private_or_seed>' \
+RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY='<base64_public>' \
 make verify-evidence-strict
 ```
 
@@ -121,9 +125,15 @@ Example local strict run during key rotation:
 
 ```bash
 RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=active \
-RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS='active:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,previous:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' \
+RGS_VERIFY_EVIDENCE_ATTESTATION_ALG=ed25519 \
+RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS='active:<base64_priv_or_seed>,previous:<base64_priv_or_seed>' \
+RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS='active:<base64_public>,previous:<base64_public>' \
 make verify-evidence-strict
 ```
+
+Compatibility note:
+- `hmac-sha256` attestation remains available for non-strict local compatibility only.
+- Plan is to retire HMAC attestation at API freeze and require `ed25519` everywhere.
 
 If Buf remote dependencies are unavailable in a local environment, use:
 

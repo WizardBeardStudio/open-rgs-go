@@ -78,23 +78,30 @@ Artifacts are written under `${RGS_KEYSET_WORKDIR:-/tmp/open-rgs-go-keyset}/<eve
 ## Verification Evidence Attestation Keys
 
 `make verify-evidence-strict` signs `attestation.json` and validates signatures during `verify-summary`.
+Strict/CI mode requires `ed25519`.
 
 Required runtime variables for strict/CI evidence:
 - `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID` (for example `ci-active`)
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_ALG=ed25519`
 - One of:
-  - `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY` for single-key mode
-  - `RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS` for rotation windows in key-ring mode, format:
-    - `active:<key_material>,previous:<key_material>`
+  - `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY` for single-key mode
+  - `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS` for rotation windows in key-ring mode, format:
+    - `active:<base64_private_or_seed>,previous:<base64_private_or_seed>`
+- One of:
+  - `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEY` for single-key verification
+  - `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS` for rotation windows in key-ring mode, format:
+    - `active:<base64_public>,previous:<base64_public>`
 - `RGS_VERIFY_EVIDENCE_ENFORCE_ATTESTATION_KEY=true` (enabled by `make verify-evidence-strict`)
 
-Minimum policy in strict/CI mode:
-- key material must not use development default
-- key material length must be at least 32 characters
+Compatibility mode:
+- `hmac-sha256` can still be used for non-strict local verification compatibility.
+- HMAC mode is scheduled for retirement at API freeze.
 
 ### Secret Source Patterns
 
 1. GitHub Actions secrets:
-- `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY` stored in repository/org secrets
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY` stored in repository/org secrets
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS` stored in repository/org secrets
 - `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID` set in workflow (`ci-active`)
 
 2. Vault injection:
@@ -112,7 +119,8 @@ Do not commit attestation keys into repository files or workflow YAML literals.
 1. Generate new key material in secret manager (Vault/KMS/CI secrets backend).
 2. Assign a new key id (for example `ci-2026-02`).
 3. During overlap window, publish key ring:
-   - `RGS_VERIFY_EVIDENCE_ATTESTATION_KEYS="ci-2026-02:<new>,ci-2026-01:<old>"`
+   - `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS="ci-2026-02:<new_private>,ci-2026-01:<old_private>"`
+   - `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS="ci-2026-02:<new_public>,ci-2026-01:<old_public>"`
 4. Set signing key id:
    - `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=ci-2026-02`
 5. Run strict verification:
