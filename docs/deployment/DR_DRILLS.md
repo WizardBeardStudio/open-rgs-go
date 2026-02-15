@@ -47,4 +47,4 @@ Artifacts are written under `${RGS_DRILL_WORKDIR:-/tmp/open-rgs-go-dr}/<UTC time
 
 - Run this drill periodically (recommended at least monthly) and attach artifacts to the release evidence packet.
 - Always restore into an isolated drill database, not production.
-- Pair this drill with application-level checks (`go test ./...`, smoke APIs, and report-generation checks) after restore.
+- Pair this drill with application-level checks (`make verify`, smoke APIs, and report-generation checks) after restore.
