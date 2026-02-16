@@ -18,6 +18,7 @@ const (
 
 type config struct {
 	alg                string
+	format             string
 	keyID              string
 	keyIDVar           string
 	emitKeyID          bool
@@ -42,6 +43,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, "key id must be non-empty")
 		os.Exit(2)
 	}
+	if cfg.format != "assignments" && cfg.format != "github-secrets" {
+		fmt.Fprintf(os.Stderr, "unsupported format: %s (expected assignments or github-secrets)\n", cfg.format)
+		os.Exit(2)
+	}
 	if cfg.privateMaterialFmt != "seed" && cfg.privateMaterialFmt != "private" {
 		fmt.Fprintf(os.Stderr, "unsupported private material format: %s (expected seed or private)\n", cfg.privateMaterialFmt)
 		os.Exit(2)
@@ -61,6 +66,7 @@ func parseConfig(args []string, lookup func(string) string) (config, error) {
 	flags := flag.NewFlagSet("attestkeygen", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.StringVar(&cfg.alg, "alg", envOr(lookup, "RGS_ATTEST_KEYGEN_ALG", algEd25519), "attestation algorithm")
+	flags.StringVar(&cfg.format, "format", envOr(lookup, "RGS_ATTEST_KEYGEN_FORMAT", "assignments"), "output format: assignments or github-secrets")
 	flags.StringVar(&cfg.keyID, "key-id", envOr2(lookup, "RGS_ATTEST_KEYGEN_KEY_ID", "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID", "ci-active"), "attestation key id")
 	flags.StringVar(&cfg.keyIDVar, "key-id-var", envOr(lookup, "RGS_ATTEST_KEYGEN_KEY_ID_VAR", "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID"), "env var name used when emitting key id")
 	flags.BoolVar(&cfg.emitKeyID, "emit-key-id", envBoolOr(lookup, "RGS_ATTEST_KEYGEN_EMIT_KEY_ID", true), "emit key id env assignment")
@@ -87,6 +93,9 @@ func renderAssignments(cfg config, pub ed25519.PublicKey, priv ed25519.PrivateKe
 	if cfg.ringOutput {
 		privateValue = cfg.keyID + ":" + privateValue
 		publicValue = cfg.keyID + ":" + publicValue
+	}
+	if cfg.format == "github-secrets" {
+		return []string{privateValue, publicValue}
 	}
 	lines := make([]string, 0, 3)
 	if cfg.emitKeyID {

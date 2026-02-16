@@ -164,9 +164,11 @@ If `GITHUB_ACTIONS=true`, `scripts/check_proto_clean.sh` rejects any mode other 
   - key ring: `key_id:<base64_key_material>[,key_id2:<base64_key_material>]`
   Helper to generate compatible key-ring values:
   - `go run ./cmd/attestkeygen --key-id ci-active`
+  - GitHub Secrets copy mode (prints only private/public values): `go run ./cmd/attestkeygen --key-id ci-active --format github-secrets`
   - compatibility wrapper: `./scripts/gen_ci_attestation_keyring.sh ci-active`
   Useful environment defaults for the generator:
   - `RGS_ATTEST_KEYGEN_KEY_ID` (default: `ci-active`)
+  - `RGS_ATTEST_KEYGEN_FORMAT` (`assignments` or `github-secrets`, default: `assignments`)
   - `RGS_ATTEST_KEYGEN_RING` (`true`/`false`, default: `true`)
   - `RGS_ATTEST_KEYGEN_PRIVATE_MATERIAL` (`seed` or `private`, default: `seed`)
 4. Keep `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=ci-active` in workflow env, or set a different key id consistently with your public-key ring entry.

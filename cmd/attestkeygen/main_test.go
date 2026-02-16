@@ -15,6 +15,9 @@ func TestParseConfigDefaults(t *testing.T) {
 	if cfg.keyID != "ci-active" {
 		t.Fatalf("keyID = %q, want ci-active", cfg.keyID)
 	}
+	if cfg.format != "assignments" {
+		t.Fatalf("format = %q, want assignments", cfg.format)
+	}
 	if !cfg.ringOutput {
 		t.Fatalf("ringOutput = false, want true")
 	}
@@ -64,12 +67,15 @@ func TestParseConfigFlagOverride(t *testing.T) {
 	env := map[string]string{
 		"RGS_ATTEST_KEYGEN_KEY_ID": "env-id",
 	}
-	cfg, err := parseConfig([]string{"--key-id", "flag-id", "--ring=false"}, lookupMap(env))
+	cfg, err := parseConfig([]string{"--key-id", "flag-id", "--ring=false", "--format", "github-secrets"}, lookupMap(env))
 	if err != nil {
 		t.Fatalf("parseConfig() error = %v", err)
 	}
 	if cfg.keyID != "flag-id" {
 		t.Fatalf("keyID = %q, want flag-id", cfg.keyID)
+	}
+	if cfg.format != "github-secrets" {
+		t.Fatalf("format = %q, want github-secrets", cfg.format)
 	}
 	if cfg.ringOutput {
 		t.Fatalf("ringOutput = true, want false")
@@ -115,6 +121,29 @@ func TestRenderAssignmentsSinglePrivateMaterial(t *testing.T) {
 	}
 	assertValueLen(t, lines[0], "PRIVATE=", ed25519.PrivateKeySize)
 	assertValueLen(t, lines[1], "PUBLIC=", ed25519.PublicKeySize)
+}
+
+func TestRenderAssignmentsGitHubSecretsFormat(t *testing.T) {
+	cfg := config{
+		format:             "github-secrets",
+		keyID:              "ci-active",
+		keyIDVar:           "KEY_ID",
+		emitKeyID:          true,
+		privateVar:         "PRIVATE",
+		publicVar:          "PUBLIC",
+		ringOutput:         true,
+		privateMaterialFmt: "seed",
+	}
+	pub, priv := fixedKeyPair()
+	lines := renderAssignments(cfg, pub, priv)
+	if len(lines) != 2 {
+		t.Fatalf("len(lines) = %d, want 2", len(lines))
+	}
+	if strings.HasPrefix(lines[0], "PRIVATE=") || strings.HasPrefix(lines[1], "PUBLIC=") || strings.HasPrefix(lines[0], "KEY_ID=") {
+		t.Fatalf("github-secrets format should not contain assignments: %#v", lines)
+	}
+	assertValueLen(t, lines[0], "ci-active:", ed25519.SeedSize)
+	assertValueLen(t, lines[1], "ci-active:", ed25519.PublicKeySize)
 }
 
 func fixedKeyPair() (ed25519.PublicKey, ed25519.PrivateKey) {
