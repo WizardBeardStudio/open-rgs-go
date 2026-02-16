@@ -23,6 +23,9 @@ func TestParseConfigDefaults(t *testing.T) {
 	if cfg.outDir != "" {
 		t.Fatalf("outDir = %q, want empty", cfg.outDir)
 	}
+	if cfg.verify {
+		t.Fatalf("verify = true, want false")
+	}
 	if !cfg.ringOutput {
 		t.Fatalf("ringOutput = false, want true")
 	}
@@ -36,6 +39,7 @@ func TestParseConfigEnvPrecedence(t *testing.T) {
 		"RGS_ATTEST_KEYGEN_KEY_ID":                   "primary-id",
 		"RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID":     "secondary-id",
 		"RGS_ATTEST_KEYGEN_OUT_DIR":                  "/tmp/key-out",
+		"RGS_ATTEST_KEYGEN_VERIFY":                   "true",
 		"RGS_ATTEST_KEYGEN_RING":                     "false",
 		"RGS_ATTEST_KEYGEN_PRIVATE_MATERIAL":         "private",
 		"RGS_ATTEST_KEYGEN_PRIVATE_VAR":              "PRIV",
@@ -51,6 +55,9 @@ func TestParseConfigEnvPrecedence(t *testing.T) {
 	}
 	if cfg.keyID != "primary-id" {
 		t.Fatalf("keyID = %q, want primary-id", cfg.keyID)
+	}
+	if !cfg.verify {
+		t.Fatalf("verify = false, want true")
 	}
 	if cfg.outDir != "/tmp/key-out" {
 		t.Fatalf("outDir = %q, want /tmp/key-out", cfg.outDir)
@@ -76,7 +83,7 @@ func TestParseConfigFlagOverride(t *testing.T) {
 	env := map[string]string{
 		"RGS_ATTEST_KEYGEN_KEY_ID": "env-id",
 	}
-	cfg, err := parseConfig([]string{"--key-id", "flag-id", "--ring=false", "--format", "github-secrets"}, lookupMap(env))
+	cfg, err := parseConfig([]string{"--key-id", "flag-id", "--ring=false", "--format", "github-secrets", "--verify"}, lookupMap(env))
 	if err != nil {
 		t.Fatalf("parseConfig() error = %v", err)
 	}
@@ -88,6 +95,9 @@ func TestParseConfigFlagOverride(t *testing.T) {
 	}
 	if cfg.ringOutput {
 		t.Fatalf("ringOutput = true, want false")
+	}
+	if !cfg.verify {
+		t.Fatalf("verify = false, want true")
 	}
 }
 
@@ -209,6 +219,47 @@ func TestWriteSecretFilesSingleOutput(t *testing.T) {
 	assertFileMode600(t, publicPath)
 	assertFileBase64Len(t, privatePath, ed25519.PrivateKeySize)
 	assertFileBase64Len(t, publicPath, ed25519.PublicKeySize)
+}
+
+func TestVerifyMaterialRingSeedSuccess(t *testing.T) {
+	cfg := config{keyID: "ci-active", ringOutput: true}
+	pub, priv := fixedKeyPair()
+	material := renderKeyMaterial(config{
+		keyID:              "ci-active",
+		ringOutput:         true,
+		privateMaterialFmt: "seed",
+	}, pub, priv)
+	if err := verifyMaterial(cfg, material); err != nil {
+		t.Fatalf("verifyMaterial() error = %v", err)
+	}
+}
+
+func TestVerifyMaterialPublicMismatchFails(t *testing.T) {
+	cfg := config{keyID: "ci-active", ringOutput: false}
+	pub, priv := fixedKeyPair()
+	material := renderKeyMaterial(config{
+		keyID:              "ci-active",
+		ringOutput:         false,
+		privateMaterialFmt: "seed",
+	}, pub, priv)
+	material.publicValue = base64.StdEncoding.EncodeToString(make([]byte, ed25519.PublicKeySize))
+	if err := verifyMaterial(cfg, material); err == nil {
+		t.Fatalf("verifyMaterial() expected error for mismatched public key")
+	}
+}
+
+func TestVerifyMaterialRingPrefixFails(t *testing.T) {
+	cfg := config{keyID: "ci-active", ringOutput: true}
+	pub, priv := fixedKeyPair()
+	material := renderKeyMaterial(config{
+		keyID:              "ci-active",
+		ringOutput:         true,
+		privateMaterialFmt: "seed",
+	}, pub, priv)
+	material.privateValue = strings.TrimPrefix(material.privateValue, "ci-active:")
+	if err := verifyMaterial(cfg, material); err == nil {
+		t.Fatalf("verifyMaterial() expected error for missing ring prefix")
+	}
 }
 
 func fixedKeyPair() (ed25519.PublicKey, ed25519.PrivateKey) {

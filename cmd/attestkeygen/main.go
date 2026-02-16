@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/base64"
@@ -21,6 +22,7 @@ type config struct {
 	alg                string
 	format             string
 	outDir             string
+	verify             bool
 	keyID              string
 	keyIDVar           string
 	emitKeyID          bool
@@ -61,6 +63,12 @@ func main() {
 	}
 
 	material := renderKeyMaterial(cfg, pub, priv)
+	if cfg.verify {
+		if err := verifyMaterial(cfg, material); err != nil {
+			fmt.Fprintf(os.Stderr, "verify generated key material: %v\n", err)
+			os.Exit(1)
+		}
+	}
 	if cfg.outDir != "" {
 		lines, err := writeSecretFiles(cfg, material)
 		if err != nil {
@@ -80,6 +88,7 @@ func parseConfig(args []string, lookup func(string) string) (config, error) {
 	flags.StringVar(&cfg.alg, "alg", envOr(lookup, "RGS_ATTEST_KEYGEN_ALG", algEd25519), "attestation algorithm")
 	flags.StringVar(&cfg.format, "format", envOr(lookup, "RGS_ATTEST_KEYGEN_FORMAT", "assignments"), "output format: assignments or github-secrets")
 	flags.StringVar(&cfg.outDir, "out-dir", envOr(lookup, "RGS_ATTEST_KEYGEN_OUT_DIR", ""), "directory to write generated key material files")
+	flags.BoolVar(&cfg.verify, "verify", envBoolOr(lookup, "RGS_ATTEST_KEYGEN_VERIFY", false), "verify generated material round-trip before output")
 	flags.StringVar(&cfg.keyID, "key-id", envOr2(lookup, "RGS_ATTEST_KEYGEN_KEY_ID", "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID", "ci-active"), "attestation key id")
 	flags.StringVar(&cfg.keyIDVar, "key-id-var", envOr(lookup, "RGS_ATTEST_KEYGEN_KEY_ID_VAR", "RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID"), "env var name used when emitting key id")
 	flags.BoolVar(&cfg.emitKeyID, "emit-key-id", envBoolOr(lookup, "RGS_ATTEST_KEYGEN_EMIT_KEY_ID", true), "emit key id env assignment")
@@ -167,6 +176,62 @@ func writeAssignments(out io.Writer, lines []string) {
 	for _, line := range lines {
 		fmt.Fprintln(out, line)
 	}
+}
+
+func verifyMaterial(cfg config, material keyMaterial) error {
+	privateRaw := material.privateValue
+	publicRaw := material.publicValue
+	if cfg.ringOutput {
+		var err error
+		privateRaw, err = stripKeyIDPrefix(privateRaw, cfg.keyID)
+		if err != nil {
+			return fmt.Errorf("private ring value: %w", err)
+		}
+		publicRaw, err = stripKeyIDPrefix(publicRaw, cfg.keyID)
+		if err != nil {
+			return fmt.Errorf("public ring value: %w", err)
+		}
+	}
+
+	privateDecoded, err := base64.StdEncoding.DecodeString(privateRaw)
+	if err != nil {
+		return fmt.Errorf("decode private key base64: %w", err)
+	}
+	publicDecoded, err := base64.StdEncoding.DecodeString(publicRaw)
+	if err != nil {
+		return fmt.Errorf("decode public key base64: %w", err)
+	}
+	if len(publicDecoded) != ed25519.PublicKeySize {
+		return fmt.Errorf("invalid public key length: %d", len(publicDecoded))
+	}
+
+	var privateKey ed25519.PrivateKey
+	switch len(privateDecoded) {
+	case ed25519.SeedSize:
+		privateKey = ed25519.NewKeyFromSeed(privateDecoded)
+	case ed25519.PrivateKeySize:
+		privateKey = ed25519.PrivateKey(privateDecoded)
+	default:
+		return fmt.Errorf("invalid private key length: %d", len(privateDecoded))
+	}
+
+	derivedPublic := privateKey.Public().(ed25519.PublicKey)
+	if !bytes.Equal(derivedPublic, publicDecoded) {
+		return fmt.Errorf("public key does not match derived private key")
+	}
+	return nil
+}
+
+func stripKeyIDPrefix(value, keyID string) (string, error) {
+	prefix := keyID + ":"
+	if !strings.HasPrefix(value, prefix) {
+		return "", fmt.Errorf("expected %q prefix", prefix)
+	}
+	raw := strings.TrimPrefix(value, prefix)
+	if raw == "" {
+		return "", fmt.Errorf("empty key material after %q prefix", prefix)
+	}
+	return raw, nil
 }
 
 func envOr(lookup func(string) string, key, fallback string) string {

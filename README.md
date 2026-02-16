@@ -171,6 +171,7 @@ If `GITHUB_ACTIONS=true`, `scripts/check_proto_clean.sh` rejects any mode other 
   - `RGS_ATTEST_KEYGEN_KEY_ID` (default: `ci-active`)
   - `RGS_ATTEST_KEYGEN_FORMAT` (`assignments` or `github-secrets`, default: `assignments`)
   - `RGS_ATTEST_KEYGEN_OUT_DIR` (optional output directory for file mode)
+  - `RGS_ATTEST_KEYGEN_VERIFY` (`true`/`false`, default: `false`) verifies generated private/public material consistency before output
   - `RGS_ATTEST_KEYGEN_RING` (`true`/`false`, default: `true`)
   - `RGS_ATTEST_KEYGEN_PRIVATE_MATERIAL` (`seed` or `private`, default: `seed`)
 4. Keep `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=ci-active` in workflow env, or set a different key id consistently with your public-key ring entry.
