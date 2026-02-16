@@ -182,7 +182,7 @@ If `GITHUB_ACTIONS=true`, `scripts/check_proto_clean.sh` rejects any mode other 
 Notes:
 - Do not commit attestation keys into the repo.
 - The current workflow writes secret values to runner temp files and passes file paths to strict evidence verification.
-- For rotation patterns and key-ring examples, see `docs/deployment/KEY_MANAGEMENT.md`.
+- For attestation key rotation and CI secret update runbook, see `docs/deployment/KEY_MANAGEMENT.md`.
 
 Lint (if installed):
 

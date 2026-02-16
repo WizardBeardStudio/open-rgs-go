@@ -112,15 +112,45 @@ Do not commit attestation keys into repository files or workflow YAML literals.
 
 ### Rotation Runbook (Attestation Keys)
 
-1. Generate new key material in secret manager (Vault/KMS/CI secrets backend).
-2. Assign a new key id (for example `ci-2026-02`).
-3. During overlap window, publish key ring:
-   - `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEYS="ci-2026-02:<new_private>,ci-2026-01:<old_private>"`
-   - `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS="ci-2026-02:<new_public>,ci-2026-01:<old_public>"`
-4. Set signing key id:
-   - `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=ci-2026-02`
-5. Run strict verification:
-   - `make verify-evidence-strict`
-   - `make verify-summary`
-6. After retention window for old evidence verification, remove old key id from key ring.
-7. Record rotation event id and evidence artifact path in operations log.
+Use a trusted host to generate keys, then update GitHub Actions secrets.
+Do not generate or persist attestation private keys inside CI jobs.
+
+1. Generate new key material for secrets copy mode:
+
+```bash
+go run ./cmd/attestkeygen --key-id ci-2026-02 --format github-secrets
+```
+
+This prints two lines:
+- line 1: value for `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY`
+- line 2: value for `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS`
+
+2. Optional local file mode before uploading to secret manager:
+
+```bash
+go run ./cmd/attestkeygen --key-id ci-2026-02 --out-dir ./tmp/attestation-keys
+```
+
+This writes restricted (`0600`) files and prints `*_FILE` assignments.
+
+3. Build overlap ring values (new + previous key ids), then update GitHub Actions secrets:
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PRIVATE_KEY`:
+  `ci-2026-02:<new_private>,ci-2026-01:<old_private>`
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_ED25519_PUBLIC_KEYS`:
+  `ci-2026-02:<new_public>,ci-2026-01:<old_public>`
+
+4. Set/confirm active signing key id in workflow env:
+- `RGS_VERIFY_EVIDENCE_ATTESTATION_KEY_ID=ci-2026-02`
+
+5. Validation checklist (must pass on next CI run):
+- `make test`
+- `make proto-check`
+- `make verify-evidence-strict`
+- verify artifact contains `attestation.json`, `attestation.sig`, and `summary_validation.log`
+
+6. After retention window for old evidence verification, remove old key id entries from both secrets.
+
+7. Record rotation metadata in operations logs:
+- key ids added/removed
+- timestamp
+- CI run URL / artifact reference
