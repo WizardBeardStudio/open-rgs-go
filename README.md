@@ -303,6 +303,42 @@ System status (REST via gateway):
 curl -s http://127.0.0.1:8080/v1/system/status | jq
 ```
 
+### First Integration Day Checklist (Dev)
+
+1. Backend bring-up (local/dev mode):
+```bash
+cd src
+RGS_VERSION=dev \
+RGS_GRPC_ADDR=:8081 \
+RGS_HTTP_ADDR=:8080 \
+RGS_TRUSTED_CIDRS="127.0.0.1/32,::1/128" \
+RGS_STRICT_PRODUCTION_MODE=false \
+RGS_STRICT_EXTERNAL_JWT_KEYSET=false \
+go run ./cmd/rgsd
+```
+2. Backend sanity checks:
+```bash
+curl -i http://127.0.0.1:8080/healthz
+curl -s http://127.0.0.1:8080/v1/system/status | jq
+```
+3. Unity SDK setup baseline:
+- Open Unity with package `examples/unity-csharp-proto-client/UnityPackage/com.wizardbeardstudio.rgs/`.
+- In `RgsClientConfig`, set `baseUrl`, `playerId`, `operatorId`, `equipmentId`, and `transportMode`.
+- For browser/WebGL targets, prefer `RestGateway`.
+4. Run the first game loop using the sample flow:
+- `Login` -> `StartSession` -> `GetBalance` -> `PlaceWager` -> `SettleWager` -> `EndSession` -> `Logout`.
+5. Optional dev telemetry/reporting smoke:
+- Submit a significant event via `EventsClient.SubmitSignificantEventAsync(...)`.
+- Generate a report via `ReportingClient.GenerateReportAsync(...)`.
+6. Verification before expanding game integration:
+```bash
+go test ./...
+RGS_PROTO_CHECK_MODE=diff-only make verify
+```
+7. Unity validation once .NET/Unity toolchain is installed:
+- Run Unity editor/runtime tests in `examples/unity-csharp-proto-client/UnityPackage/com.wizardbeardstudio.rgs/Tests/`.
+- If CI is configured, run `.github/workflows/unity-ci.yml` (requires Unity license secrets).
+
 ## 9. Security and Remote Access Controls
 
 Remote admin boundary:
