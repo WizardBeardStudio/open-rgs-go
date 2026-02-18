@@ -43,16 +43,20 @@ namespace WizardBeardStudio.Rgs.Tests.Editor
             var sessions = new SessionsClient(transport, () => tokenStore.AccessToken, "player-1", "dev-1", "ua", string.Empty);
             var ledger = new LedgerClient(transport, () => tokenStore.AccessToken, "player-1", "dev-1", "ua", string.Empty);
             var wagering = new WageringClient(transport, () => tokenStore.AccessToken, "player-1", "dev-1", "ua", string.Empty);
+            var events = new EventsClient(transport, () => tokenStore.AccessToken, "player-1", "dev-1", "ua", string.Empty, "eq-1");
+            var reporting = new ReportingClient(transport, () => tokenStore.AccessToken, "player-1", "dev-1", "ua", string.Empty, "op-1");
 
             var config = new RgsClientConfig
             {
                 autoGenerateIdempotencyKey = autoGenerateIdempotencyKey,
                 playerId = "player-1",
+                operatorId = "op-1",
+                equipmentId = "eq-1",
                 defaultGameId = "slot-1",
                 baseUrl = "http://localhost:8080",
             };
 
-            return new RgsClient(config, auth, sessions, ledger, wagering);
+            return new RgsClient(config, auth, sessions, ledger, wagering, events, reporting);
         }
 
         private sealed class FakeTransport : IRgsTransport

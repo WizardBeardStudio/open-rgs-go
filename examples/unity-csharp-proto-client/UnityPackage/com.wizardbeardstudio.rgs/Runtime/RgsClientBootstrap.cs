@@ -57,6 +57,8 @@ namespace WizardBeardStudio.Rgs
             SessionsClient sessions;
             LedgerClient ledger;
             WageringClient wagering;
+            EventsClient events;
+            ReportingClient reporting;
 
             if (config.transportMode == RgsTransportMode.RestGateway)
             {
@@ -67,6 +69,8 @@ namespace WizardBeardStudio.Rgs
                 sessions = new SessionsClient(rest, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo);
                 ledger = new LedgerClient(rest, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo);
                 wagering = new WageringClient(rest, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo);
+                events = new EventsClient(rest, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo, config.equipmentId);
+                reporting = new ReportingClient(rest, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo, config.operatorId);
                 _logger.Info("RGS client configured for REST gateway transport");
             }
             else
@@ -77,17 +81,21 @@ namespace WizardBeardStudio.Rgs
                 var ledgerStub = new LedgerService.LedgerServiceClient(_channel);
                 var sessionsStub = new SessionsService.SessionsServiceClient(_channel);
                 var wageringStub = new WageringService.WageringServiceClient(_channel);
+                var eventsStub = new EventsService.EventsServiceClient(_channel);
+                var reportingStub = new ReportingService.ReportingServiceClient(_channel);
 
                 identity = new IdentityClient(identityStub, config.deviceId, config.userAgent, config.geo);
                 sessions = new SessionsClient(sessionsStub, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo);
                 ledger = new LedgerClient(ledgerStub, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo);
                 wagering = new WageringClient(wageringStub, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo);
+                events = new EventsClient(eventsStub, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo, config.equipmentId);
+                reporting = new ReportingClient(reportingStub, () => _tokenStore.AccessToken, config.playerId, config.deviceId, config.userAgent, config.geo, config.operatorId);
                 _logger.Info("RGS client configured for gRPC-Web transport");
             }
 
             var auth = new RgsAuthService(identity, _tokenStore);
             AuthService = auth;
-            Client = new RgsClient(config, auth, sessions, ledger, wagering);
+            Client = new RgsClient(config, auth, sessions, ledger, wagering, events, reporting);
             OnInitialized?.Invoke();
         }
 

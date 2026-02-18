@@ -13,6 +13,9 @@ Includes:
   - `LedgerClient.GetBalanceAsync`
   - `SessionsClient.StartSessionAsync` / `EndSessionAsync`
   - `WageringClient.PlaceWagerAsync` / `SettleWagerAsync`
+  - `EventsClient.SubmitSignificantEventAsync`
+  - `ReportingClient.GenerateReportAsync`
+- `GrpcWebRgsTransport` implementation for `IRgsTransport` callers (gRPC-Web headers + HTTP transport).
 - Parallel REST gateway wiring for the same methods when `RgsTransportMode.RestGateway` is selected.
   - WebGL runtime builds use `UnityWebRequest` for REST mode.
  - Token lifecycle support:
@@ -28,4 +31,4 @@ Includes:
    - `Samples~/QuickStartSlot/QuickStartSlotSampleScene.unity`
    - editor wiring utility: `Tools > WizardBeard > RGS > ...`
 
-Next implementation rounds should wire service classes to generated protobuf clients and publish importable sample scenes.
+Next implementation rounds should expand list/query APIs (events, meters, and report-run retrieval) and publish richer gameplay samples.

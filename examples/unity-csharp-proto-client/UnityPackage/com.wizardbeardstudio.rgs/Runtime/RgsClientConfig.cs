@@ -14,7 +14,9 @@ namespace WizardBeardStudio.Rgs
         public string baseUrl = "https://localhost:8080";
         public RgsTransportMode transportMode = RgsTransportMode.GrpcWeb;
         public string playerId = "player-1";
+        public string operatorId = "op-default";
         public string deviceId = "unity-slot-client-01";
+        public string equipmentId = "eq-unity-client-01";
         public string userAgent = "unity-slot-client";
         public string geo = string.Empty;
         public string defaultGameId = "slot-default";
@@ -31,6 +33,16 @@ namespace WizardBeardStudio.Rgs
             if (string.IsNullOrWhiteSpace(playerId))
             {
                 error = "Player ID is required.";
+                return false;
+            }
+            if (string.IsNullOrWhiteSpace(operatorId))
+            {
+                error = "Operator ID is required.";
+                return false;
+            }
+            if (string.IsNullOrWhiteSpace(equipmentId))
+            {
+                error = "Equipment ID is required.";
                 return false;
             }
             if (string.IsNullOrWhiteSpace(defaultGameId))

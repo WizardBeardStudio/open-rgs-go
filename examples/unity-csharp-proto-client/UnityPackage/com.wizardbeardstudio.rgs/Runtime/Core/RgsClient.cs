@@ -14,19 +14,25 @@ namespace WizardBeardStudio.Rgs.Core
         private readonly SessionsClient _sessions;
         private readonly LedgerClient _ledger;
         private readonly WageringClient _wagering;
+        private readonly EventsClient _events;
+        private readonly ReportingClient _reporting;
 
         public RgsClient(
             RgsClientConfig config,
             RgsAuthService auth,
             SessionsClient sessions,
             LedgerClient ledger,
-            WageringClient wagering)
+            WageringClient wagering,
+            EventsClient events,
+            ReportingClient reporting)
         {
             _config = config;
             _auth = auth;
             _sessions = sessions;
             _ledger = ledger;
             _wagering = wagering;
+            _events = events;
+            _reporting = reporting;
         }
 
         public Task<LoginResult> LoginAsync(string playerId, string pin, CancellationToken cancellationToken)
@@ -60,6 +66,12 @@ namespace WizardBeardStudio.Rgs.Core
 
         public Task<OutcomeResult> SettleWagerAsync(string wagerId, long payoutMinor, string currency, CancellationToken cancellationToken)
             => _wagering.SettleWagerAsync(wagerId, payoutMinor, currency, cancellationToken);
+
+        public Task<OperationResult> SubmitSignificantEventAsync(string eventCode, string description, CancellationToken cancellationToken)
+            => _events.SubmitSignificantEventAsync(eventCode, description, cancellationToken);
+
+        public Task<OperationResult> GenerateReportAsync(string reportType, string interval, CancellationToken cancellationToken)
+            => _reporting.GenerateReportAsync(reportType, interval, cancellationToken);
 
         public Task<OperationResult> EndSessionAsync(string sessionId, CancellationToken cancellationToken)
             => _sessions.EndSessionAsync(sessionId, cancellationToken);
